@@ -1,0 +1,6 @@
+{
+  "name": "@parchemos/business",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Reserved module structure for Parchemos Business. No views implemented."
+}

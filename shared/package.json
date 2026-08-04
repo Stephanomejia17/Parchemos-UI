@@ -1,0 +1,12 @@
+{
+  "name": "@parchemos/shared",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    "./components": "./components/index.ts",
+    "./design-system/tokens.css": "./design-system/tokens.css"
+  },
+  "dependencies": { "lucide-react": "0.487.0" },
+  "peerDependencies": { "react": "^18.3.1" }
+}

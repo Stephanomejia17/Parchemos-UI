@@ -1,0 +1,16 @@
+{
+  "name": "parchemos",
+  "private": true,
+  "version": "1.0.0",
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev:customer": "pnpm --filter @parchemos/customer dev",
+    "dev:admin": "pnpm --filter @parchemos/admin dev",
+    "build": "pnpm -r --if-present build",
+    "build:customer": "pnpm --filter @parchemos/customer build",
+    "build:admin": "pnpm --filter @parchemos/admin build"
+  },
+  "devDependencies": {
+    "pnpm": "9.15.0"
+  }
+}
