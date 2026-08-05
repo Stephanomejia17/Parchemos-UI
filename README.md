@@ -10,6 +10,8 @@ Monorepo de los productos Parchemos, construido con React, Vite, Tailwind y pnpm
 
 ## Desarrollo
 
+Las vistas del comensal y del administrador de restaurante están separadas en el flujo, esto es algo momentaneo, ya que, por el momento se busca mostrar los mockups iniciales de la aplicación Parchemos
+
 ```bash
 pnpm install
 pnpm dev:customer
