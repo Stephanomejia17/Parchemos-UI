@@ -1,0 +1,15 @@
+@import "tailwindcss" source(none);
+@import "tw-animate-css";
+@import "../../../../shared/design-system/tokens.css";
+@source "../**/*.{ts,tsx}";
+@source "../../../../shared/**/*.{ts,tsx}";
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-inter), sans-serif;
+}

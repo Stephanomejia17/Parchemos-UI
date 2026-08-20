@@ -8,5 +8,9 @@
     "./design-system/tokens.css": "./design-system/tokens.css"
   },
   "dependencies": { "lucide-react": "0.487.0" },
-  "peerDependencies": { "react": "^18.3.1" }
+  "peerDependencies": { "react": "^19.0.0" },
+  "devDependencies": {
+    "@types/react": "19.1.6",
+    "typescript": "5.8.3"
+  }
 }

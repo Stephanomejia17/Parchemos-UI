@@ -1,6 +1,6 @@
 # Parchemos
 
-Monorepo de los productos Parchemos, construido con React, Vite, Tailwind y pnpm workspaces.
+Monorepo de los productos Parchemos, construido con Next.js (App Router), React, Tailwind y pnpm workspaces.
 
 ## Módulos
 

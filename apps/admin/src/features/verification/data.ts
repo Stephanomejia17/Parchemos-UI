@@ -1,0 +1,32 @@
+export const pendingVerifications = [
+  {
+    id: 1,
+    name: "El Bandido Mexicano",
+    owner: "Juan Camilo Pérez",
+    city: "Medellín",
+    submitted: "hace 2 días",
+    docs: ["RUT ✓", "Cámara de Comercio ✓", "Datos bancarios ✓"],
+    status: "reviewing",
+    address: "Calle 33 #65-12, El Poblado",
+  },
+  {
+    id: 2,
+    name: "Madre",
+    owner: "Alejandro Cano",
+    city: "Medellín",
+    submitted: "hace 3 días",
+    docs: ["RUT ✓", "Cámara de Comercio ✓", "Datos bancarios ✗"],
+    status: "pending_docs",
+    address: "Carrera 36 #10A-27, Laureles",
+  },
+  {
+    id: 3,
+    name: "Palomino",
+    owner: "Sandra Ruiz",
+    city: "Bogotá",
+    submitted: "hace 1 día",
+    docs: ["RUT ✓", "Cámara de Comercio ✓", "Datos bancarios ✓", "Permiso sanitario ✓"],
+    status: "ready",
+    address: "Calle 85 #12-38, Usaquén",
+  },
+];
