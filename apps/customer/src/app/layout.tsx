@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Inter, Poppins } from "next/font/google";
+import { AuthProvider } from "@parchemos/shared/auth";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -25,7 +26,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${poppins.variable} ${inter.variable} h-full`}>
-      <body className="h-full">{children}</body>
+      <body className="h-full">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { BarChart3, Camera, LogOut, Settings, Star } from "lucide-react";
+import { useAuth } from "@parchemos/shared/auth";
 import { RemoteImage } from "@/components/media/RemoteImage";
 
 const BADGES = ["🔥 Foodie", "⭐ Top Reviewer", "🗺️ Explorer", "🍕 Pizza Lover", "☕ Coffee Fan"];
@@ -21,6 +23,16 @@ const STATS = [
 
 export function Profile() {
   const router = useRouter();
+  const { user, logout } = useAuth();
+  const [signingOut, setSigningOut] = useState(false);
+
+  // GU-02 Esc. 5: cerrar sesión invalida el token en el servidor y devuelve al login.
+  const onLogout = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    await logout();
+    router.replace("/login");
+  };
 
   return (
     <div className="flex flex-col h-full bg-background overflow-y-auto">
@@ -50,8 +62,8 @@ export function Profile() {
             </button>
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-gray-900 text-lg">Juan Sebastián M.</h3>
-            <p className="text-sm text-muted-foreground">@juanse.foodie</p>
+            <h3 className="font-bold text-gray-900 text-lg">{user?.fullName ?? "Mi perfil"}</h3>
+            <p className="text-sm text-muted-foreground">{user?.email}</p>
             <div className="flex items-center gap-1.5 mt-1.5">
               <div className="w-4 h-4 bg-secondary rounded-md flex items-center justify-center">
                 <span className="text-xs">🏆</span>
@@ -105,9 +117,13 @@ export function Profile() {
           </div>
         </div>
 
-        <button className="w-full flex items-center justify-center gap-2 bg-white border border-gray-200 rounded-2xl py-3.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors md:col-span-full">
+        <button
+          onClick={onLogout}
+          disabled={signingOut}
+          className="w-full flex items-center justify-center gap-2 bg-white border border-gray-200 rounded-2xl py-3.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-60 md:col-span-full"
+        >
           <LogOut className="w-4 h-4" />
-          Cerrar sesión
+          {signingOut ? "Cerrando sesión..." : "Cerrar sesión"}
         </button>
       </div>
     </div>

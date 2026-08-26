@@ -4,6 +4,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Bell, Search } from "lucide-react";
 import { STATUS_COLORS } from "@parchemos/shared/components";
+import { useAuth } from "@parchemos/shared/auth";
 import { alerts } from "@/lib/shared-mock-data";
 import { NAV_ITEMS } from "./nav-items";
 
@@ -12,6 +13,7 @@ const ACCENT = "#FF6B35";
 export function Header() {
   const pathname = usePathname();
   const item = NAV_ITEMS.find(n => pathname.startsWith(n.href));
+  const { user } = useAuth();
   const [notifOpen, setNotifOpen] = useState(false);
 
   return (
@@ -56,8 +58,11 @@ export function Header() {
         )}
       </div>
 
-      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FF6B35] to-[#FF8559] flex items-center justify-center cursor-pointer">
-        <span className="text-white font-bold text-[12px]">A</span>
+      <div
+        title={user?.email ?? ""}
+        className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FF6B35] to-[#FF8559] flex items-center justify-center"
+      >
+        <span className="text-white font-bold text-[12px]">{(user?.fullName?.trim()[0] ?? "A").toUpperCase()}</span>
       </div>
     </header>
   );

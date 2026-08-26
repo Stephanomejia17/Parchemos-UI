@@ -2,14 +2,21 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { roleHomePath, useAuth } from "@parchemos/shared/auth";
 
 export function Splash() {
   const router = useRouter();
+  const { status, user } = useAuth();
 
+  // Mientras se ve el splash, el AuthProvider intenta recuperar la sesión con
+  // la cookie httpOnly: quien ya entró no vuelve a pasar por el login.
   useEffect(() => {
-    const t = setTimeout(() => router.replace("/login"), 2200);
+    if (status === "loading") return;
+
+    const destination = status === "authenticated" && user ? roleHomePath(user.role) : "/login";
+    const t = setTimeout(() => router.replace(destination), 1200);
     return () => clearTimeout(t);
-  }, [router]);
+  }, [router, status, user]);
 
   return (
     <div className="fixed inset-0 bg-white flex flex-col items-center justify-center z-50">

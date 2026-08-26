@@ -5,3 +5,7 @@ dist/
 .next/
 next-env.d.ts
 *.tsbuildinfo
+
+# variables de entorno locales
+.env.local
+.env*.local

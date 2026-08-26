@@ -15,17 +15,24 @@ export function PrimaryButton({
   className = "",
   size = "md",
   variant = "primary",
+  type = "button",
+  disabled = false,
 }: {
   children: ReactNode;
   onClick?: () => void;
   className?: string;
   size?: keyof typeof SIZES;
   variant?: keyof typeof VARIANTS;
+  /** "submit" para los formularios de login y registro. */
+  type?: "button" | "submit" | "reset";
+  disabled?: boolean;
 }) {
   return (
     <button
+      type={type}
       onClick={onClick}
-      className={`rounded-2xl font-semibold transition-all active:scale-95 ${SIZES[size]} ${VARIANTS[variant]} ${className}`}
+      disabled={disabled}
+      className={`rounded-2xl font-semibold transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100 ${SIZES[size]} ${VARIANTS[variant]} ${className}`}
     >
       {children}
     </button>

@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "customer",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["pnpm", "dev:customer"],
+      "port": 3000
+    },
+    {
+      "name": "admin",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["pnpm", "dev:admin"],
+      "port": 3002
+    }
+  ]
+}

@@ -21,3 +21,25 @@ pnpm build
 
 Los tokens y componentes compartidos se encuentran en `shared`. La separación de capas de dominio, aplicación e infraestructura está preparada en `core`.
 # Parchemos
+
+## Autenticación (GU-01 / GU-02)
+
+Las pantallas de sesión ya no están quemadas: hablan con `PARCHEMOS-API`.
+
+```bash
+# 1. Levanta la API (otro repo)
+cd ../../PARCHEMOS-API && npm run start:dev   # http://localhost:3001/api
+
+# 2. Levanta el front
+pnpm dev:customer   # http://localhost:3000
+pnpm dev:admin      # http://localhost:3002
+```
+
+Cada app lee `NEXT_PUBLIC_API_URL` de su `.env.local` (ver `.env.example`).
+
+- `shared/auth` concentra el cliente HTTP, el `AuthProvider` y `RequireAuth`.
+- El access token vive **solo en memoria**; la sesión sobrevive a un F5 gracias
+  a la cookie httpOnly del refresh token, que JavaScript no puede leer.
+- `apps/customer`: `/registro` y `/login` reales; todo lo que cuelga de
+  `(shell)` exige sesión.
+- `apps/admin`: `/login` propio; la consola solo admite el rol `administrador`.
