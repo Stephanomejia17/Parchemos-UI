@@ -2,20 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NAV_ITEMS } from "./nav-items";
+import { navItemsFor } from "./nav-items";
 import { useActiveTab } from "./active-tab-context";
+import { useAuth } from "@parchemos/shared/auth";
 
 const DETAIL_ROUTES = ["/restaurant", "/menu", "/order-summary", "/profile/dashboard"];
 
 export function BottomNav() {
   const activeTab = useActiveTab();
   const pathname = usePathname();
+  const { user } = useAuth();
   const onDetailRoute = DETAIL_ROUTES.some(route => pathname.startsWith(route));
 
   return (
     <div className="bg-white border-t border-border px-2 py-2 flex-shrink-0">
       <div className="flex">
-        {NAV_ITEMS.map(({ id, href, icon: Icon, label }) => {
+        {navItemsFor(user?.role).map(({ id, href, icon: Icon, label }) => {
           const isActive = activeTab === id && !onDetailRoute;
           return (
             <Link

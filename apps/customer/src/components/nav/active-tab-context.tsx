@@ -2,7 +2,8 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { NAV_ITEMS, type TabId } from "./nav-items";
+import { navItemsFor, type TabId } from "./nav-items";
+import { useAuth } from "@parchemos/shared/auth";
 
 const ActiveTabContext = createContext<TabId>("home");
 
@@ -14,12 +15,13 @@ const ActiveTabContext = createContext<TabId>("home");
  */
 export function ActiveTabProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabId>("home");
 
   useEffect(() => {
-    const match = NAV_ITEMS.find(item => pathname === item.href || pathname.startsWith(`${item.href}/`));
+    const match = navItemsFor(user?.role).find(item => pathname === item.href || pathname.startsWith(`${item.href}/`));
     if (match) setActiveTab(match.id);
-  }, [pathname]);
+  }, [pathname, user?.role]);
 
   return <ActiveTabContext.Provider value={activeTab}>{children}</ActiveTabContext.Provider>;
 }

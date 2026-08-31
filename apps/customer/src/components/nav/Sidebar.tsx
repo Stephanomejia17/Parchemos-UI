@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { LogOut, Menu as MenuIcon } from "lucide-react";
 import { useAuth } from "@parchemos/shared/auth";
 import { RemoteImage } from "@/components/media/RemoteImage";
-import { NAV_ITEMS } from "./nav-items";
+import { navItemsFor } from "./nav-items";
 import { useActiveTab } from "./active-tab-context";
 
 export function Sidebar() {
@@ -46,7 +46,7 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-3 px-2">
-        {NAV_ITEMS.map(({ id, href, icon: Icon, label }) => {
+        {navItemsFor(user?.role).map(({ id, href, icon: Icon, label }) => {
           const isActive = activeTab === id;
           return (
             <Link

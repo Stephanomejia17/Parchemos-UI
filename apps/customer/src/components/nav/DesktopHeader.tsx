@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { Bell, Search } from "lucide-react";
 import { RemoteImage } from "@/components/media/RemoteImage";
-import { NAV_ITEMS } from "./nav-items";
+import { navItemsFor } from "./nav-items";
 import { useActiveTab } from "./active-tab-context";
+import { useAuth } from "@parchemos/shared/auth";
 
 export function DesktopHeader() {
   const activeTab = useActiveTab();
-  const currentLabel = NAV_ITEMS.find(n => n.id === activeTab)?.label ?? "Parchemos";
+  const { user } = useAuth();
+  const currentLabel = navItemsFor(user?.role).find(n => n.id === activeTab)?.label ?? "Parchemos";
 
   return (
     <header className="hidden md:flex h-16 bg-white border-b border-border items-center px-6 gap-4 flex-shrink-0">
