@@ -81,6 +81,20 @@ export async function tryRefresh(): Promise<boolean> {
   }
 }
 
+export function requestPasswordReset(email: string): Promise<void> {
+  return apiFetch<void>("/auth/forgot-password", {
+    method: "POST",
+    body: { email },
+  });
+}
+
+export function resetPassword(token: string, password: string): Promise<void> {
+  return apiFetch<void>("/auth/reset-password", {
+    method: "POST",
+    body: { token, password },
+  });
+}
+
 /**
  * Normaliza la respuesta de error de Nest, que puede llegar como string o como
  * objeto con `message`, `code` y `reason`.

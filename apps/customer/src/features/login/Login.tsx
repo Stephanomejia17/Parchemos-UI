@@ -160,6 +160,10 @@ export function Login() {
           </PrimaryButton>
         </form>
 
+        <Link href="/recuperar-contrasena" className="text-center text-sm text-primary font-semibold hover:underline">
+          ¿Olvidaste tu contraseña?
+        </Link>
+
         <p className="text-center text-sm text-muted-foreground">
           ¿No tienes cuenta?{" "}
           <Link href="/registro" className="text-primary font-semibold hover:underline">
