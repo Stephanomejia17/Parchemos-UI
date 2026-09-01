@@ -25,6 +25,9 @@ export const STATUS_COLORS: Record<string, string> = {
   high: "bg-red-50 text-red-700 border-red-100",
   medium: "bg-amber-50 text-amber-700 border-amber-100",
   low: "bg-gray-100 text-gray-500 border-gray-200",
+  pendiente_aprobacion: "bg-amber-50 text-amber-700 border-amber-100",
+  activa: "bg-emerald-50 text-emerald-700 border-emerald-100",
+  rechazada: "bg-gray-100 text-gray-500 border-gray-200",
 };
 
 export const STATUS_LABELS: Record<string, string> = {
@@ -54,4 +57,7 @@ export const STATUS_LABELS: Record<string, string> = {
   high: "Alta",
   medium: "Media",
   low: "Baja",
+  pendiente_aprobacion: "Pendiente",
+  activa: "Activa",
+  rechazada: "Rechazada",
 };
