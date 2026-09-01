@@ -2,7 +2,7 @@
 
 export type UserRole = "comensal" | "restaurante" | "personal_restaurante" | "repartidor" | "administrador";
 
-export type AccountStatus = "pendiente_aprobacion" | "activa" | "suspendida" | "deshabilitada";
+export type AccountStatus = "pendiente_aprobacion" | "activa" | "suspendida" | "deshabilitada" | "pendiente_eliminacion";
 
 export interface AuthUser {
   id: string;
@@ -12,6 +12,10 @@ export interface AuthUser {
   status: AccountStatus;
   /** GU-01 Esc. 2: false mientras el restaurante espera aprobacion. */
   canOperate: boolean;
+  phone: string | null;
+  city: string | null;
+  profilePhotoUrl: string | null;
+  assignedLocation: { id: string; name: string; address: string; status: string; restaurantName: string } | null;
 }
 
 export interface LoginPayload {
@@ -23,7 +27,9 @@ export interface RegisterPayload {
   email: string;
   password: string;
   fullName: string;
-  phone?: string;
+  phone: string;
+  city: string;
+  profilePhotoUrl: string;
   role: "comensal" | "restaurante";
   acceptedTerms: boolean;
   acceptedPrivacy: boolean;

@@ -30,6 +30,9 @@ export function Register() {
 
   const [role, setRole] = useState<SelectableRole | null>(null);
   const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [city, setCity] = useState("");
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -48,6 +51,9 @@ export function Register() {
   const canSubmit =
     role !== null &&
     fullName.trim().length >= 2 &&
+    phone.trim().length > 0 &&
+    city.trim().length >= 2 &&
+    profilePhotoUrl.length > 0 &&
     email.trim().length > 0 &&
     passwordState.valid &&
     passwordsMatch &&
@@ -68,6 +74,9 @@ export function Register() {
         email: email.trim(),
         password,
         fullName: fullName.trim(),
+        phone: phone.trim(),
+        city: city.trim(),
+        profilePhotoUrl,
         role: role!,
         acceptedTerms,
         acceptedPrivacy,
@@ -155,6 +164,34 @@ export function Register() {
             {touchedSubmit && fullName.trim().length < 2 && (
               <span className="text-xs text-red-600">Ingresa un nombre de al menos 2 caracteres.</span>
             )}
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-gray-600">Teléfono</span>
+            <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="3001234567" className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm outline-none focus:border-primary" />
+            {touchedSubmit && !phone.trim() && <span className="text-xs text-red-600">Ingresa tu teléfono.</span>}
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-gray-600">Ciudad</span>
+            <input type="text" value={city} onChange={e => setCity(e.target.value)} placeholder="Bogotá" className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm outline-none focus:border-primary" />
+            {touchedSubmit && city.trim().length < 2 && <span className="text-xs text-red-600">Ingresa tu ciudad.</span>}
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-gray-600">Foto de perfil (JPG o PNG, máximo 5 MB)</span>
+            <input type="file" accept="image/jpeg,image/png" required onChange={event => {
+              const file = event.target.files?.[0];
+              if (!file) return;
+              if (!['image/jpeg', 'image/png'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+                setServerErrors(['La foto debe ser JPG o PNG y no superar 5 MB.']);
+                event.currentTarget.value = '';
+                return;
+              }
+              const reader = new FileReader();
+              reader.onload = () => setProfilePhotoUrl(String(reader.result));
+              reader.readAsDataURL(file);
+            }} className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm" />
           </label>
 
           <label className="flex flex-col gap-1.5">
