@@ -1,40 +1,31 @@
 "use client";
 
-import Link from "next/link";
-import { Bell, Search } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { RemoteImage } from "@/components/media/RemoteImage";
+import { DesktopHeader as SharedDesktopHeader, type DesktopBreadcrumb } from "@parchemos/shared/components";
 import { navItemsFor } from "./nav-items";
 import { useActiveTab } from "./active-tab-context";
 import { useAuth } from "@parchemos/shared/auth";
 
+const DETAIL_LABELS: Record<string, string> = { menu: "Menú", dashboard: "Dashboard", "order-summary": "Resumen del pedido", restaurant: "Restaurante" };
+
 export function DesktopHeader() {
+  const pathname = usePathname();
   const activeTab = useActiveTab();
   const { user } = useAuth();
-  const currentLabel = navItemsFor(user?.role).find(n => n.id === activeTab)?.label ?? "Parchemos";
+  const activeItem = navItemsFor(user?.role).find(item => item.id === activeTab);
+  const breadcrumbs = getBreadcrumbs(pathname, activeItem?.label ?? "Parchemos", activeItem?.href);
+  return <SharedDesktopHeader backHref={getBackHref(pathname, activeItem?.href)} breadcrumbs={breadcrumbs} avatar={<RemoteImage src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=32&h=32&fit=crop&auto=format" alt="user" className="h-9 w-9 cursor-pointer rounded-xl" />} />;
+}
 
-  return (
-    <header className="hidden md:flex h-16 bg-white border-b border-border items-center px-6 gap-4 flex-shrink-0">
-      <div>
-        <p className="text-sm font-bold text-gray-900">{currentLabel}</p>
-        <p className="text-xs text-muted-foreground">Bogotá, Colombia</p>
-      </div>
-      <div className="flex-1 flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-2.5 max-w-sm ml-4">
-        <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-        <input className="bg-transparent text-sm outline-none flex-1 text-gray-700 placeholder-muted-foreground" placeholder="Buscar restaurantes, platos..." />
-      </div>
-      <div className="ml-auto flex items-center gap-2">
-        <button className="relative w-9 h-9 bg-gray-100 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-200 transition-colors">
-          <Bell className="w-4 h-4" />
-          <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary border-2 border-white" />
-        </button>
-        <Link href="/profile">
-          <RemoteImage
-            src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=32&h=32&fit=crop&auto=format"
-            alt="user"
-            className="w-9 h-9 rounded-xl cursor-pointer"
-          />
-        </Link>
-      </div>
-    </header>
-  );
+function getBackHref(pathname: string, sectionHref?: string) {
+  if (pathname === "/home" || pathname === "/") return undefined;
+  if (pathname === sectionHref) return "/home";
+  return sectionHref ?? "/home";
+}
+
+function getBreadcrumbs(pathname: string, section: string, sectionHref?: string): DesktopBreadcrumb[] {
+  const parts = pathname.split("/").filter(Boolean);
+  const detailIndex = parts.findIndex(part => DETAIL_LABELS[part]);
+  return detailIndex >= 0 ? [{ label: section, href: sectionHref }, { label: DETAIL_LABELS[parts[detailIndex]] }] : [{ label: section, href: sectionHref }];
 }
