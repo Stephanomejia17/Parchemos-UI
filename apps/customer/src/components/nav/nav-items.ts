@@ -11,11 +11,14 @@ export const NAV_ITEMS = [
 
 const RESTAURANT_ITEM = { id: "restaurants", href: "/restaurants", icon: Store, label: "Restaurantes" } as const;
 const STAFF_ITEM = { id: "staff", href: "/staff", icon: UsersRound, label: "Personal" } as const;
+const ADMIN_RESTAURANT_ITEM = { id: "admin-restaurants", href: "/admin/restaurants", icon: Store, label: "Revisión de sedes" } as const;
 
 export function navItemsFor(role?: UserRole) {
+  const profileItem = NAV_ITEMS.at(-1)!;
+  if (role === "administrador") return [...NAV_ITEMS.slice(0, -1), ADMIN_RESTAURANT_ITEM, profileItem];
   return role === "restaurante"
-    ? [...NAV_ITEMS.slice(0, -1), RESTAURANT_ITEM, STAFF_ITEM, NAV_ITEMS[NAV_ITEMS.length - 1]]
+    ? [...NAV_ITEMS.slice(0, -1), RESTAURANT_ITEM, STAFF_ITEM, profileItem]
     : NAV_ITEMS;
 }
 
-export type TabId = (typeof NAV_ITEMS)[number]["id"] | typeof RESTAURANT_ITEM.id | typeof STAFF_ITEM.id;
+export type TabId = (typeof NAV_ITEMS)[number]["id"] | typeof RESTAURANT_ITEM.id | typeof STAFF_ITEM.id | typeof ADMIN_RESTAURANT_ITEM.id;
