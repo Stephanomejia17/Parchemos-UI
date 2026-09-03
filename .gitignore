@@ -9,3 +9,5 @@ next-env.d.ts
 # variables de entorno locales
 .env.local
 .env*.local
+.env
+.env.example

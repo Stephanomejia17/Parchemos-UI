@@ -21,6 +21,7 @@ export const tokenStore = {
 interface RequestOptions {
   method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
+  formData?: FormData;
   /** Interno: evita bucles infinitos al reintentar tras refrescar. */
   skipRefresh?: boolean;
   signal?: AbortSignal;
@@ -36,7 +37,7 @@ async function raw(path: string, options: RequestOptions = {}): Promise<Response
     headers,
     // Imprescindible para que viaje la cookie del refresh token.
     credentials: "include",
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    body: options.formData ?? (options.body !== undefined ? JSON.stringify(options.body) : undefined),
     signal: options.signal,
   });
 }
@@ -79,6 +80,31 @@ export async function tryRefresh(): Promise<boolean> {
     accessToken = null;
     return false;
   }
+}
+
+export function requestPasswordReset(email: string): Promise<void> {
+  return apiFetch<void>("/auth/forgot-password", {
+    method: "POST",
+    body: { email },
+  });
+}
+
+export function resetPassword(token: string, password: string): Promise<void> {
+  return apiFetch<void>("/auth/reset-password", {
+    method: "POST",
+    body: { token, password },
+  });
+}
+
+export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+  let response = await raw(path, { method: "POST", formData });
+  if (response.status === 401) {
+    const renewed = await tryRefresh();
+    if (renewed) response = await raw(path, { method: "POST", formData });
+  }
+  if (!response.ok) throw await toApiError(response);
+  if (response.status === 204) return undefined as T;
+  return (await response.json()) as T;
 }
 
 /**
