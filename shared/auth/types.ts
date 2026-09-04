@@ -29,7 +29,8 @@ export interface RegisterPayload {
   fullName: string;
   phone: string;
   city: string;
-  profilePhotoUrl: string;
+  /** Opcional: el registro ya no pide foto, se sube despues desde el perfil. */
+  profilePhotoUrl?: string;
   role: "comensal" | "restaurante";
   acceptedTerms: boolean;
   acceptedPrivacy: boolean;

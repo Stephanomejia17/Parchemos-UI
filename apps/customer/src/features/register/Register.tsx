@@ -3,13 +3,40 @@
 import { useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertCircle, Check, Eye, EyeOff, Loader2, Store, UtensilsCrossed, X } from "lucide-react";
-import { PrimaryButton } from "@parchemos/shared/components";
+import {
+  ArrowLeft,
+  ArrowRight,
+  IdCard,
+  Loader2,
+  Lock,
+  Mail,
+  MapPin,
+  Phone,
+  Store,
+  User,
+  UserRound,
+  UtensilsCrossed,
+} from "lucide-react";
+import {
+  CheckboxField,
+  ChoiceCardGroup,
+  ComboBoxField,
+  FormAlert,
+  FormSection,
+  FormStepper,
+  PasswordField,
+  PrimaryButton,
+  RequirementList,
+  TextField,
+  type ChoiceCardOption,
+  type FormStep,
+} from "@parchemos/shared/components";
+import { COLOMBIA_CITY_OPTIONS } from "@parchemos/shared/constants";
 import { ApiError, evaluatePassword, useAuth } from "@parchemos/shared/auth";
 
 type SelectableRole = "comensal" | "restaurante";
 
-const ROLES: { id: SelectableRole; label: string; description: string; icon: typeof Store }[] = [
+const ROLES: ChoiceCardOption<SelectableRole>[] = [
   {
     id: "comensal",
     label: "Comensal",
@@ -24,50 +51,98 @@ const ROLES: { id: SelectableRole; label: string; description: string; icon: typ
   },
 ];
 
+/** El registro se recorre por secciones; cada una valida lo suyo antes de avanzar. */
+const STEPS: FormStep[] = [
+  { id: "tipo", label: "Tipo de cuenta" },
+  { id: "cuenta", label: "Cuenta" },
+  { id: "perfil", label: "Perfil" },
+];
+
+/** Mismo formato que exige el backend para el telefono. */
+const PHONE_PATTERN = /^(?:\+57\s?)?(?:3\d{2}|\d{2})\s?\d{3}\s?\d{2}\s?\d{2}$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
 export function Register() {
   const router = useRouter();
   const { register } = useAuth();
 
+  const [step, setStep] = useState(0);
+  // Los errores de un paso solo se pintan cuando ya se intento avanzar desde el.
+  const [attempted, setAttempted] = useState<boolean[]>([false, false, false]);
+
   const [role, setRole] = useState<SelectableRole | null>(null);
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [city, setCity] = useState("");
-  const [profilePhotoUrl, setProfilePhotoUrl] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [city, setCity] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [serverErrors, setServerErrors] = useState<string[]>([]);
-  // Solo se resaltan los campos obligatorios despues del primer intento de envio.
-  const [touchedSubmit, setTouchedSubmit] = useState(false);
 
   const passwordState = useMemo(() => evaluatePassword(password), [password]);
   const passwordsMatch = confirm.length > 0 && password === confirm;
 
-  const canSubmit =
-    role !== null &&
-    fullName.trim().length >= 2 &&
-    phone.trim().length > 0 &&
-    city.trim().length >= 2 &&
-    profilePhotoUrl.length > 0 &&
-    email.trim().length > 0 &&
-    passwordState.valid &&
-    passwordsMatch &&
-    acceptedTerms &&
-    acceptedPrivacy;
+  // GU-01 Esc. 4, 5 y 6: reglas de cada campo, agrupadas por seccion.
+  const errors = {
+    role: role === null ? "Selecciona un tipo de cuenta para continuar." : null,
+    email: !email.trim()
+      ? "Ingresa tu correo electrónico."
+      : !EMAIL_PATTERN.test(email.trim())
+        ? "Ingresa un correo electrónico válido."
+        : null,
+    password: passwordState.valid ? null : "La contraseña todavía no cumple los requisitos.",
+    confirm: !confirm ? "Repite tu contraseña." : passwordsMatch ? null : "Las contraseñas no coinciden.",
+    fullName: fullName.trim().length < 2 ? "Ingresa un nombre de al menos 2 caracteres." : null,
+    phone: !phone.trim()
+      ? "Ingresa tu teléfono."
+      : !PHONE_PATTERN.test(phone.trim())
+        ? "Ingresa un teléfono colombiano válido, por ejemplo 3001234567."
+        : null,
+    city: city.trim().length < 2 ? "Elige o escribe tu ciudad." : null,
+    consent:
+      acceptedTerms && acceptedPrivacy
+        ? null
+        : "Debes aceptar los términos y la política de datos para crear tu cuenta.",
+  };
+
+  const stepErrors: (string | null)[][] = [
+    [errors.role],
+    [errors.email, errors.password, errors.confirm],
+    [errors.fullName, errors.phone, errors.city, errors.consent],
+  ];
+  const stepIsValid = stepErrors.map(list => list.every(error => error === null));
+  const isLastStep = step === STEPS.length - 1;
+
+  /** Solo se muestra el error de un campo si ya se intento pasar de su seccion. */
+  const shown = (index: number, error: string | null) => (attempted[index] ? error : null);
+
+  const markAttempted = (index: number) =>
+    setAttempted(previous => previous.map((value, i) => (i === index ? true : value)));
+
+  const goBack = () => {
+    setServerErrors([]);
+    setStep(current => Math.max(0, current - 1));
+  };
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setTouchedSubmit(true);
+    markAttempted(step);
     setServerErrors([]);
 
-    // GU-01 Esc. 5 y 6: sin rol o sin aceptar los terminos no se envia nada.
-    if (!canSubmit || submitting) return;
+    if (!stepIsValid[step]) return;
 
+    // Mientras queden secciones, "Continuar" solo avanza el formulario.
+    if (!isLastStep) {
+      setStep(current => current + 1);
+      return;
+    }
+
+    if (submitting) return;
     setSubmitting(true);
     try {
       const result = await register({
@@ -76,7 +151,6 @@ export function Register() {
         fullName: fullName.trim(),
         phone: phone.trim(),
         city: city.trim(),
-        profilePhotoUrl,
         role: role!,
         acceptedTerms,
         acceptedPrivacy,
@@ -92,7 +166,7 @@ export function Register() {
 
   return (
     <div className="min-h-full bg-background flex justify-center px-5 py-8 md:py-12">
-      <div className="w-full max-w-lg flex flex-col gap-5">
+      <div className="w-full max-w-xl flex flex-col gap-5">
         <header className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 bg-primary rounded-2xl flex items-center justify-center">
@@ -100,215 +174,184 @@ export function Register() {
             </div>
             <h1 className="text-2xl font-extrabold text-gray-900 font-heading">Crea tu cuenta</h1>
           </div>
-          <p className="text-sm text-muted-foreground">Elige cómo quieres usar Parchemos.</p>
+          <p className="text-sm text-muted-foreground">
+            Son tres pasos cortos: eliges cómo usar Parchemos, creas tu acceso y completas tu perfil.
+          </p>
         </header>
 
-        {serverErrors.length > 0 && (
-          <div role="alert" className="flex gap-2.5 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">
-            <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-            <ul className="flex flex-col gap-1">
-              {serverErrors.map(message => (
-                <li key={message}>{message}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <FormStepper steps={STEPS} current={step} onStepSelect={index => { setServerErrors([]); setStep(index); }} className="px-1" />
+
+        <FormAlert type="error" messages={serverErrors} />
 
         <form onSubmit={onSubmit} className="flex flex-col gap-5" noValidate>
-          {/* GU-01 Esc. 5: selección de rol obligatoria */}
-          <fieldset className="flex flex-col gap-2">
-            <legend className="text-xs font-semibold text-gray-600 mb-2">Quiero registrarme como</legend>
-            <div className="grid grid-cols-2 gap-3">
-              {ROLES.map(option => {
-                const selected = role === option.id;
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => setRole(option.id)}
-                    className={`flex flex-col items-start gap-2 rounded-2xl border p-4 text-left transition-all ${
-                      selected
-                        ? "border-primary bg-orange-50 ring-2 ring-primary/20"
-                        : "border-gray-200 bg-white hover:border-gray-300"
-                    }`}
-                  >
-                    <option.icon className={`w-5 h-5 ${selected ? "text-primary" : "text-gray-400"}`} />
-                    <span className="text-sm font-semibold text-gray-900">{option.label}</span>
-                    <span className="text-xs text-muted-foreground leading-snug">{option.description}</span>
-                  </button>
-                );
-              })}
-            </div>
-            {touchedSubmit && !role && (
-              <p className="text-xs text-red-600">Selecciona un rol para continuar.</p>
-            )}
-            {role === "restaurante" && (
-              <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2">
-                Tu cuenta quedará <strong>pendiente de aprobación</strong>. Podrás crear tu perfil de negocio de
-                inmediato, pero pedidos y reservas se habilitan cuando el administrador la apruebe.
-              </p>
-            )}
-          </fieldset>
+          {step === 0 && (
+            <FormSection
+              title="Tipo de cuenta"
+              description="Con esto ajustamos lo que verás dentro de la app."
+              icon={IdCard}
+            >
+              <ChoiceCardGroup
+                legend="Quiero registrarme como"
+                options={ROLES}
+                value={role}
+                onChange={setRole}
+                error={shown(0, errors.role)}
+              />
+            </FormSection>
+          )}
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-gray-600">Nombre completo</span>
-            <input
-              type="text"
-              autoComplete="name"
-              value={fullName}
-              onChange={e => setFullName(e.target.value)}
-              placeholder={role === "restaurante" ? "Nombre del restaurante" : "Tu nombre"}
-              className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm outline-none focus:border-primary transition-colors"
-            />
-            {touchedSubmit && fullName.trim().length < 2 && (
-              <span className="text-xs text-red-600">Ingresa un nombre de al menos 2 caracteres.</span>
-            )}
-          </label>
+          {step === 1 && (
+            <FormSection
+              title="Cuenta"
+              description="Los datos con los que iniciarás sesión."
+              icon={Lock}
+            >
+              <TextField
+                label="Correo electrónico"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                icon={Mail}
+                placeholder="tucorreo@ejemplo.com"
+                value={email}
+                onValueChange={setEmail}
+                error={shown(1, errors.email)}
+              />
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-gray-600">Teléfono</span>
-            <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="3001234567" className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm outline-none focus:border-primary" />
-            {touchedSubmit && !phone.trim() && <span className="text-xs text-red-600">Ingresa tu teléfono.</span>}
-          </label>
-
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-gray-600">Ciudad</span>
-            <input type="text" value={city} onChange={e => setCity(e.target.value)} placeholder="Bogotá" className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm outline-none focus:border-primary" />
-            {touchedSubmit && city.trim().length < 2 && <span className="text-xs text-red-600">Ingresa tu ciudad.</span>}
-          </label>
-
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-gray-600">Foto de perfil (JPG o PNG, máximo 5 MB)</span>
-            <input type="file" accept="image/jpeg,image/png" required onChange={event => {
-              const file = event.target.files?.[0];
-              if (!file) return;
-              if (!['image/jpeg', 'image/png'].includes(file.type) || file.size > 5 * 1024 * 1024) {
-                setServerErrors(['La foto debe ser JPG o PNG y no superar 5 MB.']);
-                event.currentTarget.value = '';
-                return;
-              }
-              const reader = new FileReader();
-              reader.onload = () => setProfilePhotoUrl(String(reader.result));
-              reader.readAsDataURL(file);
-            }} className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm" />
-          </label>
-
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-gray-600">Correo electrónico</span>
-            <input
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="tucorreo@ejemplo.com"
-              className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm outline-none focus:border-primary transition-colors"
-            />
-            {touchedSubmit && email.trim().length === 0 && (
-              <span className="text-xs text-red-600">Ingresa tu correo electrónico.</span>
-            )}
-          </label>
-
-          <div className="flex flex-col gap-1.5">
-            <label className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-gray-600">Contraseña</span>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
+              <div className="flex flex-col gap-2">
+                <PasswordField
+                  label="Contraseña"
                   autoComplete="new-password"
+                  icon={Lock}
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 pr-12 text-sm outline-none focus:border-primary transition-colors"
+                  onValueChange={setPassword}
+                  visible={showPassword}
+                  onVisibleChange={setShowPassword}
+                  error={shown(1, errors.password)}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(v => !v)}
-                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
+                {/* GU-01 Esc. 4: se muestran los requisitos que faltan. */}
+                <RequirementList items={passwordState.checks} />
               </div>
-            </label>
-            {/* GU-01 Esc. 4: se muestran los requisitos que faltan */}
-            <ul className="flex flex-col gap-1 mt-1">
-              {passwordState.checks.map(check => (
-                <li
-                  key={check.id}
-                  className={`flex items-center gap-1.5 text-xs ${check.met ? "text-green-600" : "text-gray-500"}`}
+
+              <PasswordField
+                label="Confirma tu contraseña"
+                autoComplete="new-password"
+                icon={Lock}
+                value={confirm}
+                onValueChange={setConfirm}
+                visible={showPassword}
+                onVisibleChange={setShowPassword}
+                error={confirm.length > 0 || attempted[1] ? errors.confirm : null}
+              />
+            </FormSection>
+          )}
+
+          {step === 2 && (
+            <FormSection
+              title="Perfil"
+              description={
+                role === "restaurante"
+                  ? "Cómo verán tu negocio los comensales."
+                  : "Cómo te verán los restaurantes en Parchemos."
+              }
+              icon={UserRound}
+            >
+              <TextField
+                label={role === "restaurante" ? "Nombre del restaurante" : "Nombre completo"}
+                autoComplete="name"
+                icon={User}
+                placeholder={role === "restaurante" ? "La Paloma Gastrobar" : "Tu nombre"}
+                value={fullName}
+                onValueChange={setFullName}
+                error={shown(2, errors.fullName)}
+              />
+
+              <TextField
+                label="Teléfono"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                icon={Phone}
+                placeholder="3001234567"
+                value={phone}
+                onValueChange={setPhone}
+                error={shown(2, errors.phone)}
+              />
+
+              {/* Parchemos opera en Colombia: la ciudad se elige de la lista, y
+                  quien no aparezca puede escribirla igual. */}
+              <ComboBoxField
+                label="Ciudad"
+                icon={MapPin}
+                placeholder="Busca tu ciudad"
+                options={COLOMBIA_CITY_OPTIONS}
+                value={city}
+                onValueChange={setCity}
+                maxLength={120}
+                hint="¿No está en la lista? Escríbela y la guardamos igual."
+                error={shown(2, errors.city)}
+              />
+
+              {/* GU-01 Esc. 6: aceptación explícita, sin marcar por defecto. */}
+              <fieldset className="flex flex-col gap-2.5">
+                <legend className="mb-2 text-xs font-semibold text-gray-600">Autorizaciones</legend>
+
+                <CheckboxField
+                  checked={acceptedTerms}
+                  onCheckedChange={setAcceptedTerms}
+                  invalid={attempted[2] && !acceptedTerms}
                 >
-                  {check.met ? <Check className="w-3.5 h-3.5" /> : <X className="w-3.5 h-3.5" />}
-                  {check.label}
-                </li>
-              ))}
-            </ul>
-          </div>
+                  Acepto los <span className="font-semibold text-primary">Términos y condiciones</span> de Parchemos.
+                </CheckboxField>
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-semibold text-gray-600">Confirma tu contraseña</span>
-            <input
-              type={showPassword ? "text" : "password"}
-              autoComplete="new-password"
-              value={confirm}
-              onChange={e => setConfirm(e.target.value)}
-              className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3.5 text-sm outline-none focus:border-primary transition-colors"
-            />
-            {confirm.length > 0 && !passwordsMatch && (
-              <span className="text-xs text-red-600">Las contraseñas no coinciden.</span>
+                <CheckboxField
+                  checked={acceptedPrivacy}
+                  onCheckedChange={setAcceptedPrivacy}
+                  invalid={attempted[2] && !acceptedPrivacy}
+                >
+                  Acepto la <span className="font-semibold text-primary">Política de tratamiento de datos</span>.
+                </CheckboxField>
+
+                {shown(2, errors.consent) && (
+                  <p role="alert" className="text-xs text-red-600">
+                    {errors.consent}
+                  </p>
+                )}
+              </fieldset>
+            </FormSection>
+          )}
+
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center">
+            {step > 0 && (
+              <button
+                type="button"
+                onClick={goBack}
+                disabled={submitting}
+                className="flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-5 py-3.5 text-sm font-semibold text-gray-700 transition-colors hover:border-gray-300 disabled:opacity-60 sm:w-40"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Atrás
+              </button>
             )}
-          </label>
 
-          {/* GU-01 Esc. 6: aceptación explícita, sin marcar por defecto */}
-          <fieldset className="flex flex-col gap-2.5">
-            <label
-              className={`flex items-start gap-3 rounded-2xl border p-3 cursor-pointer transition-colors ${
-                touchedSubmit && !acceptedTerms ? "border-red-300 bg-red-50" : "border-gray-200 bg-white"
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={acceptedTerms}
-                onChange={e => setAcceptedTerms(e.target.checked)}
-                className="mt-0.5 w-4 h-4 accent-[color:var(--color-primary,#FF6B35)]"
-              />
-              <span className="text-xs text-gray-700">
-                Acepto los <span className="text-primary font-semibold">Términos y condiciones</span> de Parchemos.
-              </span>
-            </label>
-
-            <label
-              className={`flex items-start gap-3 rounded-2xl border p-3 cursor-pointer transition-colors ${
-                touchedSubmit && !acceptedPrivacy ? "border-red-300 bg-red-50" : "border-gray-200 bg-white"
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={acceptedPrivacy}
-                onChange={e => setAcceptedPrivacy(e.target.checked)}
-                className="mt-0.5 w-4 h-4 accent-[color:var(--color-primary,#FF6B35)]"
-              />
-              <span className="text-xs text-gray-700">
-                Acepto la <span className="text-primary font-semibold">Política de tratamiento de datos</span>.
-              </span>
-            </label>
-
-            {touchedSubmit && (!acceptedTerms || !acceptedPrivacy) && (
-              <p className="text-xs text-red-600">
-                Debes aceptar los términos y la política de datos para crear tu cuenta.
-              </p>
-            )}
-          </fieldset>
-
-          <PrimaryButton type="submit" size="lg" className="w-full" disabled={submitting}>
-            {submitting ? (
+            <PrimaryButton type="submit" size="lg" className="w-full flex-1" disabled={submitting}>
               <span className="flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Creando tu cuenta...
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Creando tu cuenta...
+                  </>
+                ) : isLastStep ? (
+                  "Crear cuenta"
+                ) : (
+                  <>
+                    Continuar
+                    <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
               </span>
-            ) : (
-              "Crear cuenta"
-            )}
-          </PrimaryButton>
+            </PrimaryButton>
+          </div>
         </form>
 
         <p className="text-center text-sm text-muted-foreground pb-4">

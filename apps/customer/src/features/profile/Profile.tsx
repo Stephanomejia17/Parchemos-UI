@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { AlertCircle, Camera, Loader2, LogOut, Trash2 } from "lucide-react";
+import { AlertCircle, Camera, Loader2, LogOut, MapPin, Trash2 } from "lucide-react";
 import { ApiError, apiFetch, useAuth } from "@parchemos/shared/auth";
-import { PrimaryButton } from "@parchemos/shared/components";
+import { ComboBoxField, PrimaryButton } from "@parchemos/shared/components";
+import { COLOMBIA_CITY_OPTIONS } from "@parchemos/shared/constants";
 
 const errorMessage = (error: unknown, fallback: string) => error instanceof ApiError ? error.message : fallback;
 
@@ -79,7 +80,8 @@ export function Profile() {
           <div className="flex items-center gap-4"><div className="relative h-20 w-20 overflow-hidden rounded-2xl bg-gray-100">{photo ? <img src={photo} alt="Foto de perfil" className="h-full w-full object-cover" /> : <Camera className="m-7 h-6 w-6 text-gray-400" />}<label className="absolute bottom-0 right-0 cursor-pointer rounded-tl-lg bg-primary p-1.5"><Camera className="h-3.5 w-3.5 text-white" /><input type="file" accept="image/jpeg,image/png" className="hidden" onChange={event => selectPhoto(event.target.files?.[0])} /></label></div><div><p className="font-semibold text-gray-900">{user.email}</p><p className="text-sm text-muted-foreground">{user.role}</p></div></div>
           <label className="block text-sm font-medium text-gray-700">Nombre completo<input required minLength={2} maxLength={120} value={fullName} onChange={event => setFullName(event.target.value)} className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5" /></label>
           <label className="block text-sm font-medium text-gray-700">Teléfono<input required value={phone} onChange={event => setPhone(event.target.value)} className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5" /></label>
-          <label className="block text-sm font-medium text-gray-700">Ciudad<input required minLength={2} maxLength={120} value={city} onChange={event => setCity(event.target.value)} className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5" /></label>
+          {/* Misma lista de ciudades que el registro, para que la columna city no se llene de variantes del mismo municipio. */}
+          <ComboBoxField label="Ciudad" icon={MapPin} placeholder="Busca tu ciudad" options={COLOMBIA_CITY_OPTIONS} value={city} onValueChange={setCity} maxLength={120} hint="¿No está en la lista? Escríbela y la guardamos igual." />
           <PrimaryButton type="submit" disabled={busy}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}Guardar cambios</PrimaryButton>
         </form>
         {user.assignedLocation && <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"><h2 className="font-semibold text-gray-900">Sede asignada</h2><p className="mt-2 text-sm text-gray-700">{user.assignedLocation.name} · {user.assignedLocation.restaurantName}</p><p className="text-sm text-muted-foreground">{user.assignedLocation.address}</p><p className="mt-1 text-xs text-muted-foreground">Solo lectura desde el perfil.</p></section>}

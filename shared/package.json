@@ -6,7 +6,8 @@
   "exports": {
     "./components": "./components/index.ts",
     "./design-system/tokens.css": "./design-system/tokens.css",
-    "./auth": "./auth/index.ts"
+    "./auth": "./auth/index.ts",
+    "./constants": "./constants/index.ts"
   },
   "dependencies": {
     "lucide-react": "0.487.0"
