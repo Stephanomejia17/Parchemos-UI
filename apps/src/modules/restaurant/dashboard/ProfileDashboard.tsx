@@ -1,8 +1,26 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ChevronLeft, DollarSign, ShoppingBag, Calendar, Star, ArrowUp, Utensils } from "lucide-react";
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import {
+  ChevronLeft,
+  DollarSign,
+  ShoppingBag,
+  Calendar,
+  Star,
+  ArrowUp,
+  Utensils,
+} from "lucide-react";
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 import { CustomerBadge as Badge } from "@/shared/components";
 import { SALES_DATA } from "@/mocks/restaurant/dashboard";
 
@@ -28,7 +46,10 @@ export function ProfileDashboard() {
     <div className="flex flex-col h-full bg-background overflow-y-auto">
       <div className="bg-white px-4 pt-4 pb-3 border-b border-border sticky top-0 z-10 md:px-6">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.back()} className="w-9 h-9 bg-gray-100 rounded-2xl flex items-center justify-center">
+          <button
+            onClick={() => router.back()}
+            className="w-9 h-9 bg-gray-100 rounded-2xl flex items-center justify-center"
+          >
             <ChevronLeft className="w-5 h-5 text-gray-900" />
           </button>
           <div>
@@ -62,7 +83,9 @@ export function ProfileDashboard() {
           <div className="bg-white rounded-2xl border border-border shadow-sm p-4">
             <div className="flex items-center justify-between mb-4">
               <p className="font-semibold text-gray-900">Ventas esta semana</p>
-              <span className="text-xs text-primary font-semibold">${(totalVentas / 1000000).toFixed(1)}M total</span>
+              <span className="text-xs text-primary font-semibold">
+                ${(totalVentas / 1000000).toFixed(1)}M total
+              </span>
             </div>
             <ResponsiveContainer width="100%" height={160}>
               <AreaChart data={SALES_DATA}>
@@ -73,10 +96,24 @@ export function ProfileDashboard() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#6C757D" }} axisLine={false} tickLine={false} />
+                <XAxis
+                  dataKey="day"
+                  tick={{ fontSize: 11, fill: "#6C757D" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
                 <YAxis hide />
-                <Tooltip formatter={(v: number) => [`$${(v / 1000).toFixed(0)}K`, "Ventas"]} contentStyle={{ borderRadius: 12, border: "1px solid #E9ECEF", fontSize: 12 }} />
-                <Area type="monotone" dataKey="ventas" stroke="#FF6B35" strokeWidth={2.5} fill="url(#salesGrad)" />
+                <Tooltip
+                  formatter={(v: number) => [`$${(v / 1000).toFixed(0)}K`, "Ventas"]}
+                  contentStyle={{ borderRadius: 12, border: "1px solid #E9ECEF", fontSize: 12 }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="ventas"
+                  stroke="#FF6B35"
+                  strokeWidth={2.5}
+                  fill="url(#salesGrad)"
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -89,9 +126,17 @@ export function ProfileDashboard() {
             <ResponsiveContainer width="100%" height={160}>
               <BarChart data={SALES_DATA} barSize={24}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#6C757D" }} axisLine={false} tickLine={false} />
+                <XAxis
+                  dataKey="day"
+                  tick={{ fontSize: 11, fill: "#6C757D" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
                 <YAxis hide />
-                <Tooltip formatter={(v: number) => [v, "Pedidos"]} contentStyle={{ borderRadius: 12, border: "1px solid #E9ECEF", fontSize: 12 }} />
+                <Tooltip
+                  formatter={(v: number) => [v, "Pedidos"]}
+                  contentStyle={{ borderRadius: 12, border: "1px solid #E9ECEF", fontSize: 12 }}
+                />
                 <Bar dataKey="pedidos" fill="#F4B400" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -115,8 +160,20 @@ export function ProfileDashboard() {
                   <p className="text-xs text-muted-foreground truncate">{order.order}</p>
                 </div>
                 <div className="text-right">
-                  <Badge color={order.status === "ready" ? "green" : order.status === "new" ? "blue" : "yellow"}>
-                    {order.status === "ready" ? "Listo" : order.status === "new" ? "Nuevo" : "Preparando"}
+                  <Badge
+                    color={
+                      order.status === "ready"
+                        ? "green"
+                        : order.status === "new"
+                          ? "blue"
+                          : "yellow"
+                    }
+                  >
+                    {order.status === "ready"
+                      ? "Listo"
+                      : order.status === "new"
+                        ? "Nuevo"
+                        : "Preparando"}
                   </Badge>
                   <p className="text-xs text-muted-foreground mt-1">{order.time}</p>
                 </div>

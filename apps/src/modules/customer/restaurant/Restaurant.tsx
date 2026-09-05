@@ -34,7 +34,10 @@ export function Restaurant() {
           sizes="100vw"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-transparent" />
-        <button onClick={() => router.back()} className="absolute top-4 left-4 w-9 h-9 bg-white/90 rounded-2xl flex items-center justify-center shadow-sm">
+        <button
+          onClick={() => router.back()}
+          className="absolute top-4 left-4 w-9 h-9 bg-white/90 rounded-2xl flex items-center justify-center shadow-sm"
+        >
           <ChevronLeft className="w-5 h-5 text-gray-900" />
         </button>
         <div className="absolute top-4 right-4 flex gap-2">
@@ -53,7 +56,9 @@ export function Restaurant() {
           <div className="flex-1">
             <div className="flex items-start justify-between gap-3 md:block">
               <div>
-                <h2 className="text-xl font-bold text-gray-900 md:text-2xl font-heading">La Paloma Gastrobar</h2>
+                <h2 className="text-xl font-bold text-gray-900 md:text-2xl font-heading">
+                  La Paloma Gastrobar
+                </h2>
                 <p className="text-sm text-muted-foreground mt-0.5">Americana · Burgers · $$</p>
               </div>
               <div className="flex flex-col items-end gap-1 md:hidden">
@@ -80,7 +85,7 @@ export function Restaurant() {
               </div>
             </div>
             <div className="flex flex-wrap gap-1.5 mt-3">
-              {["Terraza", "Pet Friendly", "Wifi", "Reservas", "Parking"].map(tag => (
+              {["Terraza", "Pet Friendly", "Wifi", "Reservas", "Parking"].map((tag) => (
                 <Badge key={tag} color="gray">
                   {tag}
                 </Badge>
@@ -106,7 +111,7 @@ export function Restaurant() {
 
       <div className="bg-white border-b border-border sticky top-0 z-10">
         <div className="flex px-4 md:px-6">
-          {TABS.map(t => (
+          {TABS.map((t) => (
             <button
               key={t}
               onClick={() => setTab(t.toLowerCase())}
@@ -122,21 +127,40 @@ export function Restaurant() {
         {/* Gallery */}
         <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 mb-6">
           {GALLERY.map((src, i) => (
-            <RemoteImage key={i} src={src} alt="food" className={`w-full rounded-xl ${i < 3 ? "h-24 md:h-28" : "hidden md:block h-28"}`} sizes="200px" />
+            <RemoteImage
+              key={i}
+              src={src}
+              alt="food"
+              className={`w-full rounded-xl ${i < 3 ? "h-24 md:h-28" : "hidden md:block h-28"}`}
+              sizes="200px"
+            />
           ))}
         </div>
 
         <h3 className="font-bold text-gray-900 mb-3">Más pedidos</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {MENU_SECTIONS[0].items.map(item => (
-            <div key={item.id} className="flex gap-3 bg-white rounded-2xl p-3 border border-border shadow-sm">
-              <RemoteImage src={item.img} alt={item.name} className="w-20 h-20 rounded-xl flex-shrink-0" sizes="80px" />
+          {MENU_SECTIONS[0].items.map((item) => (
+            <div
+              key={item.id}
+              className="flex gap-3 bg-white rounded-2xl p-3 border border-border shadow-sm"
+            >
+              <RemoteImage
+                src={item.img}
+                alt={item.name}
+                className="w-20 h-20 rounded-xl flex-shrink-0"
+                sizes="80px"
+              />
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sm text-gray-900">{item.name}</p>
                 <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{item.desc}</p>
                 <div className="flex items-center justify-between mt-2">
-                  <span className="font-bold text-primary text-sm">${item.price.toLocaleString()}</span>
-                  <button onClick={goMenu} className="w-7 h-7 bg-primary rounded-xl flex items-center justify-center">
+                  <span className="font-bold text-primary text-sm">
+                    ${item.price.toLocaleString()}
+                  </span>
+                  <button
+                    onClick={goMenu}
+                    className="w-7 h-7 bg-primary rounded-xl flex items-center justify-center"
+                  >
                     <Plus className="w-4 h-4 text-white" />
                   </button>
                 </div>

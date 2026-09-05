@@ -8,7 +8,10 @@ export function ChartTooltip({ active, payload, label }: TooltipProps<ValueType,
         <p className="font-medium text-gray-700 mb-1">{label}</p>
         {payload.map((p, i) => (
           <p key={i} style={{ color: p.color }} className="font-medium">
-            {p.name}: {typeof p.value === "number" && p.value > 1000 ? p.value.toLocaleString("es-CO") : p.value}
+            {p.name}:{" "}
+            {typeof p.value === "number" && p.value > 1000
+              ? p.value.toLocaleString("es-CO")
+              : p.value}
           </p>
         ))}
       </div>

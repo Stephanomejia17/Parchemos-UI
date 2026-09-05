@@ -96,7 +96,11 @@ export function Register() {
         ? "Ingresa un correo electrónico válido."
         : null,
     password: passwordState.valid ? null : "La contraseña todavía no cumple los requisitos.",
-    confirm: !confirm ? "Repite tu contraseña." : passwordsMatch ? null : "Las contraseñas no coinciden.",
+    confirm: !confirm
+      ? "Repite tu contraseña."
+      : passwordsMatch
+        ? null
+        : "Las contraseñas no coinciden.",
     fullName: fullName.trim().length < 2 ? "Ingresa un nombre de al menos 2 caracteres." : null,
     phone: !phone.trim()
       ? "Ingresa tu teléfono."
@@ -115,18 +119,18 @@ export function Register() {
     [errors.email, errors.password, errors.confirm],
     [errors.fullName, errors.phone, errors.city, errors.consent],
   ];
-  const stepIsValid = stepErrors.map(list => list.every(error => error === null));
+  const stepIsValid = stepErrors.map((list) => list.every((error) => error === null));
   const isLastStep = step === STEPS.length - 1;
 
   /** Solo se muestra el error de un campo si ya se intento pasar de su seccion. */
   const shown = (index: number, error: string | null) => (attempted[index] ? error : null);
 
   const markAttempted = (index: number) =>
-    setAttempted(previous => previous.map((value, i) => (i === index ? true : value)));
+    setAttempted((previous) => previous.map((value, i) => (i === index ? true : value)));
 
   const goBack = () => {
     setServerErrors([]);
-    setStep(current => Math.max(0, current - 1));
+    setStep((current) => Math.max(0, current - 1));
   };
 
   const onSubmit = async (event: FormEvent) => {
@@ -138,7 +142,7 @@ export function Register() {
 
     // Mientras queden secciones, "Continuar" solo avanza el formulario.
     if (!isLastStep) {
-      setStep(current => current + 1);
+      setStep((current) => current + 1);
       return;
     }
 
@@ -175,11 +179,20 @@ export function Register() {
             <h1 className="text-2xl font-extrabold text-gray-900 font-heading">Crea tu cuenta</h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            Son tres pasos cortos: eliges cómo usar Parchemos, creas tu acceso y completas tu perfil.
+            Son tres pasos cortos: eliges cómo usar Parchemos, creas tu acceso y completas tu
+            perfil.
           </p>
         </header>
 
-        <FormStepper steps={STEPS} current={step} onStepSelect={index => { setServerErrors([]); setStep(index); }} className="px-1" />
+        <FormStepper
+          steps={STEPS}
+          current={step}
+          onStepSelect={(index) => {
+            setServerErrors([]);
+            setStep(index);
+          }}
+          className="px-1"
+        />
 
         <FormAlert type="error" messages={serverErrors} />
 
@@ -301,7 +314,9 @@ export function Register() {
                   onCheckedChange={setAcceptedTerms}
                   invalid={attempted[2] && !acceptedTerms}
                 >
-                  Acepto los <span className="font-semibold text-primary">Términos y condiciones</span> de Parchemos.
+                  Acepto los{" "}
+                  <span className="font-semibold text-primary">Términos y condiciones</span> de
+                  Parchemos.
                 </CheckboxField>
 
                 <CheckboxField
@@ -309,7 +324,11 @@ export function Register() {
                   onCheckedChange={setAcceptedPrivacy}
                   invalid={attempted[2] && !acceptedPrivacy}
                 >
-                  Acepto la <span className="font-semibold text-primary">Política de tratamiento de datos</span>.
+                  Acepto la{" "}
+                  <span className="font-semibold text-primary">
+                    Política de tratamiento de datos
+                  </span>
+                  .
                 </CheckboxField>
 
                 {shown(2, errors.consent) && (

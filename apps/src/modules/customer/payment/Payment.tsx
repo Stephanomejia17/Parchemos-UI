@@ -52,7 +52,10 @@ export function Payment() {
     <div className="flex flex-col h-full bg-background overflow-y-auto">
       <div className="bg-white px-4 pt-4 pb-3 border-b border-border sticky top-0 z-10 md:px-6">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.back()} className="w-9 h-9 bg-gray-100 rounded-2xl flex items-center justify-center">
+          <button
+            onClick={() => router.back()}
+            className="w-9 h-9 bg-gray-100 rounded-2xl flex items-center justify-center"
+          >
             <ChevronLeft className="w-5 h-5 text-gray-900" />
           </button>
           <h2 className="text-lg font-bold text-gray-900 font-heading">Pago</h2>
@@ -81,21 +84,27 @@ export function Payment() {
             <div className="px-4 py-3 border-b border-border">
               <p className="font-semibold text-gray-900 text-sm">Método de pago</p>
             </div>
-            {METHODS.map(method => (
+            {METHODS.map((method) => (
               <button
                 key={method.id}
                 onClick={() => setSelectedMethod(method.id)}
                 className={`w-full flex items-center gap-3 px-4 py-3.5 border-b last:border-b-0 border-border transition-colors ${selectedMethod === method.id ? "bg-orange-50" : "hover:bg-gray-50"}`}
               >
-                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${selectedMethod === method.id ? "bg-primary text-white" : "bg-gray-100 text-gray-700"}`}>
+                <div
+                  className={`w-10 h-10 rounded-2xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${selectedMethod === method.id ? "bg-primary text-white" : "bg-gray-100 text-gray-700"}`}
+                >
                   {method.icon}
                 </div>
                 <div className="flex-1 text-left">
                   <p className="text-sm font-semibold text-gray-900">{method.label}</p>
                   <p className="text-xs text-muted-foreground">{method.sub}</p>
                 </div>
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedMethod === method.id ? "border-primary bg-primary" : "border-gray-300"}`}>
-                  {selectedMethod === method.id && <div className="w-2 h-2 rounded-full bg-white" />}
+                <div
+                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedMethod === method.id ? "border-primary bg-primary" : "border-gray-300"}`}
+                >
+                  {selectedMethod === method.id && (
+                    <div className="w-2 h-2 rounded-full bg-white" />
+                  )}
                 </div>
               </button>
             ))}

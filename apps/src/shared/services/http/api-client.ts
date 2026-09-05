@@ -1,6 +1,21 @@
 import { ApiError } from "../../auth/types";
 
-const BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api").replace(/\/$/, "");
+function resolveBaseUrl(): string {
+  const configured = process.env.NEXT_PUBLIC_API_URL;
+  if (configured) return configured.replace(/\/$/, "");
+
+  if (process.env.NODE_ENV !== "production") {
+    return "http://localhost:3001/api";
+  }
+
+  // En producción no hay fallback silencioso: apuntar a localhost por defecto
+  // dejaría la app rota sin que nadie lo note hasta que un usuario falle.
+  throw new Error(
+    "NEXT_PUBLIC_API_URL no está definida. Configúrala en las variables de entorno del ambiente de despliegue.",
+  );
+}
+
+const BASE_URL = resolveBaseUrl();
 
 /**
  * El access token vive solo en memoria.
@@ -37,7 +52,8 @@ async function raw(path: string, options: RequestOptions = {}): Promise<Response
     headers,
     // Imprescindible para que viaje la cookie del refresh token.
     credentials: "include",
-    body: options.formData ?? (options.body !== undefined ? JSON.stringify(options.body) : undefined),
+    body:
+      options.formData ?? (options.body !== undefined ? JSON.stringify(options.body) : undefined),
     signal: options.signal,
   });
 }
@@ -116,7 +132,13 @@ async function toApiError(response: Response): Promise<ApiError> {
     // Errores de validacion: Nest devuelve un arreglo de mensajes.
     if (Array.isArray(obj.message)) {
       const details = obj.message.map(String);
-      return new ApiError(details[0] ?? "Revisa los datos ingresados.", response.status, undefined, undefined, details);
+      return new ApiError(
+        details[0] ?? "Revisa los datos ingresados.",
+        response.status,
+        undefined,
+        undefined,
+        details,
+      );
     }
     return new ApiError(
       typeof obj.message === "string" ? obj.message : fallbackMessage(response.status),

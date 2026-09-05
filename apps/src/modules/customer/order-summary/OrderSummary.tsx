@@ -29,7 +29,10 @@ export function OrderSummary() {
     <div className="flex flex-col h-full bg-background overflow-y-auto">
       <div className="bg-white px-4 pt-4 pb-3 border-b border-border sticky top-0 z-10 md:px-6">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.back()} className="w-9 h-9 bg-gray-100 rounded-2xl flex items-center justify-center">
+          <button
+            onClick={() => router.back()}
+            className="w-9 h-9 bg-gray-100 rounded-2xl flex items-center justify-center"
+          >
             <ChevronLeft className="w-5 h-5 text-gray-900" />
           </button>
           <h2 className="text-lg font-bold text-gray-900 font-heading">Mi Pedido</h2>
@@ -58,16 +61,24 @@ export function OrderSummary() {
               <div className="flex items-center gap-2">
                 {STEPS.map((step, i) => (
                   <div key={step} className="flex items-center flex-1">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${i <= 1 ? "bg-primary text-white" : "bg-gray-200 text-gray-500"}`}>
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${i <= 1 ? "bg-primary text-white" : "bg-gray-200 text-gray-500"}`}
+                    >
                       {i <= 1 ? <Check className="w-3 h-3" /> : i + 1}
                     </div>
-                    {i < 3 && <div className={`flex-1 h-0.5 ${i < 1 ? "bg-primary" : "bg-gray-200"}`} />}
+                    {i < 3 && (
+                      <div className={`flex-1 h-0.5 ${i < 1 ? "bg-primary" : "bg-gray-200"}`} />
+                    )}
                   </div>
                 ))}
               </div>
               <div className="flex justify-between mt-1">
-                {STEPS.map(step => (
-                  <span key={step} className="text-xs text-muted-foreground text-center" style={{ width: "25%" }}>
+                {STEPS.map((step) => (
+                  <span
+                    key={step}
+                    className="text-xs text-muted-foreground text-center"
+                    style={{ width: "25%" }}
+                  >
                     {step}
                   </span>
                 ))}
@@ -81,8 +92,13 @@ export function OrderSummary() {
                   <p className="font-semibold text-gray-900 text-sm">Dividir cuenta</p>
                   <p className="text-xs text-muted-foreground">Invita a tus amigos mediante QR</p>
                 </div>
-                <button onClick={() => setSplitEnabled(!splitEnabled)} className={`w-12 h-6 rounded-full transition-all ${splitEnabled ? "bg-primary" : "bg-gray-200"}`}>
-                  <div className={`w-5 h-5 rounded-full bg-white shadow-sm transition-all mx-0.5 ${splitEnabled ? "translate-x-6" : ""}`} />
+                <button
+                  onClick={() => setSplitEnabled(!splitEnabled)}
+                  className={`w-12 h-6 rounded-full transition-all ${splitEnabled ? "bg-primary" : "bg-gray-200"}`}
+                >
+                  <div
+                    className={`w-5 h-5 rounded-full bg-white shadow-sm transition-all mx-0.5 ${splitEnabled ? "translate-x-6" : ""}`}
+                  />
                 </button>
               </div>
               {splitEnabled && (
@@ -92,17 +108,27 @@ export function OrderSummary() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-gray-900">Escanea para unirte</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Cada persona paga su parte</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Cada persona paga su parte
+                    </p>
                     <div className="flex items-center gap-2 mt-2">
-                      <button onClick={() => setGuests(Math.max(1, guests - 1))} className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <button
+                        onClick={() => setGuests(Math.max(1, guests - 1))}
+                        className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center"
+                      >
                         <Minus className="w-3 h-3" />
                       </button>
                       <span className="text-sm font-bold text-gray-900">{guests} personas</span>
-                      <button onClick={() => setGuests(guests + 1)} className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <button
+                        onClick={() => setGuests(guests + 1)}
+                        className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center"
+                      >
                         <Plus className="w-3 h-3" />
                       </button>
                     </div>
-                    <p className="text-xs text-primary font-bold mt-1">${Math.round(total / guests).toLocaleString()} por persona</p>
+                    <p className="text-xs text-primary font-bold mt-1">
+                      ${Math.round(total / guests).toLocaleString()} por persona
+                    </p>
                   </div>
                 </div>
               )}
@@ -116,12 +142,19 @@ export function OrderSummary() {
                 <p className="font-semibold text-gray-900">Resumen del pedido</p>
               </div>
               {ITEMS.map((item, i) => (
-                <div key={i} className={`flex items-center justify-between px-4 py-3 ${i < ITEMS.length - 1 ? "border-b border-border" : ""}`}>
+                <div
+                  key={i}
+                  className={`flex items-center justify-between px-4 py-3 ${i < ITEMS.length - 1 ? "border-b border-border" : ""}`}
+                >
                   <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center text-xs font-bold text-primary">{item.qty}</div>
+                    <div className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center text-xs font-bold text-primary">
+                      {item.qty}
+                    </div>
                     <span className="text-sm text-gray-800">{item.name}</span>
                   </div>
-                  <span className="text-sm font-semibold text-gray-900">${(item.price * item.qty).toLocaleString()}</span>
+                  <span className="text-sm font-semibold text-gray-900">
+                    ${(item.price * item.qty).toLocaleString()}
+                  </span>
                 </div>
               ))}
               <div className="px-4 py-3 border-t border-border bg-gray-50">

@@ -3,29 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, Check, Loader2, MapPin, Search, X } from "lucide-react";
 import { ApiError } from "@/shared/auth";
-import { adminService } from "@/shared/services";
+import { adminService, type LocationReview } from "@/shared/services";
 import { PrimaryButton, StatusBadge, SurfaceCard } from "@/shared/components";
 import { SectionHeader } from "@/modules/admin/ui/SectionHeader";
-
-type LocationStatus = "pendiente_aprobacion" | "activa" | "rechazada";
-
-type LocationReview = {
-  id: string;
-  name: string;
-  address: string;
-  status: LocationStatus;
-  rejectionReason: string | null;
-  approvedAt: string | null;
-  restaurant: {
-    id: string;
-    businessName: string;
-    owner: {
-      id: string;
-      fullName: string;
-      email: string;
-    };
-  };
-};
 
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (error instanceof ApiError) return error.message;
@@ -45,7 +25,7 @@ export function RestaurantApprovals() {
   const loadLocations = async () => {
     try {
       setError(null);
-      const data = await adminService.fetch<LocationReview[]>("/restaurantes/administracion");
+      const data = await adminService.listLocationReviews();
       setLocations(data);
     } catch (err) {
       setError(getErrorMessage(err, "No pudimos cargar las sedes."));
@@ -61,7 +41,7 @@ export function RestaurantApprovals() {
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return locations;
-    return locations.filter(location => {
+    return locations.filter((location) => {
       const haystack = [
         location.name,
         location.address,
@@ -78,9 +58,7 @@ export function RestaurantApprovals() {
   const handleApprove = async (locationId: string) => {
     setPendingActionId(locationId);
     try {
-      await adminService.fetch(`/restaurantes/administracion/sedes/${locationId}/aprobar`, {
-        method: "POST",
-      });
+      await adminService.approveLocation(locationId);
       await loadLocations();
     } catch (err) {
       setError(getErrorMessage(err, "No pudimos aprobar la sede."));
@@ -92,23 +70,20 @@ export function RestaurantApprovals() {
   const handleReject = async (locationId: string) => {
     const reason = (reasonDraft[locationId] ?? "").trim();
     if (!reason) {
-      setRejectError(prev => ({ ...prev, [locationId]: "El motivo es obligatorio." }));
+      setRejectError((prev) => ({ ...prev, [locationId]: "El motivo es obligatorio." }));
       return;
     }
 
     setPendingActionId(locationId);
-    setRejectError(prev => ({ ...prev, [locationId]: "" }));
+    setRejectError((prev) => ({ ...prev, [locationId]: "" }));
 
     try {
-      await adminService.fetch(`/restaurantes/administracion/sedes/${locationId}/rechazar`, {
-        method: "POST",
-        body: { reason },
-      });
+      await adminService.rejectLocation(locationId, reason);
       setRejectingId(null);
-      setReasonDraft(prev => ({ ...prev, [locationId]: "" }));
+      setReasonDraft((prev) => ({ ...prev, [locationId]: "" }));
       await loadLocations();
     } catch (err) {
-      setRejectError(prev => ({
+      setRejectError((prev) => ({
         ...prev,
         [locationId]: getErrorMessage(err, "No pudimos rechazar la sede."),
       }));
@@ -117,9 +92,9 @@ export function RestaurantApprovals() {
     }
   };
 
-  const approvedCount = locations.filter(item => item.status === "activa").length;
-  const pendingCount = locations.filter(item => item.status === "pendiente_aprobacion").length;
-  const rejectedCount = locations.filter(item => item.status === "rechazada").length;
+  const approvedCount = locations.filter((item) => item.status === "activa").length;
+  const pendingCount = locations.filter((item) => item.status === "pendiente_aprobacion").length;
+  const rejectedCount = locations.filter((item) => item.status === "rechazada").length;
 
   return (
     <div className="space-y-5">
@@ -132,7 +107,7 @@ export function RestaurantApprovals() {
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar sede o restaurante..."
           className="w-full pl-9 pr-4 py-2.5 text-[13px] bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/20"
         />
@@ -158,7 +133,7 @@ export function RestaurantApprovals() {
         </SurfaceCard>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filtered.map(location => {
+          {filtered.map((location) => {
             const isPending = location.status === "pendiente_aprobacion";
             const isRejecting = rejectingId === location.id;
             const isBusy = pendingActionId === location.id;
@@ -170,7 +145,9 @@ export function RestaurantApprovals() {
                 <div className="flex items-start justify-between gap-3 mb-4">
                   <div>
                     <h3 className="text-[15px] font-semibold text-gray-900">{location.name}</h3>
-                    <p className="text-[12px] text-gray-500 mt-1">{location.restaurant.businessName}</p>
+                    <p className="text-[12px] text-gray-500 mt-1">
+                      {location.restaurant.businessName}
+                    </p>
                   </div>
                   <StatusBadge status={location.status} />
                 </div>
@@ -181,14 +158,17 @@ export function RestaurantApprovals() {
                     <span>{location.address}</span>
                   </div>
                   <div>
-                    <span className="font-medium text-gray-700">Propietario:</span> {location.restaurant.owner.fullName}
+                    <span className="font-medium text-gray-700">Propietario:</span>{" "}
+                    {location.restaurant.owner.fullName}
                   </div>
                   <div>
-                    <span className="font-medium text-gray-700">Correo:</span> {location.restaurant.owner.email}
+                    <span className="font-medium text-gray-700">Correo:</span>{" "}
+                    {location.restaurant.owner.email}
                   </div>
                   {location.approvedAt && (
                     <div>
-                      <span className="font-medium text-gray-700">Aprobada:</span> {new Date(location.approvedAt).toLocaleDateString("es-CO")}
+                      <span className="font-medium text-gray-700">Aprobada:</span>{" "}
+                      {new Date(location.approvedAt).toLocaleDateString("es-CO")}
                     </div>
                   )}
                   {location.rejectionReason && (
@@ -200,15 +180,21 @@ export function RestaurantApprovals() {
 
                 {isRejecting && (
                   <div className="mt-4 space-y-2 rounded-xl border border-gray-200 bg-gray-50 p-3">
-                    <label className="block text-[12px] font-medium text-gray-700">Motivo del rechazo</label>
+                    <label className="block text-[12px] font-medium text-gray-700">
+                      Motivo del rechazo
+                    </label>
                     <textarea
                       rows={3}
                       value={reason}
-                      onChange={event => setReasonDraft(prev => ({ ...prev, [location.id]: event.target.value }))}
+                      onChange={(event) =>
+                        setReasonDraft((prev) => ({ ...prev, [location.id]: event.target.value }))
+                      }
                       placeholder="Escribe el motivo..."
                       className="w-full rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/20"
                     />
-                    {reasonValidation && <p className="text-[11px] text-red-600">{reasonValidation}</p>}
+                    {reasonValidation && (
+                      <p className="text-[11px] text-red-600">{reasonValidation}</p>
+                    )}
                     <div className="flex gap-2 pt-1">
                       <PrimaryButton
                         type="button"
@@ -223,7 +209,7 @@ export function RestaurantApprovals() {
                         type="button"
                         onClick={() => {
                           setRejectingId(null);
-                          setRejectError(prev => ({ ...prev, [location.id]: "" }));
+                          setRejectError((prev) => ({ ...prev, [location.id]: "" }));
                         }}
                         className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-[12px] font-medium text-gray-700"
                       >
@@ -242,7 +228,11 @@ export function RestaurantApprovals() {
                       onClick={() => void handleApprove(location.id)}
                       className="flex-1"
                     >
-                      {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                      {isBusy ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Check className="h-4 w-4" />
+                      )}
                       {isBusy ? "Aprobando..." : "Aprobar"}
                     </PrimaryButton>
                   )}
@@ -250,8 +240,8 @@ export function RestaurantApprovals() {
                   <button
                     type="button"
                     onClick={() => {
-                      setRejectingId(current => (current === location.id ? null : location.id));
-                      setRejectError(prev => ({ ...prev, [location.id]: "" }));
+                      setRejectingId((current) => (current === location.id ? null : location.id));
+                      setRejectError((prev) => ({ ...prev, [location.id]: "" }));
                     }}
                     disabled={isBusy}
                     className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[12px] font-medium text-gray-700 disabled:opacity-50"

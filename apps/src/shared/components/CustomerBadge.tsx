@@ -8,6 +8,16 @@ const COLORS: Record<string, string> = {
   blue: "bg-blue-100 text-blue-600",
 };
 
-export function CustomerBadge({ children, color = "orange" }: { children: ReactNode; color?: string }) {
-  return <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${COLORS[color]}`}>{children}</span>;
+export function CustomerBadge({
+  children,
+  color = "orange",
+}: {
+  children: ReactNode;
+  color?: string;
+}) {
+  return (
+    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${COLORS[color]}`}>
+      {children}
+    </span>
+  );
 }

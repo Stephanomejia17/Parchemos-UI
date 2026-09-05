@@ -51,7 +51,11 @@ export function FormStepper({
             <span
               aria-current={active ? "step" : undefined}
               className={`text-center text-[11px] leading-tight ${
-                active ? "font-semibold text-gray-900" : done ? "font-medium text-primary" : "text-muted-foreground"
+                active
+                  ? "font-semibold text-gray-900"
+                  : done
+                    ? "font-medium text-primary"
+                    : "text-muted-foreground"
               }`}
             >
               {step.label}
@@ -107,7 +111,12 @@ function Bullet({
   }
 
   return (
-    <button type="button" onClick={onSelect} aria-label={`Volver al paso ${label}`} className={`${className} active:scale-95`}>
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-label={`Volver al paso ${label}`}
+      className={`${className} active:scale-95`}
+    >
       {content}
     </button>
   );

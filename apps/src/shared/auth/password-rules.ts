@@ -17,8 +17,12 @@ export interface PasswordCheck {
 }
 
 export function evaluatePassword(value: string): { checks: PasswordCheck[]; valid: boolean } {
-  const checks = PASSWORD_RULES.map(rule => ({ id: rule.id, label: rule.label, met: rule.test(value) }));
-  return { checks, valid: checks.every(c => c.met) };
+  const checks = PASSWORD_RULES.map((rule) => ({
+    id: rule.id,
+    label: rule.label,
+    met: rule.test(value),
+  }));
+  return { checks, valid: checks.every((c) => c.met) };
 }
 
 /** GU-02 Esc. 1: cada rol aterriza en su propio panel. */

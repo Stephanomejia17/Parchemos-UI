@@ -65,7 +65,9 @@ export function ComboBoxField({
     const needle = normalize(open ? query : "");
     if (!needle) return options;
     return options.filter(
-      option => normalize(option.label).includes(needle) || normalize(option.description ?? "").includes(needle),
+      (option) =>
+        normalize(option.label).includes(needle) ||
+        normalize(option.description ?? "").includes(needle),
     );
   }, [open, query, options]);
 
@@ -75,7 +77,7 @@ export function ComboBoxField({
 
   const commit = (raw: string) => {
     const text = raw.trim();
-    const exact = options.find(option => normalize(option.label) === normalize(text));
+    const exact = options.find((option) => normalize(option.label) === normalize(text));
     if (exact) onValueChange(exact.value);
     else if (allowCustomValue) onValueChange(text);
     else onValueChange("");
@@ -111,7 +113,9 @@ export function ComboBoxField({
       </label>
 
       <div className="relative">
-        {Icon && <Icon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />}
+        {Icon && (
+          <Icon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        )}
         <input
           id={id}
           type="text"
@@ -127,18 +131,18 @@ export function ComboBoxField({
           placeholder={placeholder}
           value={inputValue}
           onFocus={openList}
-          onChange={event => {
+          onChange={(event) => {
             if (!open) setOpen(true);
             setQuery(event.target.value);
           }}
-          onKeyDown={event => {
+          onKeyDown={(event) => {
             if (event.key === "ArrowDown") {
               event.preventDefault();
               if (!open) openList();
-              else setHighlighted(index => Math.min(index + 1, matches.length - 1));
+              else setHighlighted((index) => Math.min(index + 1, matches.length - 1));
             } else if (event.key === "ArrowUp") {
               event.preventDefault();
-              setHighlighted(index => Math.max(index - 1, 0));
+              setHighlighted((index) => Math.max(index - 1, 0));
             } else if (event.key === "Enter" && open) {
               event.preventDefault();
               const option = matches[highlighted];
@@ -173,7 +177,9 @@ export function ComboBoxField({
             aria-label={label}
             className="absolute left-0 right-0 top-[calc(100%+0.35rem)] z-30 max-h-60 overflow-y-auto rounded-2xl border border-gray-200 bg-white py-1 shadow-lg"
           >
-            {matches.length === 0 && <li className="px-4 py-3 text-xs text-muted-foreground">{emptyMessage}</li>}
+            {matches.length === 0 && (
+              <li className="px-4 py-3 text-xs text-muted-foreground">{emptyMessage}</li>
+            )}
             {matches.map((option, index) => {
               const selected = normalize(option.value) === normalize(value);
               return (
@@ -181,7 +187,7 @@ export function ComboBoxField({
                   <button
                     type="button"
                     // El input pierde el foco antes del click: con onMouseDown la seleccion no se cancela.
-                    onMouseDown={event => {
+                    onMouseDown={(event) => {
                       event.preventDefault();
                       select(option);
                     }}

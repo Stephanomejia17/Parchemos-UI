@@ -7,9 +7,13 @@
     "dev": "pnpm --filter @parchemos/web dev",
     "dev:customer": "pnpm --filter @parchemos/web dev",
     "build": "pnpm -r --if-present build",
-    "build:customer": "pnpm --filter @parchemos/web build"
+    "build:customer": "pnpm --filter @parchemos/web build",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
-    "pnpm": "9.15.0"
+    "eslint-config-prettier": "^10.1.8",
+    "pnpm": "9.15.0",
+    "prettier": "^3.9.6"
   }
 }

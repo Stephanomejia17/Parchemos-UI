@@ -31,11 +31,14 @@ export function FormAlert({
   if (!children && !messages?.length) return null;
 
   return (
-    <div role={tone.role} className={`flex gap-2.5 rounded-2xl px-4 py-3 text-sm ${tone.box} ${className}`}>
+    <div
+      role={tone.role}
+      className={`flex gap-2.5 rounded-2xl px-4 py-3 text-sm ${tone.box} ${className}`}
+    >
       <tone.Icon className="mt-0.5 h-4 w-4 shrink-0" />
       {messages?.length ? (
         <ul className="flex flex-col gap-1">
-          {messages.map(message => (
+          {messages.map((message) => (
             <li key={message}>{message}</li>
           ))}
         </ul>

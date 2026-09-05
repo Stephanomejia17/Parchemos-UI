@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import { Ban, Download, Edit3, Eye, MapPin, Plus, Search, Trash2 } from "lucide-react";
-import { IconButton as ActionBtn, InitialsAvatar as Avatar, StatusBadge as Badge, STATUS_LABELS, SurfaceCard as Card } from "@/shared/components";
+import {
+  IconButton as ActionBtn,
+  InitialsAvatar as Avatar,
+  StatusBadge as Badge,
+  STATUS_LABELS,
+  SurfaceCard as Card,
+} from "@/shared/components";
 import { SectionHeader } from "@/modules/admin/ui/SectionHeader";
 import { users } from "@/mocks/admin/users";
 
@@ -14,9 +20,10 @@ export function Users() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<(typeof STATUS_FILTERS)[number]>("all");
   const filtered = users.filter(
-    u =>
+    (u) =>
       (filterStatus === "all" || u.status === filterStatus) &&
-      (u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase())),
+      (u.name.toLowerCase().includes(search.toLowerCase()) ||
+        u.email.toLowerCase().includes(search.toLowerCase())),
   );
 
   return (
@@ -29,7 +36,10 @@ export function Users() {
             <button className="flex items-center gap-1.5 px-3 py-2 text-[13px] text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
               <Download size={13} /> Exportar
             </button>
-            <button className="flex items-center gap-1.5 px-3 py-2 text-[13px] text-white rounded-xl transition-colors" style={{ background: ACCENT }}>
+            <button
+              className="flex items-center gap-1.5 px-3 py-2 text-[13px] text-white rounded-xl transition-colors"
+              style={{ background: ACCENT }}
+            >
               <Plus size={13} /> Nuevo usuario
             </button>
           </div>
@@ -41,12 +51,12 @@ export function Users() {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por nombre o correo..."
             className="w-full pl-9 pr-4 py-2.5 text-[13px] bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/20 focus:border-[#FF6B35]/50"
           />
         </div>
-        {STATUS_FILTERS.map(s => (
+        {STATUS_FILTERS.map((s) => (
           <button
             key={s}
             onClick={() => setFilterStatus(s)}
@@ -62,17 +72,29 @@ export function Users() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-50">
-                <th className="text-left text-[11px] font-medium text-gray-400 uppercase tracking-wide px-5 py-3">Usuario</th>
-                <th className="text-left text-[11px] font-medium text-gray-400 uppercase tracking-wide px-4 py-3">Ciudad</th>
-                <th className="text-left text-[11px] font-medium text-gray-400 uppercase tracking-wide px-4 py-3">Rol</th>
-                <th className="text-left text-[11px] font-medium text-gray-400 uppercase tracking-wide px-4 py-3">Estado</th>
-                <th className="text-left text-[11px] font-medium text-gray-400 uppercase tracking-wide px-4 py-3">Pedidos</th>
-                <th className="text-left text-[11px] font-medium text-gray-400 uppercase tracking-wide px-4 py-3">Registro</th>
+                <th className="text-left text-[11px] font-medium text-gray-400 uppercase tracking-wide px-5 py-3">
+                  Usuario
+                </th>
+                <th className="text-left text-[11px] font-medium text-gray-400 uppercase tracking-wide px-4 py-3">
+                  Ciudad
+                </th>
+                <th className="text-left text-[11px] font-medium text-gray-400 uppercase tracking-wide px-4 py-3">
+                  Rol
+                </th>
+                <th className="text-left text-[11px] font-medium text-gray-400 uppercase tracking-wide px-4 py-3">
+                  Estado
+                </th>
+                <th className="text-left text-[11px] font-medium text-gray-400 uppercase tracking-wide px-4 py-3">
+                  Pedidos
+                </th>
+                <th className="text-left text-[11px] font-medium text-gray-400 uppercase tracking-wide px-4 py-3">
+                  Registro
+                </th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filtered.map(u => (
+              {filtered.map((u) => (
                 <tr key={u.id} className="hover:bg-gray-50/50 transition-colors group">
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
@@ -90,7 +112,11 @@ export function Users() {
                     </div>
                   </td>
                   <td className="px-4 py-3.5">
-                    <span className={`text-[11px] font-medium px-2 py-0.5 rounded-md ${u.role === "Premium" ? "bg-[#FFF1EB] text-[#FF6B35]" : "bg-gray-100 text-gray-600"}`}>{u.role}</span>
+                    <span
+                      className={`text-[11px] font-medium px-2 py-0.5 rounded-md ${u.role === "Premium" ? "bg-[#FFF1EB] text-[#FF6B35]" : "bg-gray-100 text-gray-600"}`}
+                    >
+                      {u.role}
+                    </span>
                   </td>
                   <td className="px-4 py-3.5">
                     <Badge status={u.status} />

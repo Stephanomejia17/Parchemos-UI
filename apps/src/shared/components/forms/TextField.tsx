@@ -2,7 +2,10 @@
 
 import { useId, type ComponentType, type InputHTMLAttributes, type ReactNode } from "react";
 
-type NativeProps = Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "className" | "id">;
+type NativeProps = Omit<
+  InputHTMLAttributes<HTMLInputElement>,
+  "value" | "onChange" | "className" | "id"
+>;
 
 export interface TextFieldProps extends NativeProps {
   label: string;
@@ -43,12 +46,14 @@ export function TextField({
       </label>
 
       <div className="relative">
-        {Icon && <Icon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />}
+        {Icon && (
+          <Icon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        )}
         <input
           {...inputProps}
           id={id}
           value={value}
-          onChange={event => onValueChange(event.target.value)}
+          onChange={(event) => onValueChange(event.target.value)}
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
           className={`${fieldInputClass} ${Icon ? "pl-11" : ""} ${trailing ? "pr-12" : ""} ${
@@ -64,7 +69,15 @@ export function TextField({
 }
 
 /** Error o ayuda de un campo. Se exporta para los campos que no usan `TextField`. */
-export function FieldMessage({ id, error, hint }: { id: string; error?: string | null; hint?: string }) {
+export function FieldMessage({
+  id,
+  error,
+  hint,
+}: {
+  id: string;
+  error?: string | null;
+  hint?: string;
+}) {
   if (error) {
     return (
       <span id={`${id}-error`} role="alert" className="text-xs text-red-600">

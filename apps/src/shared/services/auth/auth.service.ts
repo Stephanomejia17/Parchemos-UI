@@ -9,8 +9,10 @@ interface SessionResponse {
 
 export const authService = {
   me: () => apiFetch<{ user: AuthUser }>("/auth/me"),
-  login: (payload: LoginPayload) => apiFetch<SessionResponse>("/auth/login", { method: "POST", body: payload }),
-  register: (payload: RegisterPayload) => apiFetch<RegisterResult>("/auth/register", { method: "POST", body: payload }),
+  login: (payload: LoginPayload) =>
+    apiFetch<SessionResponse>("/auth/login", { method: "POST", body: payload }),
+  register: (payload: RegisterPayload) =>
+    apiFetch<RegisterResult>("/auth/register", { method: "POST", body: payload }),
   logout: () => apiFetch<void>("/auth/logout", { method: "POST" }),
 };
 

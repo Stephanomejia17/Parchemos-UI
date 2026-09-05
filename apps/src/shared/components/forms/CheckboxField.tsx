@@ -31,7 +31,7 @@ export function CheckboxField({
         type="checkbox"
         checked={checked}
         disabled={disabled}
-        onChange={event => onCheckedChange(event.target.checked)}
+        onChange={(event) => onCheckedChange(event.target.checked)}
         aria-invalid={invalid ? true : undefined}
         className="mt-0.5 h-4 w-4 accent-[color:var(--color-primary,#FF6B35)]"
       />

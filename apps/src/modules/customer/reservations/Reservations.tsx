@@ -20,7 +20,7 @@ export function Reservations() {
           </PrimaryButton>
         </div>
         <div className="flex bg-gray-100 rounded-2xl p-1 md:max-w-xs">
-          {(["upcoming", "past"] as const).map(t => (
+          {(["upcoming", "past"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -34,14 +34,21 @@ export function Reservations() {
 
       <div className="p-4 md:p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {RESERVATIONS_DATA.map(res => (
+          {RESERVATIONS_DATA.map((res) => (
             <div key={res.id} className="bg-white rounded-2xl p-4 shadow-sm border border-border">
               <div className="flex gap-3">
-                <RemoteImage src={res.img} alt={res.restaurant} className="w-16 h-16 rounded-xl flex-shrink-0" sizes="64px" />
+                <RemoteImage
+                  src={res.img}
+                  alt={res.restaurant}
+                  className="w-16 h-16 rounded-xl flex-shrink-0"
+                  sizes="64px"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-semibold text-gray-900 text-sm truncate">{res.restaurant}</p>
-                    <Badge color={res.status === "confirmed" ? "green" : "yellow"}>{res.status === "confirmed" ? "Confirmada" : "Pendiente"}</Badge>
+                    <Badge color={res.status === "confirmed" ? "green" : "yellow"}>
+                      {res.status === "confirmed" ? "Confirmada" : "Pendiente"}
+                    </Badge>
                   </div>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1">
@@ -78,7 +85,9 @@ export function Reservations() {
           {/* CTA card */}
           <div className="bg-gradient-to-r from-primary/10 to-secondary/10 rounded-2xl p-5 border border-orange-100">
             <h3 className="font-bold text-gray-900 text-base mb-1">¿A dónde parchar hoy?</h3>
-            <p className="text-sm text-muted-foreground mb-3">Explora los restaurantes disponibles y reserva tu mesa.</p>
+            <p className="text-sm text-muted-foreground mb-3">
+              Explora los restaurantes disponibles y reserva tu mesa.
+            </p>
             <PrimaryButton size="sm">Explorar restaurantes</PrimaryButton>
           </div>
         </div>

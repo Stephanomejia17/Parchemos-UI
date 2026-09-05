@@ -93,7 +93,7 @@ export const COLOMBIA_CITIES: ColombianCity[] = [
 ];
 
 /** Opciones listas para un `ComboBoxField`. */
-export const COLOMBIA_CITY_OPTIONS = COLOMBIA_CITIES.map(city => ({
+export const COLOMBIA_CITY_OPTIONS = COLOMBIA_CITIES.map((city) => ({
   value: city.name,
   label: city.name,
   description: city.department,

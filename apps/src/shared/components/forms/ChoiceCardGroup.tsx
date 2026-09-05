@@ -37,8 +37,12 @@ export function ChoiceCardGroup<T extends string>({
     <fieldset className={`flex flex-col gap-2 ${className}`}>
       {legend && <legend className="mb-2 text-xs font-semibold text-gray-600">{legend}</legend>}
 
-      <div role="radiogroup" aria-label={legend} className={`grid gap-3 ${columns === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}>
-        {options.map(option => {
+      <div
+        role="radiogroup"
+        aria-label={legend}
+        className={`grid gap-3 ${columns === 1 ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"}`}
+      >
+        {options.map((option) => {
           const selected = value === option.id;
           return (
             <button
@@ -55,10 +59,14 @@ export function ChoiceCardGroup<T extends string>({
                     : "border-gray-200 bg-white hover:border-gray-300"
               }`}
             >
-              {option.icon && <option.icon className={`h-5 w-5 ${selected ? "text-primary" : "text-gray-400"}`} />}
+              {option.icon && (
+                <option.icon className={`h-5 w-5 ${selected ? "text-primary" : "text-gray-400"}`} />
+              )}
               <span className="text-sm font-semibold text-gray-900">{option.label}</span>
               {option.description && (
-                <span className="text-xs leading-snug text-muted-foreground">{option.description}</span>
+                <span className="text-xs leading-snug text-muted-foreground">
+                  {option.description}
+                </span>
               )}
             </button>
           );

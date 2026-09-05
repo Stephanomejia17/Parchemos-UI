@@ -3,7 +3,8 @@ export const moderationItems = [
     id: 1,
     type: "post",
     author: "Carlos Mendoza",
-    content: "El mejor lomo al trapo que he probado 🔥 El servicio en La Leña fue increíble, el maître Ricardo nos atendió perfectamente. Totalmente recomendado.",
+    content:
+      "El mejor lomo al trapo que he probado 🔥 El servicio en La Leña fue increíble, el maître Ricardo nos atendió perfectamente. Totalmente recomendado.",
     reports: 0,
     time: "hace 10 min",
     status: "pending",
@@ -13,7 +14,8 @@ export const moderationItems = [
     id: 2,
     type: "review",
     author: "María García",
-    content: "Servicio pésimo. Esperamos 2 horas y el pedido llegó frío. No recomendable para nada. Solicito reembolso.",
+    content:
+      "Servicio pésimo. Esperamos 2 horas y el pedido llegó frío. No recomendable para nada. Solicito reembolso.",
     reports: 3,
     time: "hace 25 min",
     status: "reported",
@@ -33,7 +35,8 @@ export const moderationItems = [
     id: 4,
     type: "comment",
     author: "Diego Rodríguez",
-    content: "Este lugar es una completa estafa, cobran doble y el menú no tiene precios claros. ¡Cuidado con este sitio!",
+    content:
+      "Este lugar es una completa estafa, cobran doble y el menú no tiene precios claros. ¡Cuidado con este sitio!",
     reports: 8,
     time: "hace 2h",
     status: "reported",
@@ -43,7 +46,8 @@ export const moderationItems = [
     id: 5,
     type: "post",
     author: "Sebastián Gómez",
-    content: "Nuevo restaurante en Chapinero que vale MUCHO la pena. Pedimos el menú degustación de 7 tiempos.",
+    content:
+      "Nuevo restaurante en Chapinero que vale MUCHO la pena. Pedimos el menú degustación de 7 tiempos.",
     reports: 0,
     time: "hace 3h",
     status: "approved",

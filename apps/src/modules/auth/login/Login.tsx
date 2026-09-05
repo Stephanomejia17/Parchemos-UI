@@ -81,12 +81,17 @@ export function Login() {
           <h2 className="text-2xl font-extrabold text-gray-900 font-heading">Parchemos</h2>
         </div>
         <div className="hidden md:block">
-          <h2 className="text-2xl font-extrabold text-gray-900 mb-1 font-heading">Bienvenido de vuelta</h2>
+          <h2 className="text-2xl font-extrabold text-gray-900 mb-1 font-heading">
+            Bienvenido de vuelta
+          </h2>
         </div>
         <p className="text-muted-foreground text-sm">Inicia sesión para continuar</p>
 
         {justRegistered && !error && (
-          <div role="status" className="flex gap-2.5 rounded-2xl bg-green-50 px-4 py-3 text-sm text-green-800">
+          <div
+            role="status"
+            className="flex gap-2.5 rounded-2xl bg-green-50 px-4 py-3 text-sm text-green-800"
+          >
             <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
             <p>
               {registeredAsRestaurant
@@ -120,7 +125,7 @@ export function Login() {
               required
               placeholder="tucorreo@ejemplo.com"
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3.5 text-sm outline-none focus:border-primary transition-colors"
             />
           </label>
@@ -134,12 +139,12 @@ export function Login() {
                 required
                 placeholder="Tu contraseña"
                 value={password}
-                onChange={e => setPassword(e.target.value)}
+                onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3.5 pr-12 text-sm outline-none focus:border-primary transition-colors"
               />
               <button
                 type="button"
-                onClick={() => setShowPassword(v => !v)}
+                onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
@@ -160,7 +165,10 @@ export function Login() {
           </PrimaryButton>
         </form>
 
-        <Link href="/recuperar-contrasena" className="text-center text-sm text-primary font-semibold hover:underline">
+        <Link
+          href="/recuperar-contrasena"
+          className="text-center text-sm text-primary font-semibold hover:underline"
+        >
           ¿Olvidaste tu contraseña?
         </Link>
 
@@ -179,7 +187,11 @@ function toLoginError(err: unknown): LoginError {
   if (err instanceof ApiError) {
     // La cuenta bloqueada o suspendida no es un fallo de credenciales:
     // se muestra con otro tono para que el usuario entienda qué pasa.
-    if (err.code === "CUENTA_BLOQUEADA" || err.code === "CUENTA_SUSPENDIDA" || err.code === "CUENTA_DESHABILITADA") {
+    if (
+      err.code === "CUENTA_BLOQUEADA" ||
+      err.code === "CUENTA_SUSPENDIDA" ||
+      err.code === "CUENTA_DESHABILITADA"
+    ) {
       return { message: err.message, reason: err.reason, tone: "warning" };
     }
     return { message: err.message, tone: "error" };

@@ -25,5 +25,9 @@ export const recentActivity = [
   { type: "payment", text: "Pago procesado: $124.500 — Mesa 4 Distrito", time: "hace 8 min" },
   { type: "alert", text: "Alta demanda en Chapinero — 24 pedidos activos", time: "hace 12 min" },
   { type: "user", text: "Valentina Torres completó su primera reserva", time: "hace 15 min" },
-  { type: "restaurant", text: "El Bandido solicita verificación de documentos", time: "hace 22 min" },
+  {
+    type: "restaurant",
+    text: "El Bandido solicita verificación de documentos",
+    time: "hace 22 min",
+  },
 ];

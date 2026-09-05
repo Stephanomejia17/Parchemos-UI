@@ -10,7 +10,10 @@ export function SurfaceCard({
   style?: CSSProperties;
 }) {
   return (
-    <div className={`bg-white rounded-2xl border border-gray-100 shadow-[0_1px_4px_rgba(0,0,0,0.04)] ${className}`} style={style}>
+    <div
+      className={`bg-white rounded-2xl border border-gray-100 shadow-[0_1px_4px_rgba(0,0,0,0.04)] ${className}`}
+      style={style}
+    >
       {children}
     </div>
   );

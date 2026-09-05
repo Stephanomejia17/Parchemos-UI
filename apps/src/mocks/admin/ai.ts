@@ -12,10 +12,30 @@ export const aiMessages: ChatMessage[] = [
 ];
 
 export const aiInsights = [
-  { icon: TrendingUp, color: "text-emerald-600 bg-emerald-50", title: "Restaurantes en crecimiento", text: "Sushi Nagoya y Carmen lideran con +34% y +28% en reservas vs. el mes anterior." },
-  { icon: AlertCircle, color: "text-amber-600 bg-amber-50", title: "Riesgo de abandono", text: "1,240 usuarios en Medellín sin actividad hace más de 21 días. Considera una campaña de reactivación." },
-  { icon: MapPin, color: "text-blue-600 bg-blue-50", title: "Ciudad más rentable", text: "Bogotá generó el 58% de los ingresos del mes. Chapinero es la zona con mayor densidad de pedidos." },
-  { icon: Zap, color: `text-[${ACCENT}] bg-[#FFF1EB]`, title: "Predicción fin de semana", text: "Se proyecta un incremento del 18% en reservas este sábado entre 7–10 PM." },
+  {
+    icon: TrendingUp,
+    color: "text-emerald-600 bg-emerald-50",
+    title: "Restaurantes en crecimiento",
+    text: "Sushi Nagoya y Carmen lideran con +34% y +28% en reservas vs. el mes anterior.",
+  },
+  {
+    icon: AlertCircle,
+    color: "text-amber-600 bg-amber-50",
+    title: "Riesgo de abandono",
+    text: "1,240 usuarios en Medellín sin actividad hace más de 21 días. Considera una campaña de reactivación.",
+  },
+  {
+    icon: MapPin,
+    color: "text-blue-600 bg-blue-50",
+    title: "Ciudad más rentable",
+    text: "Bogotá generó el 58% de los ingresos del mes. Chapinero es la zona con mayor densidad de pedidos.",
+  },
+  {
+    icon: Zap,
+    color: `text-[${ACCENT}] bg-[#FFF1EB]`,
+    title: "Predicción fin de semana",
+    text: "Se proyecta un incremento del 18% en reservas este sábado entre 7–10 PM.",
+  },
 ];
 
 export const AI_SUGGESTIONS = [

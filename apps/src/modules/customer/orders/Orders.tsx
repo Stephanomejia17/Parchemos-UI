@@ -38,7 +38,10 @@ export function Orders() {
               </div>
             </div>
           </div>
-          <button onClick={goOrderSummary} className="w-full mt-3 bg-white border border-orange-200 rounded-xl py-2.5 text-sm font-semibold text-primary hover:bg-orange-50 transition-colors">
+          <button
+            onClick={goOrderSummary}
+            className="w-full mt-3 bg-white border border-orange-200 rounded-xl py-2.5 text-sm font-semibold text-primary hover:bg-orange-50 transition-colors"
+          >
             Ver estado del pedido
           </button>
         </div>
@@ -50,26 +53,41 @@ export function Orders() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 divide-y md:divide-y-0 divide-border">
             {ORDER_HISTORY.map((order, i) => (
-              <div key={i} className="px-4 py-3.5 border-b last:border-b-0 md:border-b-0 md:border-r last:border-r-0 border-border">
+              <div
+                key={i}
+                className="px-4 py-3.5 border-b last:border-b-0 md:border-b-0 md:border-r last:border-r-0 border-border"
+              >
                 <div className="flex gap-3">
-                  <RemoteImage src={order.img} alt={order.restaurant} className="w-12 h-12 rounded-xl flex-shrink-0" sizes="48px" />
+                  <RemoteImage
+                    src={order.img}
+                    alt={order.restaurant}
+                    className="w-12 h-12 rounded-xl flex-shrink-0"
+                    sizes="48px"
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-semibold text-gray-900">{order.restaurant}</p>
-                      <p className="text-sm font-bold text-gray-900">${order.total.toLocaleString()}</p>
+                      <p className="text-sm font-bold text-gray-900">
+                        ${order.total.toLocaleString()}
+                      </p>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5 truncate">{order.items}</p>
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-xs text-muted-foreground">{order.date}</span>
                       <div className="flex items-center gap-0.5">
                         {Array.from({ length: 5 }).map((_, si) => (
-                          <Star key={si} className={`w-3 h-3 ${si < order.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}`} />
+                          <Star
+                            key={si}
+                            className={`w-3 h-3 ${si < order.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-200"}`}
+                          />
                         ))}
                       </div>
                     </div>
                   </div>
                 </div>
-                <button className="w-full mt-2 bg-gray-50 border border-gray-200 rounded-xl py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-colors">Repetir pedido</button>
+                <button className="w-full mt-2 bg-gray-50 border border-gray-200 rounded-xl py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-colors">
+                  Repetir pedido
+                </button>
               </div>
             ))}
           </div>

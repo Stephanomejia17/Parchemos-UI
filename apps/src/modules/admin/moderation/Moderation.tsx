@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import { AlertCircle, Check, Eye, Trash2 } from "lucide-react";
-import { InitialsAvatar as Avatar, StatusBadge as Badge, STATUS_LABELS, SurfaceCard as Card } from "@/shared/components";
+import {
+  InitialsAvatar as Avatar,
+  StatusBadge as Badge,
+  STATUS_LABELS,
+  SurfaceCard as Card,
+} from "@/shared/components";
 import { SectionHeader } from "@/modules/admin/ui/SectionHeader";
 import { moderationItems } from "@/mocks/admin/moderation";
 
@@ -13,13 +18,18 @@ const TYPE_STYLES: Record<string, string> = {
   comment: "bg-gray-100 text-gray-600",
 };
 
-const TYPE_LABELS: Record<string, string> = { post: "Publicación", review: "Reseña", story: "Historia", comment: "Comentario" };
+const TYPE_LABELS: Record<string, string> = {
+  post: "Publicación",
+  review: "Reseña",
+  story: "Historia",
+  comment: "Comentario",
+};
 
 const FILTERS = ["all", "pending", "reported", "approved"] as const;
 
 export function Moderation() {
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>("all");
-  const filtered = moderationItems.filter(m => filter === "all" || m.status === filter);
+  const filtered = moderationItems.filter((m) => filter === "all" || m.status === filter);
 
   return (
     <div className="space-y-5">
@@ -28,14 +38,18 @@ export function Moderation() {
         sub="Publicaciones, reseñas, historias y comentarios"
         action={
           <div className="flex items-center gap-2 text-[12px]">
-            <span className="px-2.5 py-1 bg-red-50 text-red-700 rounded-lg font-medium">{moderationItems.filter(m => m.status === "reported").length} reportados</span>
-            <span className="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-lg font-medium">{moderationItems.filter(m => m.status === "pending").length} pendientes</span>
+            <span className="px-2.5 py-1 bg-red-50 text-red-700 rounded-lg font-medium">
+              {moderationItems.filter((m) => m.status === "reported").length} reportados
+            </span>
+            <span className="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-lg font-medium">
+              {moderationItems.filter((m) => m.status === "pending").length} pendientes
+            </span>
           </div>
         }
       />
 
       <div className="flex items-center gap-2">
-        {FILTERS.map(s => (
+        {FILTERS.map((s) => (
           <button
             key={s}
             onClick={() => setFilter(s)}
@@ -47,7 +61,7 @@ export function Moderation() {
       </div>
 
       <div className="space-y-3">
-        {filtered.map(item => {
+        {filtered.map((item) => {
           const typeClass = TYPE_STYLES[item.type] || "bg-gray-100 text-gray-600";
           const typeLabel = TYPE_LABELS[item.type] || item.type;
           return (
@@ -57,7 +71,9 @@ export function Moderation() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1.5">
                     <span className="text-[13px] font-semibold text-gray-900">{item.author}</span>
-                    <span className={`text-[11px] font-medium px-2 py-0.5 rounded-md ${typeClass}`}>{typeLabel}</span>
+                    <span className={`text-[11px] font-medium px-2 py-0.5 rounded-md ${typeClass}`}>
+                      {typeLabel}
+                    </span>
                     <span className="text-[12px] text-gray-400">
                       en <span className="text-gray-600">{item.restaurant}</span>
                     </span>

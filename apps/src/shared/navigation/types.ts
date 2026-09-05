@@ -5,6 +5,8 @@ export type NavigationItem = {
   href: string;
   label: string;
   icon: LucideIcon;
+  /** Contador opcional mostrado junto al item (ej. pendientes de moderación). */
+  badge?: string;
 };
 
 export type BreadcrumbItem = {

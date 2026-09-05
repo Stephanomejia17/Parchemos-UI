@@ -1,6 +1,14 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { tokenStore, tryRefresh } from "../services/http/api-client";
 import { authService } from "../services/auth";
 import type { AuthUser, LoginPayload, RegisterPayload, RegisterResult } from "./types";
@@ -60,10 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // GU-01: el registro no inicia sesion; devuelve al login.
-  const register = useCallback(
-    (payload: RegisterPayload) => authService.register(payload),
-    [],
-  );
+  const register = useCallback((payload: RegisterPayload) => authService.register(payload), []);
 
   const logout = useCallback(async () => {
     try {

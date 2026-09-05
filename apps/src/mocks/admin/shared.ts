@@ -19,7 +19,19 @@ export const cityRevData = [
 ];
 
 export const alerts = [
-  { level: "critical", message: "3 restaurantes con pagos pendientes superiores a 30 días", action: "Revisar" },
-  { level: "warning", message: "Spike de errores en gateway Bancolombia (+340%)", action: "Ver logs" },
-  { level: "info", message: "Campaña 'Viernes Parcheados' termina en 48 horas", action: "Gestionar" },
+  {
+    level: "critical",
+    message: "3 restaurantes con pagos pendientes superiores a 30 días",
+    action: "Revisar",
+  },
+  {
+    level: "warning",
+    message: "Spike de errores en gateway Bancolombia (+340%)",
+    action: "Ver logs",
+  },
+  {
+    level: "info",
+    message: "Campaña 'Viernes Parcheados' termina en 48 horas",
+    action: "Gestionar",
+  },
 ];

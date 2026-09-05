@@ -1,8 +1,10 @@
 /** Contratos compartidos con la API (PARCHEMOS-API, modulo auth). */
 
-export type UserRole = "comensal" | "restaurante" | "personal_restaurante" | "repartidor" | "administrador";
+export type UserRole =
+  "comensal" | "restaurante" | "personal_restaurante" | "repartidor" | "administrador";
 
-export type AccountStatus = "pendiente_aprobacion" | "activa" | "suspendida" | "deshabilitada" | "pendiente_eliminacion";
+export type AccountStatus =
+  "pendiente_aprobacion" | "activa" | "suspendida" | "deshabilitada" | "pendiente_eliminacion";
 
 export interface AuthUser {
   id: string;
@@ -15,7 +17,13 @@ export interface AuthUser {
   phone: string | null;
   city: string | null;
   profilePhotoUrl: string | null;
-  assignedLocation: { id: string; name: string; address: string; status: string; restaurantName: string } | null;
+  assignedLocation: {
+    id: string;
+    name: string;
+    address: string;
+    status: string;
+    restaurantName: string;
+  } | null;
 }
 
 export interface LoginPayload {

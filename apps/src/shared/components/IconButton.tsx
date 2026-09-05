@@ -16,7 +16,9 @@ export function IconButton({
       onClick={onClick}
       title={label}
       className={`p-1.5 rounded-lg transition-colors ${
-        danger ? "hover:bg-red-50 text-gray-400 hover:text-red-600" : "hover:bg-gray-100 text-gray-400 hover:text-gray-700"
+        danger
+          ? "hover:bg-red-50 text-gray-400 hover:text-red-600"
+          : "hover:bg-gray-100 text-gray-400 hover:text-gray-700"
       }`}
     >
       <Icon size={14} />

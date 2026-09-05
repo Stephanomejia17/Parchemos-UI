@@ -13,9 +13,9 @@ export function Menu() {
 
   const goOrderSummary = () => router.push("/order-summary");
 
-  const addToCart = (id: number) => setCart(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
+  const addToCart = (id: number) => setCart((prev) => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
   const removeFromCart = (id: number) =>
-    setCart(prev => {
+    setCart((prev) => {
       const n = (prev[id] || 0) - 1;
       if (n <= 0) {
         const next = { ...prev };
@@ -26,7 +26,7 @@ export function Menu() {
     });
   const totalItems = Object.values(cart).reduce((a, b) => a + b, 0);
   const totalPrice = Object.entries(cart).reduce((acc, [id, qty]) => {
-    const item = MENU_SECTIONS.flatMap(s => s.items).find(i => i.id === parseInt(id));
+    const item = MENU_SECTIONS.flatMap((s) => s.items).find((i) => i.id === parseInt(id));
     return acc + (item ? item.price * qty : 0);
   }, 0);
 
@@ -36,7 +36,10 @@ export function Menu() {
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <div className="bg-white px-4 pt-4 pb-3 border-b border-border sticky top-0 z-10 md:px-6">
           <div className="flex items-center gap-3 mb-3">
-            <button onClick={() => router.back()} className="w-9 h-9 bg-gray-100 rounded-2xl flex items-center justify-center">
+            <button
+              onClick={() => router.back()}
+              className="w-9 h-9 bg-gray-100 rounded-2xl flex items-center justify-center"
+            >
               <ChevronLeft className="w-5 h-5 text-gray-900" />
             </button>
             <div>
@@ -62,18 +65,30 @@ export function Menu() {
             <div key={si}>
               <h3 className="font-bold text-gray-900 mb-3 text-base">{section.title}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {section.items.map(item => (
-                  <div key={item.id} className="bg-white rounded-2xl p-4 border border-border shadow-sm">
+                {section.items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-white rounded-2xl p-4 border border-border shadow-sm"
+                  >
                     <div className="flex gap-3">
                       <div className="relative flex-shrink-0">
-                        <RemoteImage src={item.img} alt={item.name} className="w-24 h-24 rounded-xl" sizes="96px" />
+                        <RemoteImage
+                          src={item.img}
+                          alt={item.name}
+                          className="w-24 h-24 rounded-xl"
+                          sizes="96px"
+                        />
                         {item.popular && (
-                          <div className="absolute -top-1 -left-1 bg-secondary text-gray-900 text-xs font-bold px-1.5 py-0.5 rounded-lg">🔥 Popular</div>
+                          <div className="absolute -top-1 -left-1 bg-secondary text-gray-900 text-xs font-bold px-1.5 py-0.5 rounded-lg">
+                            🔥 Popular
+                          </div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-gray-900">{item.name}</p>
-                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{item.desc}</p>
+                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                          {item.desc}
+                        </p>
                         <div className="flex items-center gap-3 mt-2">
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <Clock className="w-3.5 h-3.5" />
@@ -85,7 +100,9 @@ export function Menu() {
                           </div>
                         </div>
                         <div className="flex items-center justify-between mt-3">
-                          <span className="font-bold text-primary text-base">${item.price.toLocaleString()}</span>
+                          <span className="font-bold text-primary text-base">
+                            ${item.price.toLocaleString()}
+                          </span>
                           {cart[item.id] ? (
                             <div className="flex items-center gap-2">
                               <button
@@ -94,8 +111,13 @@ export function Menu() {
                               >
                                 <Minus className="w-3.5 h-3.5 text-gray-700" />
                               </button>
-                              <span className="w-5 text-center font-bold text-sm text-gray-900">{cart[item.id]}</span>
-                              <button onClick={() => addToCart(item.id)} className="w-7 h-7 bg-primary rounded-xl flex items-center justify-center">
+                              <span className="w-5 text-center font-bold text-sm text-gray-900">
+                                {cart[item.id]}
+                              </span>
+                              <button
+                                onClick={() => addToCart(item.id)}
+                                className="w-7 h-7 bg-primary rounded-xl flex items-center justify-center"
+                              >
                                 <Plus className="w-3.5 h-3.5 text-white" />
                               </button>
                             </div>
@@ -151,21 +173,36 @@ export function Menu() {
           ) : (
             <div className="flex flex-col gap-3">
               {Object.entries(cart).map(([id, qty]) => {
-                const item = MENU_SECTIONS.flatMap(s => s.items).find(i => i.id === parseInt(id));
+                const item = MENU_SECTIONS.flatMap((s) => s.items).find(
+                  (i) => i.id === parseInt(id),
+                );
                 if (!item) return null;
                 return (
                   <div key={id} className="flex items-center gap-3">
-                    <RemoteImage src={item.img} alt={item.name} className="w-12 h-12 rounded-xl flex-shrink-0" sizes="48px" />
+                    <RemoteImage
+                      src={item.img}
+                      alt={item.name}
+                      className="w-12 h-12 rounded-xl flex-shrink-0"
+                      sizes="48px"
+                    />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-900 truncate">{item.name}</p>
-                      <p className="text-xs text-primary font-bold mt-0.5">${(item.price * qty).toLocaleString()}</p>
+                      <p className="text-xs text-primary font-bold mt-0.5">
+                        ${(item.price * qty).toLocaleString()}
+                      </p>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <button onClick={() => removeFromCart(item.id)} className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <button
+                        onClick={() => removeFromCart(item.id)}
+                        className="w-6 h-6 bg-gray-100 rounded-lg flex items-center justify-center"
+                      >
                         <Minus className="w-3 h-3" />
                       </button>
                       <span className="text-xs font-bold w-4 text-center">{qty}</span>
-                      <button onClick={() => addToCart(item.id)} className="w-6 h-6 bg-primary rounded-lg flex items-center justify-center">
+                      <button
+                        onClick={() => addToCart(item.id)}
+                        className="w-6 h-6 bg-primary rounded-lg flex items-center justify-center"
+                      >
                         <Plus className="w-3 h-3 text-white" />
                       </button>
                     </div>

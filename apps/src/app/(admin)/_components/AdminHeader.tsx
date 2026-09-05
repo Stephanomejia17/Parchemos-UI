@@ -6,14 +6,14 @@ import { Bell, Search } from "lucide-react";
 import { STATUS_COLORS } from "@/shared/components";
 import { useAuth } from "@/shared/auth";
 import { alerts } from "@/mocks/admin/shared";
-import { NAV_ITEMS } from "./admin-nav-items";
+import { navigationForRole } from "@/shared/navigation";
 
 const ACCENT = "#FF6B35";
 
 export function AdminHeader() {
   const pathname = usePathname();
-  const item = NAV_ITEMS.find(n => pathname.startsWith(n.href));
   const { user } = useAuth();
+  const item = navigationForRole(user?.role).find((n) => pathname.startsWith(n.href));
   const [notifOpen, setNotifOpen] = useState(false);
 
   return (
@@ -32,11 +32,14 @@ export function AdminHeader() {
 
       <div className="relative">
         <button
-          onClick={() => setNotifOpen(o => !o)}
+          onClick={() => setNotifOpen((o) => !o)}
           className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-gray-100 transition-colors relative"
         >
           <Bell size={16} className="text-gray-500" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: ACCENT }} />
+          <span
+            className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
+            style={{ background: ACCENT }}
+          />
         </button>
         {notifOpen && (
           <div className="absolute right-0 top-11 w-80 bg-white border border-gray-100 rounded-2xl shadow-xl z-50 overflow-hidden">
@@ -47,7 +50,10 @@ export function AdminHeader() {
               </span>
             </div>
             {alerts.map((a, i) => (
-              <div key={i} className={`px-4 py-3 border-b border-gray-50 last:border-0 ${STATUS_COLORS[a.level]?.split(" ")[0]}`}>
+              <div
+                key={i}
+                className={`px-4 py-3 border-b border-gray-50 last:border-0 ${STATUS_COLORS[a.level]?.split(" ")[0]}`}
+              >
                 <p className="text-[12px] text-gray-700">{a.message}</p>
                 <p className="text-[10px] text-gray-400 mt-1">
                   hace {i + 1} hora{i > 0 ? "s" : ""}
@@ -62,7 +68,9 @@ export function AdminHeader() {
         title={user?.email ?? ""}
         className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FF6B35] to-[#FF8559] flex items-center justify-center"
       >
-        <span className="text-white font-bold text-[12px]">{(user?.fullName?.trim()[0] ?? "A").toUpperCase()}</span>
+        <span className="text-white font-bold text-[12px]">
+          {(user?.fullName?.trim()[0] ?? "A").toUpperCase()}
+        </span>
       </div>
     </header>
   );

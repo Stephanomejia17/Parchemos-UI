@@ -1,7 +1,15 @@
 "use client";
 
 import { AlertCircle, CreditCard, DollarSign, Download, Percent, RefreshCw } from "lucide-react";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { StatusBadge as Badge, SurfaceCard as Card } from "@/shared/components";
 import { SectionHeader } from "@/modules/admin/ui/SectionHeader";
 import { StatCard } from "@/modules/admin/ui/StatCard";
@@ -25,10 +33,38 @@ export function Finances() {
       />
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard label="Ingresos del mes" value="$28.4M" change="+22.3%" up icon={DollarSign} accent />
-        <StatCard label="Comisiones" value="$2.84M" sub="10% promedio" change="+19.1%" up icon={Percent} />
-        <StatCard label="Reembolsos" value="$124K" sub="14 transacciones" change="+2.1%" up={false} icon={RefreshCw} />
-        <StatCard label="Pagos fallidos" value="$84K" sub="8 transacciones" change="-12.4%" up icon={AlertCircle} />
+        <StatCard
+          label="Ingresos del mes"
+          value="$28.4M"
+          change="+22.3%"
+          up
+          icon={DollarSign}
+          accent
+        />
+        <StatCard
+          label="Comisiones"
+          value="$2.84M"
+          sub="10% promedio"
+          change="+19.1%"
+          up
+          icon={Percent}
+        />
+        <StatCard
+          label="Reembolsos"
+          value="$124K"
+          sub="14 transacciones"
+          change="+2.1%"
+          up={false}
+          icon={RefreshCw}
+        />
+        <StatCard
+          label="Pagos fallidos"
+          value="$84K"
+          sub="8 transacciones"
+          change="-12.4%"
+          up
+          icon={AlertCircle}
+        />
       </div>
 
       <div className="grid xl:grid-cols-3 gap-5">
@@ -48,10 +84,27 @@ export function Finances() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#F1F3F5" />
-              <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} tickFormatter={v => `$${v / 1000}k`} />
+              <XAxis
+                dataKey="day"
+                tick={{ fontSize: 11, fill: "#9CA3AF" }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: "#9CA3AF" }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v) => `$${v / 1000}k`}
+              />
               <Tooltip content={<ChartTooltip />} />
-              <Area type="monotone" dataKey="revenue" name="Ingresos" stroke={ACCENT} strokeWidth={2} fill="url(#gRev)" />
+              <Area
+                type="monotone"
+                dataKey="revenue"
+                name="Ingresos"
+                stroke={ACCENT}
+                strokeWidth={2}
+                fill="url(#gRev)"
+              />
             </AreaChart>
           </ResponsiveContainer>
         </Card>
@@ -59,7 +112,7 @@ export function Finances() {
         <Card className="p-5">
           <h3 className="text-[14px] font-semibold text-gray-900 mb-4">Resumen</h3>
           <div className="space-y-3">
-            {paymentMethodBreakdown.map(p => (
+            {paymentMethodBreakdown.map((p) => (
               <div key={p.label} className="flex items-center justify-between">
                 <div>
                   <div className="text-[13px] font-medium text-gray-800">{p.label}</div>
@@ -78,7 +131,7 @@ export function Finances() {
           <button className="text-[12px] text-[#FF6B35] font-medium">Ver todas</button>
         </div>
         <div className="divide-y divide-gray-50">
-          {transactions.map(t => (
+          {transactions.map((t) => (
             <div key={t.id} className="px-5 py-3.5 flex items-center gap-4 hover:bg-gray-50/50">
               <div className="w-9 h-9 bg-gray-50 rounded-xl flex items-center justify-center flex-shrink-0">
                 <CreditCard size={14} className="text-gray-400" />
@@ -90,8 +143,12 @@ export function Finances() {
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-[13px] font-semibold text-gray-900">${t.amount.toLocaleString("es-CO")}</div>
-                <div className="text-[11px] text-emerald-600">+${t.commission.toLocaleString("es-CO")} comisión</div>
+                <div className="text-[13px] font-semibold text-gray-900">
+                  ${t.amount.toLocaleString("es-CO")}
+                </div>
+                <div className="text-[11px] text-emerald-600">
+                  +${t.commission.toLocaleString("es-CO")} comisión
+                </div>
               </div>
               <Badge status={t.status} />
             </div>
