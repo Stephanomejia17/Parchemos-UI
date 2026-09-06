@@ -41,7 +41,7 @@ export function WorkroomDashboard() {
           </div>
           <div className="flex gap-2">
             <Link
-              href="/workroom/profile"
+              href="/staff_profile"
               className="inline-flex items-center rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700"
             >
               Mi perfil

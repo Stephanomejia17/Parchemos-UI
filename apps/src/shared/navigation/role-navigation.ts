@@ -62,7 +62,7 @@ const ADMIN_NAVIGATION: NavigationItem[] = [
 
 /** `personal_restaurante` (workroom) aún no tiene features; se completa cuando existan. */
 const WORKROOM_NAVIGATION: NavigationItem[] = [
-  { id: "profile", href: "/workroom/profile", icon: User, label: "Mi perfil" },
+  { id: "profile", href: "/staff_profile", icon: User, label: "Mi perfil" },
 ];
 
 const DELIVERY_NAVIGATION: NavigationItem[] = [
