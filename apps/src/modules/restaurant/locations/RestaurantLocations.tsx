@@ -199,17 +199,30 @@ function Manager() {
                       onClick={() => setLocation(item)}
                       className="w-full rounded-xl border bg-gray-50 p-3 text-left hover:border-orange-300"
                     >
-                      <div className="flex justify-between gap-2">
-                        <b className="truncate text-sm">{item.name}</b>
-                        <StatusBadge status={item.status} />
+                      <div className="flex gap-3">
+                        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border bg-white">
+                          {item.logoUrl ? (
+                            <img src={item.logoUrl} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                              <Store className="h-5 w-5 text-gray-400" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex justify-between gap-2">
+                            <b className="truncate text-sm">{item.name}</b>
+                            <StatusBadge status={item.status} />
+                          </div>
+                          <p className="mt-1 text-xs text-gray-500">
+                            <MapPin className="mr-1 inline h-3 w-3" />
+                            {item.address}
+                          </p>
+                          {item.rejectionReason && (
+                            <p className="mt-1 text-xs text-red-600">{item.rejectionReason}</p>
+                          )}
+                        </div>
                       </div>
-                      <p className="mt-1 text-xs text-gray-500">
-                        <MapPin className="mr-1 inline h-3 w-3" />
-                        {item.address}
-                      </p>
-                      {item.rejectionReason && (
-                        <p className="mt-1 text-xs text-red-600">{item.rejectionReason}</p>
-                      )}
                     </button>
                   ))}
                 </div>
@@ -329,6 +342,7 @@ function LocationWizard({
       <FormStepper steps={LOCATION_STEPS} current={step} className="mb-7" />
       {step === 0 && (
         <section>
+          <p className="mb-3 text-xs text-gray-500">Los campos marcados con * son obligatorios.</p>
           <Field
             label="Nombre de la sede"
             name="name"
@@ -409,7 +423,7 @@ function LocationWizard({
               );
             })}
           </div>
-          <WizardNavigation step={step} back={() => setStep(0)} next={next} busy={busy} />
+          <WizardNavigation step={step} back={() => setStep(0)} next={next} busy={busy} disabled={!valid()} />
         </section>
       )}
 
@@ -1035,6 +1049,7 @@ function Field({
   return (
     <label className="mb-3 block text-sm">
       {label}
+      {required && <span className="text-red-600"> *</span>}
       <input
         required={required}
         name={name}
