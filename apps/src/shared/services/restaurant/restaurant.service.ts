@@ -16,7 +16,7 @@ export interface CreateLocationInput {
 export interface UpdateLocationInfoInput {
   name: string;
   address: string;
-  description: string;
+  description?: string;
 }
 
 export interface CreateStaffMemberInput {
