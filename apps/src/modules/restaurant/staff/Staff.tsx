@@ -35,6 +35,7 @@ export function Staff() {
 }
 
 function StaffManager() {
+  const [buttonDisabled, setButtonDisabled] = useState(false);
   const [staff, setStaff] = useState<StaffMember[]>([]),
     [restaurants, setRestaurants] = useState<Restaurant[]>([]),
     [locations, setLocations] = useState<Location[]>([]);
@@ -119,6 +120,7 @@ function StaffManager() {
             Necesitas al menos una sede aprobada para crear y asignar personal.
           </p>
         )}
+
         <SurfaceCard className="overflow-hidden bg-white">
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
@@ -220,7 +222,20 @@ function CreateModal({
         <Input label="Correo electrónico" name="email" type="text" inputMode="email" required />
         <Input label="Teléfono (opcional)" name="phone" />
         <label className="block text-sm font-medium">
-          Restaurante
+          <span className="inline-flex items-center gap-1">
+            Restaurante
+            <span className="group relative inline-flex">
+              <span className="cursor-help text-gray-400">ⓘ</span>
+              <span
+                role="tooltip"
+                className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 w-56 -translate-x-1/2
+                   rounded-lg bg-gray-900 px-2.5 py-1.5 text-xs font-normal text-white
+                   opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+              >
+                Solo se mostrarán los restaurantes activos
+              </span>
+            </span>
+          </span>
           <select
             required
             value={restaurantId}
