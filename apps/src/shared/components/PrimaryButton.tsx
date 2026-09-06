@@ -32,7 +32,7 @@ export function PrimaryButton({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`rounded-2xl font-semibold transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100 ${SIZES[size]} ${VARIANTS[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-2xl font-semibold transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:active:scale-100 ${SIZES[size]} ${VARIANTS[variant]} ${className}`}
     >
       {children}
     </button>

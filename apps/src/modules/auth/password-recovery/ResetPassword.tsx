@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AlertCircle, Check, CheckCircle2, Eye, EyeOff, Loader2, X } from "lucide-react";
@@ -10,18 +10,31 @@ import { resetPassword } from "@/shared/services/auth";
 
 export function ResetPassword() {
   const params = useSearchParams();
-  const token = params.get("token") ?? "";
+  const [token, setToken] = useState("");
+  const [tokenReady, setTokenReady] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
-  const [error, setError] = useState<string | null>(
+  const [initialError, setInitialError] = useState<string | null>(
     token ? null : "El enlace de recuperación no es válido.",
   );
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    // Supabase entrega el token en el fragmento: #access_token=...&type=recovery.
+    // Conservamos ?token=... para enlaces antiguos del flujo propio.
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const recoveryToken = hashParams.get("access_token") ?? params.get("token") ?? "";
+    setToken(recoveryToken);
+    setTokenReady(true);
+    if (!recoveryToken) setError("El enlace de recuperación no es válido o expiró.");
+  }, [params]);
+  void initialError;
+  void setInitialError;
   const passwordState = useMemo(() => evaluatePassword(password), [password]);
   const passwordsMatch = confirmation.length > 0 && password === confirmation;
-  const canSubmit = Boolean(token) && passwordState.valid && passwordsMatch;
+  const canSubmit = tokenReady && Boolean(token) && passwordState.valid && passwordsMatch;
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();

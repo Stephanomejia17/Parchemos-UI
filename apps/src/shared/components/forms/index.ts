@@ -12,4 +12,6 @@ export { ChoiceCardGroup } from "./ChoiceCardGroup";
 export type { ChoiceCardOption } from "./ChoiceCardGroup";
 export { CheckboxField } from "./CheckboxField";
 export { RequirementList } from "./RequirementList";
+export { Select } from "./Select";
+export type { SelectOption } from "./Select";
 export type { Requirement } from "./RequirementList";

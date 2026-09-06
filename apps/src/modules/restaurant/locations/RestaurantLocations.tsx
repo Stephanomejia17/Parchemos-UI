@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import { Building2, Loader2, MapPin, Plus, Send, Store, Trash2, X } from "lucide-react";
 import { ApiError, RequireAuth } from "@/shared/auth";
 import { restaurantService } from "@/shared/services";
-import { PrimaryButton, SurfaceCard, TemporaryMessage } from "@/shared/components";
+import {
+  FormStepper,
+  PrimaryButton,
+  SurfaceCard,
+  TemporaryMessage,
+  type FormStep,
+} from "@/shared/components";
 import type {
   Location,
   LocationStatus as Status,
@@ -34,6 +40,23 @@ const statusStyle: Record<Status, string> = {
 };
 const errorMessage = (error: unknown, fallback: string) =>
   error instanceof ApiError ? error.message : fallback;
+
+const LOCATION_STEPS: FormStep[] = [
+  { id: "info", label: "Información" },
+  { id: "hours", label: "Horarios" },
+  { id: "images", label: "Imágenes" },
+  { id: "preview", label: "Vista previa" },
+];
+
+interface LocationWizardData {
+  name: string;
+  address: string;
+  description: string;
+  schedules: Schedule[];
+  logo: File | null;
+  cover: File | null;
+  gallery: File[];
+}
 
 export function RestaurantLocations() {
   return (
@@ -97,6 +120,38 @@ function Manager() {
       await restaurantService.createLocation(restaurantId, body);
       setRestaurantId(null);
     }, "No pudimos crear la sede.");
+  };
+  const finishLocation = async (data: LocationWizardData) => {
+    if (!restaurantId) return;
+    if (!data.schedules.length) {
+      setError("Configura al menos un horario antes de finalizar la sede.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const created = await restaurantService.createLocation(restaurantId, {
+        name: data.name,
+        address: data.address,
+        description: data.description || undefined,
+      });
+      const savedSchedules = await restaurantService.updateSchedules(created.id, data.schedules);
+      if (!savedSchedules.length) {
+        throw new Error("No se pudieron guardar los horarios de la sede.");
+      }
+      if (data.logo) await restaurantService.uploadLocationImage(created.id, "logo", data.logo);
+      if (data.cover) await restaurantService.uploadLocationImage(created.id, "portada", data.cover);
+      for (const image of data.gallery) {
+        await restaurantService.uploadLocationImage(created.id, "galeria", image);
+      }
+      await restaurantService.requestLocationApproval(created.id);
+      setRestaurantId(null);
+      await load();
+    } catch (e) {
+      setError(errorMessage(e, "No pudimos completar la creación de la sede."));
+    } finally {
+      setBusy(false);
+    }
   };
   return (
     <main className="min-h-full bg-gray-50 px-4 py-6">
@@ -189,20 +244,242 @@ function Manager() {
           </Modal>
         )}
         {restaurantId && (
-          <Modal title="Añadir sede" close={() => setRestaurantId(null)}>
-            <form onSubmit={createLocation}>
-              <Field label="Nombre de la sede" name="name" min={2} max={120} required />
-              <Field label="Dirección" name="address" min={5} max={250} required />
-              <Area label="Descripción (opcional)" name="description" max={2000} />
-              <Save busy={busy} label="Crear sede" />
-            </form>
-          </Modal>
+          <LocationWizard
+            busy={busy}
+            close={() => setRestaurantId(null)}
+            submit={finishLocation}
+          />
         )}
         {location && (
           <Profile location={location} busy={busy} close={() => setLocation(null)} run={run} />
         )}
       </div>
     </main>
+  );
+}
+
+function LocationWizard({
+  busy,
+  close,
+  submit,
+}: {
+  busy: boolean;
+  close: () => void;
+  submit: (data: LocationWizardData) => Promise<void>;
+}) {
+  const [step, setStep] = useState(0);
+  const [data, setData] = useState<LocationWizardData>({
+    name: "",
+    address: "",
+    description: "",
+    schedules: [],
+    logo: null,
+    cover: null,
+    gallery: [],
+  });
+  const update = (patch: Partial<LocationWizardData>) => setData((current) => ({ ...current, ...patch }));
+  const infoErrors = {
+    name:
+      data.name.trim().length === 0
+        ? "Ingresa el nombre de la sede."
+        : data.name.trim().length < 2
+          ? "El nombre debe tener al menos 2 caracteres."
+          : data.name.length > 120
+            ? "El nombre no puede superar 120 caracteres."
+            : null,
+    address:
+      data.address.trim().length === 0
+        ? "Ingresa la dirección de la sede."
+        : data.address.trim().length < 5
+          ? "La dirección debe tener al menos 5 caracteres."
+          : data.address.length > 250
+            ? "La dirección no puede superar 250 caracteres."
+            : null,
+    description:
+      data.description.length > 0 && data.description.trim().length < 20
+        ? "Si agregas una descripción, debe tener al menos 20 caracteres."
+        : data.description.length > 2000
+          ? "La descripción no puede superar 2000 caracteres."
+          : null,
+  };
+  const scheduleError =
+    data.schedules.length === 0
+      ? "Selecciona al menos un día y define su horario de atención."
+      : data.schedules.some((item) => item.endsAt <= item.startsAt)
+        ? "La hora de cierre debe ser posterior a la hora de apertura."
+        : null;
+  const valid = () => {
+    if (step === 0) return !infoErrors.name && !infoErrors.address && !infoErrors.description;
+    if (step === 1) return !scheduleError;
+    if (step === 2) return data.gallery.length >= 2 && data.gallery.length <= 5;
+    return (
+      !infoErrors.name &&
+      !infoErrors.address &&
+      !infoErrors.description &&
+      !scheduleError &&
+      data.gallery.length >= 2 &&
+      data.gallery.length <= 5
+    );
+  };
+  const next = () => {
+    if (valid()) setStep((current) => Math.min(current + 1, LOCATION_STEPS.length - 1));
+  };
+  return (
+    <Modal title="Añadir sede" close={close} wide>
+      <FormStepper steps={LOCATION_STEPS} current={step} className="mb-7" />
+      {step === 0 && (
+        <section>
+          <Field
+            label="Nombre de la sede"
+            name="name"
+            min={2}
+            max={120}
+            required
+            value={data.name}
+            error={infoErrors.name}
+            onChange={(name) => update({ name })}
+          />
+          <Field
+            label="Dirección"
+            name="address"
+            min={5}
+            max={250}
+            required
+            value={data.address}
+            error={infoErrors.address}
+            onChange={(address) => update({ address })}
+          />
+          <Area
+            label="Descripción (opcional)"
+            name="description"
+            max={2000}
+            value={data.description}
+            error={infoErrors.description}
+            onChange={(description) => update({ description })}
+          />
+          <div className="flex justify-end">
+            <PrimaryButton type="button" onClick={next} disabled={!valid()}>
+              Siguiente
+            </PrimaryButton>
+          </div>
+        </section>
+      )}
+      {step === 1 && (
+        <section>
+          <p className="mb-4 text-sm text-muted-foreground">Configura los horarios de atención.</p>
+          {scheduleError && (
+            <p role="alert" className="mb-3 text-xs text-red-600">
+              {scheduleError}
+            </p>
+          )}
+          <div className="space-y-2">
+            {DAYS.map(({ label, value }) => {
+              const schedule = data.schedules.find((item) => item.dayOfWeek === value);
+              return (
+                <div key={label} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-xl border p-3">
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(schedule)}
+                      onChange={(event) =>
+                        update({
+                          schedules: event.target.checked
+                            ? [...data.schedules, { dayOfWeek: value, startsAt: "09:00", endsAt: "18:00" }]
+                            : data.schedules.filter((item) => item.dayOfWeek !== value),
+                        })
+                      }
+                    />
+                    {label}
+                  </label>
+                  <input
+                    type="time"
+                    disabled={!schedule}
+                    value={schedule?.startsAt ?? "09:00"}
+                    onChange={(event) => update({ schedules: data.schedules.map((item) => item.dayOfWeek === value ? { ...item, startsAt: event.target.value } : item) })}
+                    className="rounded-lg border px-2 py-1 disabled:bg-gray-100"
+                  />
+                  <input
+                    type="time"
+                    disabled={!schedule}
+                    value={schedule?.endsAt ?? "18:00"}
+                    onChange={(event) => update({ schedules: data.schedules.map((item) => item.dayOfWeek === value ? { ...item, endsAt: event.target.value } : item) })}
+                    className="rounded-lg border px-2 py-1 disabled:bg-gray-100"
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <WizardNavigation step={step} back={() => setStep(0)} next={next} busy={busy} />
+        </section>
+      )}
+      {step === 2 && (
+        <section className="space-y-4">
+          <FileInput label="Logo (opcional)" file={data.logo} onChange={(logo) => update({ logo })} />
+          <FileInput label="Portada (opcional)" file={data.cover} onChange={(cover) => update({ cover })} />
+          <div>
+            <label className="block text-sm font-medium">Galería (mínimo 2, máximo 5)</label>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              onChange={(event) => update({ gallery: Array.from(event.target.files ?? []).slice(0, 5) })}
+              className="mt-1 block w-full rounded-xl border p-2 text-sm"
+            />
+            <p role={data.gallery.length >= 2 ? undefined : "alert"} className={`mt-1 text-xs ${data.gallery.length >= 2 ? "text-emerald-700" : "text-red-600"}`}>
+              {data.gallery.length} de 5 imágenes seleccionadas.
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+              {data.gallery.map((file) => <img key={`${file.name}-${file.lastModified}`} src={URL.createObjectURL(file)} alt={file.name} className="aspect-square rounded-xl object-cover" />)}
+            </div>
+          </div>
+          <WizardNavigation step={step} back={() => setStep(1)} next={next} busy={busy} disabled={!valid()} />
+        </section>
+      )}
+      {step === 3 && (
+        <section>
+          <div className="rounded-2xl border bg-gray-50 p-5">
+            <h3 className="text-lg font-semibold">{data.name}</h3>
+            <p className="mt-1 text-sm text-gray-600">{data.address}</p>
+            {data.description && <p className="mt-3 text-sm">{data.description}</p>}
+            <p className="mt-3 text-sm text-gray-600">{data.schedules.length} días configurados · {data.gallery.length} imágenes de galería</p>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+              {[...data.gallery, ...(data.logo ? [data.logo] : []), ...(data.cover ? [data.cover] : [])].map((file) => <img key={`${file.name}-${file.lastModified}`} src={URL.createObjectURL(file)} alt={file.name} className="aspect-square rounded-xl object-cover" />)}
+            </div>
+          </div>
+          <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Al finalizar, la sede quedará pendiente de aprobación por el administrador.</p>
+          <WizardNavigation
+            step={step}
+            back={() => setStep(2)}
+            submit={() => void submit(data)}
+            busy={busy}
+            disabled={!valid()}
+          />
+        </section>
+      )}
+    </Modal>
+  );
+}
+
+function WizardNavigation({ step, back, next, submit, busy, disabled = false }: { step: number; back: () => void; next?: () => void; submit?: () => void; busy: boolean; disabled?: boolean }) {
+  return (
+    <div className="mt-6 flex justify-between gap-3 border-t pt-4">
+      <PrimaryButton type="button" variant="secondary" onClick={back}>Atrás</PrimaryButton>
+      {step === LOCATION_STEPS.length - 1 ? (
+        <PrimaryButton type="button" onClick={submit} disabled={busy}>{busy ? "Guardando..." : "Finalizar y solicitar aprobación"}</PrimaryButton>
+      ) : (
+        <PrimaryButton type="button" onClick={next} disabled={busy || disabled}>Siguiente</PrimaryButton>
+      )}
+    </div>
+  );
+}
+
+function FileInput({ label, file, onChange }: { label: string; file: File | null; onChange: (file: File | null) => void }) {
+  return (
+    <label className="block text-sm font-medium">
+      {label}
+      <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => onChange(event.target.files?.[0] ?? null)} className="mt-1 block w-full rounded-xl border p-2 text-sm" />
+      {file && <img src={URL.createObjectURL(file)} alt={file.name} className="mt-3 h-24 w-24 rounded-xl object-cover" />}
+    </label>
   );
 }
 
@@ -558,6 +835,8 @@ function Field({
   max,
   required,
   value,
+  onChange,
+  error,
 }: {
   label: string;
   name: string;
@@ -565,6 +844,8 @@ function Field({
   max: number;
   required: boolean;
   value?: string;
+  onChange?: (value: string) => void;
+  error?: string | null;
 }) {
   const message = `${label} es obligatorio y debe tener entre ${min} y ${max} caracteres.`;
   return (
@@ -576,6 +857,7 @@ function Field({
         minLength={min}
         maxLength={max}
         defaultValue={value}
+        onChange={(event) => onChange?.(event.target.value)}
         onInvalid={(event) => {
           event.currentTarget.setCustomValidity(message);
           event.currentTarget.parentElement?.querySelector("small")?.removeAttribute("hidden");
@@ -584,11 +866,10 @@ function Field({
           event.currentTarget.setCustomValidity("");
           event.currentTarget.parentElement?.querySelector("small")?.setAttribute("hidden", "true");
         }}
-        className="mt-1 w-full rounded-xl border p-2.5"
+        aria-invalid={Boolean(error)}
+        className={`mt-1 w-full rounded-xl border p-2.5 ${error ? "border-red-300" : ""}`}
       />
-      <small hidden className="mt-1 block text-xs text-red-600">
-        {message}
-      </small>
+      <small hidden={!error} className="mt-1 block text-xs text-red-600">{error ?? message}</small>
     </label>
   );
 }
@@ -597,11 +878,15 @@ function Area({
   name,
   max,
   value,
+  onChange,
+  error,
 }: {
   label: string;
   name: string;
   max: number;
   value?: string;
+  onChange?: (value: string) => void;
+  error?: string | null;
 }) {
   return (
     <label className="mb-3 block text-sm">
@@ -610,9 +895,12 @@ function Area({
         name={name}
         maxLength={max}
         defaultValue={value}
+        onChange={(event) => onChange?.(event.target.value)}
         rows={4}
-        className="mt-1 w-full rounded-xl border p-2.5"
+        aria-invalid={Boolean(error)}
+        className={`mt-1 w-full rounded-xl border p-2.5 ${error ? "border-red-300" : ""}`}
       />
+      {error && <small role="alert" className="mt-1 block text-xs text-red-600">{error}</small>}
     </label>
   );
 }

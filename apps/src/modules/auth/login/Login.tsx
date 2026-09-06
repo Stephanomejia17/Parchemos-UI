@@ -22,7 +22,6 @@ export function Login() {
 
   // Aviso tras un registro correcto (GU-01 Esc. 1 y 2).
   const justRegistered = params.get("registrado") === "1";
-  const registeredAsRestaurant = params.get("rol") === "restaurante";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -86,20 +85,6 @@ export function Login() {
           </h2>
         </div>
         <p className="text-muted-foreground text-sm">Inicia sesión para continuar</p>
-
-        {justRegistered && !error && (
-          <div
-            role="status"
-            className="flex gap-2.5 rounded-2xl bg-green-50 px-4 py-3 text-sm text-green-800"
-          >
-            <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
-            <p>
-              {registeredAsRestaurant
-                ? "Cuenta creada y pendiente de aprobación. Inicia sesión para crear tu perfil de negocio."
-                : "Tu cuenta fue creada. Inicia sesión para continuar."}
-            </p>
-          </div>
-        )}
 
         {error && (
           <div

@@ -1,4 +1,4 @@
-import { apiFetch } from "../http/api-client";
+import { apiFetch, apiUpload } from "../http/api-client";
 import type {
   GalleryImage,
   Location,
@@ -61,6 +61,15 @@ export const restaurantService = {
       method: "POST",
       body: { url },
     }),
+
+  uploadLocationImage: (locationId: string, kind: "logo" | "portada" | "galeria", file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiUpload<Location | GalleryImage>(
+      `/restaurantes/sedes/${locationId}/${kind}/upload`,
+      formData,
+    );
+  },
 
   removeGalleryImage: (locationId: string, imageId: string) =>
     apiFetch<void>(`/restaurantes/sedes/${locationId}/galeria/${imageId}`, { method: "DELETE" }),

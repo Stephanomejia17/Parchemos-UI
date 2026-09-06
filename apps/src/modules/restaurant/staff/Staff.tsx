@@ -134,12 +134,12 @@ function StaffManager() {
                 {staff.map((member) => (
                   <tr key={member.id} className="border-t">
                     <td className="px-5 py-4">
-                      <p className="font-medium text-gray-900">{member.user.fullName}</p>
-                      <p className="text-xs text-gray-500">{member.user.email}</p>
+                      <p className="font-medium text-gray-900">{member.fullName}</p>
+                      <p className="text-xs text-gray-500">{member.email}</p>
                     </td>
                     <td className="px-5 py-4">{member.location.name}</td>
                     <td className="px-5 py-4">
-                      <Status status={member.user.status} />
+                      <Status status={member.status} />
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex justify-end gap-2">
@@ -148,14 +148,14 @@ function StaffManager() {
                         </IconAction>
                         <IconAction
                           label={
-                            member.user.status === "activa"
+                            member.status === "activa"
                               ? "Deshabilitar acceso"
                               : "Habilitar acceso"
                           }
                           disabled={busy}
-                          onClick={() => void setEnabled(member, member.user.status !== "activa")}
+                          onClick={() => void setEnabled(member, member.status !== "activa")}
                         >
-                          {member.user.status === "activa" ? (
+                          {member.status === "activa" ? (
                             <Power className="h-4 w-4" />
                           ) : (
                             <RotateCcw className="h-4 w-4" />
@@ -308,9 +308,9 @@ function DetailModal({
             name="fullName"
             minLength={2}
             required
-            defaultValue={member.user.fullName}
+            defaultValue={member.fullName}
           />
-          <Input label="Teléfono" name="phone" defaultValue={member.user.phone ?? ""} />
+          <Input label="Teléfono" name="phone" defaultValue={member.phone ?? ""} />
           <PrimaryButton type="submit" disabled={busy}>
             Guardar cambios
           </PrimaryButton>
@@ -318,11 +318,11 @@ function DetailModal({
       ) : (
         <>
           <dl className="space-y-3 text-sm">
-            <Row label="Nombre" value={member.user.fullName} />
-            <Row label="Correo" value={member.user.email} />
-            <Row label="Teléfono" value={member.user.phone ?? "No registrado"} />
+            <Row label="Nombre" value={member.fullName} />
+            <Row label="Correo" value={member.email} />
+            <Row label="Teléfono" value={member.phone ?? "No registrado"} />
             <Row label="Sede asignada" value={member.location.name} />
-            <Row label="Estado" value={<Status status={member.user.status} />} />
+            <Row label="Estado" value={<Status status={member.status} />} />
             <Row label="Fecha de creación" value={dateFormat.format(new Date(member.createdAt))} />
           </dl>
           <div className="mt-5 flex gap-2">

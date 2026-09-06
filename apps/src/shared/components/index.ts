@@ -26,6 +26,7 @@ export {
   ChoiceCardGroup,
   CheckboxField,
   RequirementList,
+  Select,
 } from "./forms";
 export type {
   FormStep,
@@ -34,4 +35,5 @@ export type {
   ComboBoxOption,
   ChoiceCardOption,
   Requirement,
+  SelectOption,
 } from "./forms";

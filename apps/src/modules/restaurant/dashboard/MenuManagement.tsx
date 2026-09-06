@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
-import { Edit3, ImagePlus, LayoutGrid, List, Loader2, Plus, Star, Trash2, X } from "lucide-react";
+import { Edit3, ImagePlus, LayoutGrid, List, Loader2, Plus, Power, Star, Trash2, X } from "lucide-react";
 import { ApiError } from "@/shared/auth";
 import { menuService, type Category, type Product, type Status } from "@/shared/services";
-import { PrimaryButton, TemporaryMessage } from "@/shared/components";
+import { PrimaryButton, Select, TemporaryMessage } from "@/shared/components";
 import type { RestaurantSummary } from "@/shared/types/restaurant";
+import { formatCop, parseCop } from "@/shared/utils/currency";
 
 // Fuente única para los filtros, formularios y títulos de cada sección.
 const CATEGORIES: { value: Category; label: string }[] = [
@@ -20,9 +21,16 @@ const emptyForm = {
   name: "",
   description: "",
   category: "platos_fuertes" as Category,
-  price: "",
+  price: null as number | null,
   status: "activo" as Status,
 };
+
+const CATEGORY_OPTIONS = [{ value: "", label: "Todas" }, ...CATEGORIES];
+const STATUS_OPTIONS = [
+  { value: "", label: "Todos" },
+  { value: "activo", label: "Activos" },
+  { value: "inactivo", label: "Inactivos" },
+];
 
 // Pantalla principal de administración del menú.
 export function MenuManagement({ restaurantId: initialRestaurantId }: { restaurantId?: string }) {
@@ -50,6 +58,9 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
   const selectedRestaurant = restaurants.find((item) => item.id === restaurantId);
   const formTitle = editing ? "Editar producto" : "Nuevo producto";
   const hasRestaurants = restaurants.length > 0;
+  const formValid = form.name.trim().length >= 1 && form.name.trim().length <= 160 &&
+    form.price !== null && Number.isFinite(form.price) && form.price > 0 &&
+    form.description.length <= 2000 && Boolean(form.category) && Boolean(form.status);
   const productsByCategory = CATEGORIES.map((category) => ({
     ...category,
     products: products.filter((product) => product.category === category.value),
@@ -127,7 +138,7 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
       name: product.name,
       description: product.description ?? "",
       category: product.category,
-      price: String(product.price),
+      price: product.price,
       status: product.status,
     });
     setImage(null);
@@ -161,12 +172,12 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
     event.preventDefault();
     if (!restaurantId || saving) return;
     const name = form.name.trim();
-    const price = Number(form.price);
+    const price = form.price;
     if (!name) {
       setError("El nombre del producto es obligatorio.");
       return;
     }
-    if (!form.price.trim() || !Number.isFinite(price) || price <= 0) {
+    if (price === null || !Number.isFinite(price) || price <= 0) {
       setError("El precio es obligatorio y debe ser mayor que 0.");
       return;
     }
@@ -272,46 +283,28 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
             {!initialRestaurantId && (
               <label className="flex-1 flex flex-col gap-1">
                 <span className="text-xs font-semibold text-gray-600">Restaurante</span>
-                <select
+                <Select
                   value={restaurantId}
                   onChange={(event) => setRestaurantId(event.target.value)}
-                  className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm"
-                >
-                  <option value="">Selecciona un restaurante</option>
-                  {restaurants.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.businessName}
-                    </option>
-                  ))}
-                </select>
+                  options={[{ value: "", label: "Selecciona un restaurante" }, ...restaurants.map((item) => ({ value: item.id, label: item.businessName }))]}
+                />
               </label>
             )}
             <label className="flex-1 flex flex-col gap-1">
               <span className="text-xs font-semibold text-gray-600">Categoría</span>
-              <select
+              <Select
                 value={categoryFilter}
                 onChange={(event) => setCategoryFilter(event.target.value)}
-                className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm"
-              >
-                <option value="">Todas</option>
-                {CATEGORIES.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
+                options={CATEGORY_OPTIONS}
+              />
             </label>
             <label className="flex-1 flex flex-col gap-1">
               <span className="text-xs font-semibold text-gray-600">Estado</span>
-              <select
+              <Select
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value as "" | Status)}
-                className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm"
-              >
-                <option value="">Todos</option>
-                <option value="activo">Activos</option>
-                <option value="inactivo">Inactivos</option>
-              </select>
+                options={STATUS_OPTIONS}
+              />
             </label>
           </div>
 
@@ -454,7 +447,7 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="flex flex-col gap-1.5">
                   <span className="text-xs font-semibold text-gray-600">Categoría</span>
-                  <select
+                  <Select
                     value={form.category}
                     onChange={(event) =>
                       setForm((current) => ({
@@ -462,45 +455,38 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
                         category: event.target.value as Category,
                       }))
                     }
-                    className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm"
-                  >
-                    {CATEGORIES.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </select>
+                    options={CATEGORIES}
+                  />
                 </label>
                 <label className="flex flex-col gap-1.5">
                   <span className="text-xs font-semibold text-gray-600">Precio</span>
                   <input
                     required
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    value={form.price}
+                    inputMode="numeric"
+                    value={formatCop(form.price)}
                     onChange={(event) =>
-                      setForm((current) => ({ ...current, price: event.target.value }))
+                      setForm((current) => ({ ...current, price: parseCop(event.target.value) }))
                     }
-                    className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm"
+                    placeholder="$ 0"
+                    className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900"
                   />
                 </label>
               </div>
               <label className="flex flex-col gap-1.5">
                 <span className="text-xs font-semibold text-gray-600">Estado</span>
-                <select
+                <Select
                   value={form.status}
                   onChange={(event) =>
                     setForm((current) => ({ ...current, status: event.target.value as Status }))
                   }
-                  className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm"
-                >
-                  <option value="activo">Activo</option>
-                  <option value="inactivo">Inactivo</option>
-                </select>
+                  options={[{ value: "activo", label: "Activo" }, { value: "inactivo", label: "Inactivo" }]}
+                />
               </label>
               <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-semibold text-gray-600">Foto del producto</span>
+                <span className="inline-flex items-center gap-2 text-xs font-semibold text-gray-700">
+                  <ImagePlus className="h-4 w-4 text-primary" />
+                  Cambiar imagen del plato
+                </span>
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
@@ -512,7 +498,10 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
                 </span>
               </label>
               {(imagePreview || editing?.imageUrl) && (
-                <div className="overflow-hidden rounded-xl border bg-orange-50">
+                <div className="overflow-hidden rounded-xl border border-orange-200 bg-orange-50">
+                  <p className="px-3 pt-2 text-xs font-semibold text-gray-700">
+                    {imagePreview ? "Nueva imagen" : "Imagen actual"}
+                  </p>
                   <img
                     src={imagePreview || editing?.imageUrl || ""}
                     alt="Vista previa del producto"
@@ -533,7 +522,7 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
                 </button>
                 <PrimaryButton
                   type="submit"
-                  disabled={saving || !form.name.trim() || Number(form.price) <= 0}
+                  disabled={saving || !formValid}
                 >
                   {saving ? (
                     <span className="flex items-center gap-2">
@@ -604,7 +593,7 @@ function ProductCard({
           <h3 className="truncate font-bold text-gray-900">{product.name}</h3>
           <p className="mt-1 text-xs font-semibold text-primary">
             {CATEGORIES.find((item) => item.value === product.category)?.label} · $
-            {product.price.toLocaleString("es-CO")}
+            {formatCop(product.price)}
           </p>
           <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
             {product.description || "Sin descripción"}
@@ -629,6 +618,7 @@ function ProductCard({
             onClick={onRemove}
             className="inline-flex items-center gap-1.5 rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-700"
           >
+            <Power className="h-3.5 w-3.5" />
             Desactivar
           </button>
         ) : (
@@ -636,6 +626,7 @@ function ProductCard({
             onClick={() => onReactivate(product)}
             className="inline-flex items-center gap-1.5 rounded-xl bg-green-50 px-3 py-2 text-xs font-semibold text-green-700"
           >
+            <Power className="h-3.5 w-3.5" />
             Activar
           </button>
         )}
@@ -674,7 +665,7 @@ function ProductRow({
         </p>
       </div>
       <span className="hidden text-xs font-semibold text-primary sm:block">
-        ${product.price.toLocaleString("es-CO")}
+        {formatCop(product.price)}
       </span>
       <button
         type="button"

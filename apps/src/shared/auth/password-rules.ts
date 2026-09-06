@@ -29,10 +29,11 @@ export function evaluatePassword(value: string): { checks: PasswordCheck[]; vali
 export function roleHomePath(role: UserRole): string {
   switch (role) {
     case "administrador":
-      return "/admin/restaurants";
+      return "/approvals";
     case "restaurante":
-    case "personal_restaurante":
       return "/profile/dashboard";
+    case "personal_restaurante":
+      return "/workroom";
     case "repartidor":
       return "/orders";
     case "comensal":

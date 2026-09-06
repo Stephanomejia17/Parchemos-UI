@@ -41,14 +41,10 @@ export type StaffAccountStatus = "activa" | "deshabilitada";
 
 export interface StaffMember {
   id: string;
-  user: {
-    id: string;
-    fullName: string;
-    email: string;
-    phone: string | null;
-    status: StaffAccountStatus;
-    createdAt: string;
-  };
+  fullName: string;
+  email: string;
+  phone: string | null;
+  status: StaffAccountStatus;
   location: { id: string; name: string; restaurantId: string };
   createdAt: string;
 }

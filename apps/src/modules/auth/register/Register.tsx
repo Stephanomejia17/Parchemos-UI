@@ -270,7 +270,7 @@ export function Register() {
               icon={UserRound}
             >
               <TextField
-                label={role === "restaurante" ? "Nombre del restaurante" : "Nombre completo"}
+                label="Nombre completo"
                 autoComplete="name"
                 icon={User}
                 placeholder={role === "restaurante" ? "La Paloma Gastrobar" : "Tu nombre"}
