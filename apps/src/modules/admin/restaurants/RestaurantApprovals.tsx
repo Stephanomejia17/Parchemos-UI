@@ -237,17 +237,19 @@ export function RestaurantApprovals() {
                     </PrimaryButton>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRejectingId((current) => (current === location.id ? null : location.id));
-                      setRejectError((prev) => ({ ...prev, [location.id]: "" }));
-                    }}
-                    disabled={isBusy}
-                    className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[12px] font-medium text-gray-700 disabled:opacity-50"
-                  >
-                    Rechazar
-                  </button>
+                  {isPending && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRejectingId((current) => (current === location.id ? null : location.id));
+                        setRejectError((prev) => ({ ...prev, [location.id]: "" }));
+                      }}
+                      disabled={isBusy}
+                      className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[12px] font-medium text-gray-700 disabled:opacity-50"
+                    >
+                      Rechazar
+                    </button>
+                  )}
                 </div>
               </SurfaceCard>
             );
