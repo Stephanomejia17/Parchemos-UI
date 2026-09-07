@@ -15,8 +15,6 @@ function resolveBaseUrl(): string {
   );
 }
 
-const BASE_URL = resolveBaseUrl();
-
 /**
  * El access token vive solo en memoria.
  *
@@ -47,7 +45,7 @@ async function raw(path: string, options: RequestOptions = {}): Promise<Response
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
-  return fetch(`${BASE_URL}${path}`, {
+  return fetch(`${resolveBaseUrl()}${path}`, {
     method: options.method ?? "GET",
     headers,
     // Imprescindible para que viaje la cookie del refresh token.
