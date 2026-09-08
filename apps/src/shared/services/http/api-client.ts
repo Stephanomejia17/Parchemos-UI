@@ -1,7 +1,7 @@
 import { ApiError } from "../../auth/types";
 
 function resolveBaseUrl(): string {
-  const configured = process.env.API_URL;
+  const configured = process.env.NEXT_PUBLIC_API_URL;
   if (configured) return configured.replace(/\/$/, "");
 
   if (process.env.NODE_ENV !== "production") {
@@ -44,7 +44,7 @@ async function raw(path: string, options: RequestOptions = {}): Promise<Response
   const headers: Record<string, string> = {};
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
-    
+
   return fetch(`${resolveBaseUrl()}${path}`, {
     method: options.method ?? "GET",
     headers,
