@@ -1,7 +1,7 @@
 import { ApiError } from "../../auth/types";
 
 function resolveBaseUrl(): string {
-  const configured = process.env.NEXT_PUBLIC_API_URL;
+  const configured = process.env.API_URL;
   if (configured) return configured.replace(/\/$/, "");
 
   if (process.env.NODE_ENV !== "production") {
@@ -11,7 +11,7 @@ function resolveBaseUrl(): string {
   // En producción no hay fallback silencioso: apuntar a localhost por defecto
   // dejaría la app rota sin que nadie lo note hasta que un usuario falle.
   throw new Error(
-    "NEXT_PUBLIC_API_URL no está definida. Configúrala en las variables de entorno del ambiente de despliegue.",
+    "API_URL no está definida. Configúrala en las variables de entorno del ambiente de despliegue.",
   );
 }
 
