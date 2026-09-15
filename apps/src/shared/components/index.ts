@@ -12,6 +12,9 @@ export type { HeaderProps } from "./Header";
 export type { DesktopHeaderProps, DesktopBreadcrumb } from "./DesktopHeader";
 export type { TemporaryMessageType } from "./TemporaryMessage";
 export { STATUS_COLORS, STATUS_LABELS } from "./status";
+export { SquareFileInput } from "./SquareFileInput";
+export { GalleryAddTile, GalleryThumb } from "./SquareFileInput";
+export type { GalleryFile } from "./SquareFileInput";
 
 // Primitivas de formulario reutilizables (registro, perfil, configuracion...).
 export {
