@@ -150,9 +150,7 @@ function StaffManager() {
                         </IconAction>
                         <IconAction
                           label={
-                            member.status === "activa"
-                              ? "Deshabilitar acceso"
-                              : "Habilitar acceso"
+                            member.status === "activa" ? "Deshabilitar acceso" : "Habilitar acceso"
                           }
                           disabled={busy}
                           onClick={() => void setEnabled(member, member.status !== "activa")}
@@ -215,6 +213,8 @@ function CreateModal({
     restaurants
       .find((restaurant) => restaurant.id === restaurantId)
       ?.locations.filter((location) => location.status === "activa") ?? [];
+  const noLocationsForBrand = restaurantId !== "" && locations.length === 0;
+
   return (
     <Modal title="Crear cuenta de personal" close={close}>
       <form onSubmit={submit} className="space-y-3">
@@ -223,7 +223,7 @@ function CreateModal({
         <Input label="Teléfono (opcional)" name="phone" />
         <label className="block text-sm font-medium">
           <span className="inline-flex items-center gap-1">
-            Restaurante
+            Marca
             <span className="group relative inline-flex">
               <span className="cursor-help text-gray-400">ⓘ</span>
               <span
@@ -232,7 +232,7 @@ function CreateModal({
                    rounded-lg bg-gray-900 px-2.5 py-1.5 text-xs font-normal text-white
                    opacity-0 transition-opacity duration-150 group-hover:opacity-100"
               >
-                Solo se mostrarán los restaurantes activos
+                Solo se mostrarán las marcas activas
               </span>
             </span>
           </span>
@@ -243,7 +243,7 @@ function CreateModal({
             className="mt-1 w-full rounded-xl border p-2.5 font-normal"
           >
             <option value="" disabled>
-              Selecciona un restaurante
+              Selecciona una marca
             </option>
             {restaurants.map((restaurant) => (
               <option key={restaurant.id} value={restaurant.id}>
@@ -252,10 +252,19 @@ function CreateModal({
             ))}
           </select>
         </label>
-        <label className="block text-sm font-medium">
-          Sede
-          <SelectLocation key={restaurantId} locations={locations} disabled={!restaurantId} />
-        </label>
+
+        {noLocationsForBrand ? (
+          <p className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-800">
+            <AlertCircle className="mr-1 inline h-3.5 w-3.5" />
+            Esta marca no tiene sedes activas. Un administrador revisará tu solicitud y la aprobará/rechazará
+          </p>
+        ) : (
+          <label className="block text-sm font-medium">
+            Sede
+            <SelectLocation key={restaurantId} locations={locations} disabled={!restaurantId} />
+          </label>
+        )}
+
         <Input
           label="Contraseña inicial"
           name="initialPassword"
