@@ -5,9 +5,13 @@ import { useRouter } from "next/navigation";
 import { Building2, Loader2, MapPin, Plus, Send, Store, Trash2, X } from "lucide-react";
 import { ApiError, RequireAuth } from "@/shared/auth";
 import { restaurantService } from "@/shared/services";
+import type { GalleryFile } from "@/shared/components";
 import {
   FormStepper,
+  GalleryAddTile,
+  GalleryThumb,
   PrimaryButton,
+  SquareFileInput,
   SurfaceCard,
   TemporaryMessage,
   type FormStep,
@@ -55,7 +59,7 @@ interface LocationWizardData {
   schedules: Schedule[];
   logo: File | null;
   cover: File | null;
-  gallery: File[];
+  gallery: GalleryFile[];
 }
 
 export function RestaurantLocations() {
@@ -140,9 +144,10 @@ function Manager() {
         throw new Error("No se pudieron guardar los horarios de la sede.");
       }
       if (data.logo) await restaurantService.uploadLocationImage(created.id, "logo", data.logo);
-      if (data.cover) await restaurantService.uploadLocationImage(created.id, "portada", data.cover);
-      for (const image of data.gallery) {
-        await restaurantService.uploadLocationImage(created.id, "galeria", image);
+      if (data.cover)
+        await restaurantService.uploadLocationImage(created.id, "portada", data.cover);
+      for (const { file } of data.gallery) {
+        await restaurantService.uploadLocationImage(created.id, "galeria", file);
       }
       await restaurantService.requestLocationApproval(created.id);
       setRestaurantId(null);
@@ -257,11 +262,7 @@ function Manager() {
           </Modal>
         )}
         {restaurantId && (
-          <LocationWizard
-            busy={busy}
-            close={() => setRestaurantId(null)}
-            submit={finishLocation}
-          />
+          <LocationWizard busy={busy} close={() => setRestaurantId(null)} submit={finishLocation} />
         )}
         {location && (
           <Profile location={location} busy={busy} close={() => setLocation(null)} run={run} />
@@ -290,7 +291,8 @@ function LocationWizard({
     cover: null,
     gallery: [],
   });
-  const update = (patch: Partial<LocationWizardData>) => setData((current) => ({ ...current, ...patch }));
+  const update = (patch: Partial<LocationWizardData>) =>
+    setData((current) => ({ ...current, ...patch }));
   const infoErrors = {
     name:
       data.name.trim().length === 0
@@ -387,10 +389,36 @@ function LocationWizard({
             </p>
           )}
           <div className="space-y-2">
+            <div className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-xl p-3">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={data.schedules.length === DAYS.length}
+                  onChange={(event) =>
+                    update({
+                      schedules: event.target.checked
+                        ? DAYS.map(({ value }) => {
+                            const existing = data.schedules.find(
+                              (item) => item.dayOfWeek === value,
+                            );
+                            return (
+                              existing ?? { dayOfWeek: value, startsAt: "09:00", endsAt: "18:00" }
+                            );
+                          })
+                        : [],
+                    })
+                  }
+                />
+                Seleccionar todos
+              </label>
+            </div>
             {DAYS.map(({ label, value }) => {
               const schedule = data.schedules.find((item) => item.dayOfWeek === value);
               return (
-                <div key={label} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-xl border p-3">
+                <div
+                  key={label}
+                  className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-xl border p-3"
+                >
                   <label className="flex items-center gap-2 text-sm font-medium">
                     <input
                       type="checkbox"
@@ -398,7 +426,10 @@ function LocationWizard({
                       onChange={(event) =>
                         update({
                           schedules: event.target.checked
-                            ? [...data.schedules, { dayOfWeek: value, startsAt: "09:00", endsAt: "18:00" }]
+                            ? [
+                                ...data.schedules,
+                                { dayOfWeek: value, startsAt: "09:00", endsAt: "18:00" },
+                              ]
                             : data.schedules.filter((item) => item.dayOfWeek !== value),
                         })
                       }
@@ -409,77 +440,92 @@ function LocationWizard({
                     type="time"
                     disabled={!schedule}
                     value={schedule?.startsAt ?? "09:00"}
-                    onChange={(event) => update({ schedules: data.schedules.map((item) => item.dayOfWeek === value ? { ...item, startsAt: event.target.value } : item) })}
+                    onChange={(event) =>
+                      update({
+                        schedules: data.schedules.map((item) =>
+                          item.dayOfWeek === value
+                            ? { ...item, startsAt: event.target.value }
+                            : item,
+                        ),
+                      })
+                    }
                     className="rounded-lg border px-2 py-1 disabled:bg-gray-100"
                   />
                   <input
                     type="time"
                     disabled={!schedule}
                     value={schedule?.endsAt ?? "18:00"}
-                    onChange={(event) => update({ schedules: data.schedules.map((item) => item.dayOfWeek === value ? { ...item, endsAt: event.target.value } : item) })}
+                    onChange={(event) =>
+                      update({
+                        schedules: data.schedules.map((item) =>
+                          item.dayOfWeek === value ? { ...item, endsAt: event.target.value } : item,
+                        ),
+                      })
+                    }
                     className="rounded-lg border px-2 py-1 disabled:bg-gray-100"
                   />
                 </div>
               );
             })}
           </div>
-          <WizardNavigation step={step} back={() => setStep(0)} next={next} busy={busy} disabled={!valid()} />
+          <WizardNavigation
+            step={step}
+            back={() => setStep(0)}
+            next={next}
+            busy={busy}
+            disabled={!valid()}
+          />
         </section>
       )}
 
       {step === 2 && (
-        <section className="space-y-4">
-          <FileInput
-            label="Logo (opcional)"
-            file={data.logo}
-            onChange={(logo) => update({ logo })}
-          />
-          <FileInput
-            label="Portada (opcional)"
-            file={data.cover}
-            onChange={(cover) => update({ cover })}
-          />
+        <section className="space-y-5">
+          <div className="grid grid-cols-2 gap-4">
+            <SquareFileInput
+              label="Logo (opcional)"
+              file={data.logo}
+              onChange={(logo) => update({ logo })}
+            />
+            <SquareFileInput
+              label="Portada (opcional)"
+              file={data.cover}
+              onChange={(cover) => update({ cover })}
+            />
+          </div>
+
           <div>
             <label className="block text-sm font-medium">Galería (mínimo 2, máximo 5)</label>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              multiple
-              disabled={data.gallery.length >= 5}
-              onChange={(e) => {
-                const files = Array.from(e.target.files ?? []);
-                const room = 5 - data.gallery.length;
-                update({ gallery: [...data.gallery, ...files.slice(0, room)] });
-                e.target.value = "";
-              }}
-              className="mt-1 block w-full rounded-xl border p-2 text-sm disabled:bg-gray-100"
-            />
-            <p className={`mt-1 text-xs ${data.gallery.length >= 2 ? "text-emerald-700" : "text-red-600"}`}>
+            <p
+              className={`mt-1 text-xs ${data.gallery.length >= 2 ? "text-emerald-700" : "text-red-600"}`}
+            >
               {data.gallery.length} de 5 imágenes seleccionadas.
             </p>
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
-              {data.gallery.map((file, i) => (
-                <div key={`${file.name}-${file.lastModified}`} className="relative">
-                  <img
-                    src={URL.createObjectURL(file)}
-                    alt={file.name}
-                    className="aspect-square rounded-xl object-cover"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => update({ gallery: data.gallery.filter((_, idx) => idx !== i) })}
-                    className="absolute right-1 top-1 rounded bg-white p-1"
-                  >
-                    <X className="h-4 w-4 text-red-600" />
-                  </button>
-                </div>
+            <div className="mt-2 grid grid-cols-3 gap-3 sm:grid-cols-5">
+              {data.gallery.map(({ id, file }) => (
+                <GalleryThumb
+                  key={id}
+                  src={URL.createObjectURL(file)}
+                  onRemove={() =>
+                    update({ gallery: data.gallery.filter((item) => item.id !== id) })
+                  }
+                />
               ))}
+              <GalleryAddTile
+                remaining={5 - data.gallery.length}
+                onAdd={(files) => update({ gallery: [...data.gallery, ...files] })}
+              />
             </div>
           </div>
-          <WizardNavigation step={step} back={() => setStep(1)} next={next} busy={busy} disabled={!valid()} />
+
+          <WizardNavigation
+            step={step}
+            back={() => setStep(1)}
+            next={next}
+            busy={busy}
+            disabled={!valid()}
+          />
         </section>
       )}
-
 
       {step === 3 && (
         <section>
@@ -487,12 +533,39 @@ function LocationWizard({
             <h3 className="text-lg font-semibold">{data.name}</h3>
             <p className="mt-1 text-sm text-gray-600">{data.address}</p>
             {data.description && <p className="mt-3 text-sm">{data.description}</p>}
-            <p className="mt-3 text-sm text-gray-600">{data.schedules.length} días configurados · {data.gallery.length} imágenes de galería</p>
+            <p className="mt-3 text-sm text-gray-600">
+              {data.schedules.length} días configurados · {data.gallery.length} imágenes de galería
+            </p>
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
-              {[...data.gallery, ...(data.logo ? [data.logo] : []), ...(data.cover ? [data.cover] : [])].map((file) => <img key={`${file.name}-${file.lastModified}`} src={URL.createObjectURL(file)} alt={file.name} className="aspect-square rounded-xl object-cover" />)}
+              {data.gallery.map(({ id, file }) => (
+                <img
+                  key={id}
+                  src={URL.createObjectURL(file)}
+                  alt={file.name}
+                  className="aspect-square rounded-xl object-cover"
+                />
+              ))}
+              {data.logo && (
+                <img
+                  key="logo-preview"
+                  src={URL.createObjectURL(data.logo)}
+                  alt={data.logo.name}
+                  className="aspect-square rounded-xl object-cover"
+                />
+              )}
+              {data.cover && (
+                <img
+                  key="cover-preview"
+                  src={URL.createObjectURL(data.cover)}
+                  alt={data.cover.name}
+                  className="aspect-square rounded-xl object-cover"
+                />
+              )}
             </div>
           </div>
-          <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Al finalizar, la sede quedará pendiente de aprobación por el administrador.</p>
+          <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+            Al finalizar, la sede quedará pendiente de aprobación por el administrador.
+          </p>
           <WizardNavigation
             step={step}
             back={() => setStep(2)}
@@ -506,26 +579,36 @@ function LocationWizard({
   );
 }
 
-function WizardNavigation({ step, back, next, submit, busy, disabled = false }: { step: number; back: () => void; next?: () => void; submit?: () => void; busy: boolean; disabled?: boolean }) {
+function WizardNavigation({
+  step,
+  back,
+  next,
+  submit,
+  busy,
+  disabled = false,
+}: {
+  step: number;
+  back: () => void;
+  next?: () => void;
+  submit?: () => void;
+  busy: boolean;
+  disabled?: boolean;
+}) {
   return (
     <div className="mt-6 flex justify-between gap-3 border-t pt-4">
-      <PrimaryButton type="button" variant="secondary" onClick={back}>Atrás</PrimaryButton>
+      <PrimaryButton type="button" variant="secondary" onClick={back}>
+        Atrás
+      </PrimaryButton>
       {step === LOCATION_STEPS.length - 1 ? (
-        <PrimaryButton type="button" onClick={submit} disabled={busy}>{busy ? "Guardando..." : "Finalizar y solicitar aprobación"}</PrimaryButton>
+        <PrimaryButton type="button" onClick={submit} disabled={busy}>
+          {busy ? "Guardando..." : "Finalizar y solicitar aprobación"}
+        </PrimaryButton>
       ) : (
-        <PrimaryButton type="button" onClick={next} disabled={busy || disabled}>Siguiente</PrimaryButton>
+        <PrimaryButton type="button" onClick={next} disabled={busy || disabled}>
+          Siguiente
+        </PrimaryButton>
       )}
     </div>
-  );
-}
-
-function FileInput({ label, file, onChange }: { label: string; file: File | null; onChange: (file: File | null) => void }) {
-  return (
-    <label className="block text-sm font-medium">
-      {label}
-      <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => onChange(event.target.files?.[0] ?? null)} className="mt-1 block w-full rounded-xl border p-2 text-sm" />
-      {file && <img src={URL.createObjectURL(file)} alt={file.name} className="mt-3 h-24 w-24 rounded-xl object-cover" />}
-    </label>
   );
 }
 
@@ -550,7 +633,7 @@ function Profile({
     removedImageIds: [] as string[],
     logoFile: null as File | null,
     coverFile: null as File | null,
-    newGalleryFiles: [] as File[],
+    newGalleryFiles: [] as GalleryFile[],
   });
   const [requestSuccess, setRequestSuccess] = useState(false);
 
@@ -625,7 +708,7 @@ function Profile({
       for (const id of draft.removedImageIds) {
         await restaurantService.removeGalleryImage(location.id, id);
       }
-      for (const file of draft.newGalleryFiles) {
+      for (const { file } of draft.newGalleryFiles) {
         await restaurantService.uploadLocationImage(location.id, "galeria", file);
       }
       if (location.status !== "activa") {
@@ -641,35 +724,78 @@ function Profile({
       {step === 0 && (
         <section>
           <Field
-            label="Nombre" name="name" min={2} max={120} required
-            value={draft.name} error={infoErrors.name}
+            label="Nombre"
+            name="name"
+            min={2}
+            max={120}
+            required
+            value={draft.name}
+            error={infoErrors.name}
             onChange={(name) => update({ name })}
           />
           <Field
-            label="Dirección" name="address" min={5} max={250} required
-            value={draft.address} error={infoErrors.address}
+            label="Dirección"
+            name="address"
+            min={5}
+            max={250}
+            required
+            value={draft.address}
+            error={infoErrors.address}
             onChange={(address) => update({ address })}
           />
           <Area
-            label="Descripción (opcional)" name="description" max={2000}
-            value={draft.description} error={infoErrors.description}
+            label="Descripción (opcional)"
+            name="description"
+            max={2000}
+            value={draft.description}
+            error={infoErrors.description}
             onChange={(description) => update({ description })}
           />
           <div className="flex justify-end">
-            <PrimaryButton type="button" onClick={next} disabled={!valid()}>Siguiente</PrimaryButton>
+            <PrimaryButton type="button" onClick={next} disabled={!valid()}>
+              Siguiente
+            </PrimaryButton>
           </div>
         </section>
       )}
       {step === 1 && (
         <section>
           {scheduleError && (
-            <p role="alert" className="mb-3 text-xs text-red-600">{scheduleError}</p>
+            <p role="alert" className="mb-3 text-xs text-red-600">
+              {scheduleError}
+            </p>
           )}
           <div className="space-y-2">
+            <div className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-xl p-3">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={draft.schedules.length === DAYS.length}
+                  onChange={(e) =>
+                    update({
+                      schedules: e.target.checked
+                        ? DAYS.map(({ value }) => {
+                            const existing = draft.schedules.find(
+                              (item) => item.dayOfWeek === value,
+                            );
+                            return (
+                              existing ?? { dayOfWeek: value, startsAt: "09:00", endsAt: "18:00" }
+                            );
+                          })
+                        : [],
+                    })
+                  }
+                />
+                Seleccionar todos
+              </label>
+            </div>
             {DAYS.map(({ label, value }) => {
               const schedule = draft.schedules.find((item) => item.dayOfWeek === value);
               return (
-                <div key={label} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-xl border p-3">
+                <div
+                  key={label}
+                  className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-xl border p-3"
+                >
                   <label className="flex items-center gap-2 text-sm font-medium">
                     <input
                       type="checkbox"
@@ -677,7 +803,10 @@ function Profile({
                       onChange={(e) =>
                         update({
                           schedules: e.target.checked
-                            ? [...draft.schedules, { dayOfWeek: value, startsAt: "09:00", endsAt: "18:00" }]
+                            ? [
+                                ...draft.schedules,
+                                { dayOfWeek: value, startsAt: "09:00", endsAt: "18:00" },
+                              ]
                             : draft.schedules.filter((item) => item.dayOfWeek !== value),
                         })
                       }
@@ -685,13 +814,29 @@ function Profile({
                     {label}
                   </label>
                   <input
-                    type="time" disabled={!schedule} value={schedule?.startsAt ?? "09:00"}
-                    onChange={(e) => update({ schedules: draft.schedules.map((item) => item.dayOfWeek === value ? { ...item, startsAt: e.target.value } : item) })}
+                    type="time"
+                    disabled={!schedule}
+                    value={schedule?.startsAt ?? "09:00"}
+                    onChange={(e) =>
+                      update({
+                        schedules: draft.schedules.map((item) =>
+                          item.dayOfWeek === value ? { ...item, startsAt: e.target.value } : item,
+                        ),
+                      })
+                    }
                     className="rounded-lg border px-2 py-1 disabled:bg-gray-100"
                   />
                   <input
-                    type="time" disabled={!schedule} value={schedule?.endsAt ?? "18:00"}
-                    onChange={(e) => update({ schedules: draft.schedules.map((item) => item.dayOfWeek === value ? { ...item, endsAt: e.target.value } : item) })}
+                    type="time"
+                    disabled={!schedule}
+                    value={schedule?.endsAt ?? "18:00"}
+                    onChange={(e) =>
+                      update({
+                        schedules: draft.schedules.map((item) =>
+                          item.dayOfWeek === value ? { ...item, endsAt: e.target.value } : item,
+                        ),
+                      })
+                    }
                     className="rounded-lg border px-2 py-1 disabled:bg-gray-100"
                   />
                 </div>
@@ -702,79 +847,71 @@ function Profile({
         </section>
       )}
 
-
       {step === 2 && (
-        <section className="space-y-4">
-          <FileInput
-            label="Logo (opcional)"
-            file={draft.logoFile}
-            onChange={(logoFile) => update({ logoFile })}
-          />
-          <FileInput
-            label="Portada (opcional)"
-            file={draft.coverFile}
-            onChange={(coverFile) => update({ coverFile })}
-          />
+        <section className="space-y-5">
+          <div className="grid grid-cols-2 gap-4">
+            <SquareFileInput
+              label="Logo (opcional)"
+              file={draft.logoFile}
+              existingUrl={location.logoUrl ?? undefined}
+              onChange={(logoFile) => update({ logoFile })}
+            />
+            <SquareFileInput
+              label="Portada (opcional)"
+              file={draft.coverFile}
+              existingUrl={location.coverUrl ?? undefined}
+              onChange={(coverFile) => update({ coverFile })}
+            />
+          </div>
+
           <div>
             <label className="block text-sm font-medium">Galería (mínimo 2, máximo 5)</label>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              multiple
-              disabled={visibleGalleryCount >= 5}
-              onChange={(e) => {
-                const files = Array.from(e.target.files ?? []);
-                const room = 5 - visibleGalleryCount;
-                update({ newGalleryFiles: [...draft.newGalleryFiles, ...files.slice(0, room)] });
-                e.target.value = "";
-              }}
-              className="mt-1 block w-full rounded-xl border p-2 text-sm disabled:bg-gray-100"
-            />
-            <p className={`mt-1 text-xs ${visibleGalleryCount >= 2 ? "text-emerald-700" : "text-red-600"}`}>
+            <p
+              className={`mt-1 text-xs ${visibleGalleryCount >= 2 ? "text-emerald-700" : "text-red-600"}`}
+            >
               {visibleGalleryCount} de 5 imágenes seleccionadas.
             </p>
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <div className="mt-2 grid grid-cols-3 gap-3 sm:grid-cols-5">
               {draft.images
                 .filter((img) => !draft.removedImageIds.includes(img.id))
                 .map((img) => (
-                  <div key={img.id} className="relative">
-                    <img src={img.url} alt="Galería" className="aspect-square rounded-xl object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => update({ removedImageIds: [...draft.removedImageIds, img.id] })}
-                      className="absolute right-1 top-1 rounded bg-white p-1"
-                    >
-                      <X className="h-4 w-4 text-red-600" />
-                    </button>
-                  </div>
-                ))}
-              {draft.newGalleryFiles.map((file, i) => (
-                <div key={`${file.name}-${file.lastModified}`} className="relative">
-                  <img
-                    src={URL.createObjectURL(file)}
-                    alt={file.name}
-                    className="aspect-square rounded-xl object-cover"
+                  <GalleryThumb
+                    key={img.id}
+                    src={img.url}
+                    onRemove={() => update({ removedImageIds: [...draft.removedImageIds, img.id] })}
                   />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      update({ newGalleryFiles: draft.newGalleryFiles.filter((_, idx) => idx !== i) })
-                    }
-                    className="absolute right-1 top-1 rounded bg-white p-1"
-                  >
-                    <X className="h-4 w-4 text-red-600" />
-                  </button>
-                </div>
+                ))}
+              {draft.newGalleryFiles.map(({ id, file }) => (
+                <GalleryThumb
+                  key={id}
+                  src={URL.createObjectURL(file)}
+                  onRemove={() =>
+                    update({
+                      newGalleryFiles: draft.newGalleryFiles.filter((item) => item.id !== id),
+                    })
+                  }
+                />
               ))}
+              {visibleGalleryCount < 5 && (
+                <GalleryAddTile
+                  remaining={5 - visibleGalleryCount}
+                  onAdd={(files) =>
+                    update({ newGalleryFiles: [...draft.newGalleryFiles, ...files] })
+                  }
+                />
+              )}
             </div>
           </div>
+
           <WizardNavigation step={step} back={back} next={next} busy={busy} disabled={!valid()} />
         </section>
       )}
 
-
       {requestSuccess && (
-        <p role="status" className="mb-4 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+        <p
+          role="status"
+          className="mb-4 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
+        >
           Cambios guardados correctamente.
         </p>
       )}
@@ -811,7 +948,9 @@ function AddImageUrl({ disabled, onAdd }: { disabled: boolean; onAdd: (url: stri
   return (
     <div className="mt-1 flex gap-2">
       <input
-        type="url" value={value} disabled={disabled}
+        type="url"
+        value={value}
+        disabled={disabled}
         onChange={(e) => setValue(e.target.value)}
         placeholder="https://imagen..."
         className="min-w-0 flex-1 rounded-lg border px-2 py-1.5 text-sm disabled:bg-gray-100"
@@ -819,7 +958,10 @@ function AddImageUrl({ disabled, onAdd }: { disabled: boolean; onAdd: (url: stri
       <PrimaryButton
         type="button"
         disabled={disabled || !value.trim()}
-        onClick={() => { onAdd(value.trim()); setValue(""); }}
+        onClick={() => {
+          onAdd(value.trim());
+          setValue("");
+        }}
       >
         <Plus className="h-4 w-4" />
       </PrimaryButton>
@@ -844,9 +986,9 @@ function Hours({
     setSchedules(
       patch
         ? [
-          ...schedules.filter((item) => item.dayOfWeek !== day),
-          { dayOfWeek: day, startsAt: "09:00", endsAt: "18:00", ...existing, ...patch },
-        ]
+            ...schedules.filter((item) => item.dayOfWeek !== day),
+            { dayOfWeek: day, startsAt: "09:00", endsAt: "18:00", ...existing, ...patch },
+          ]
         : schedules.filter((item) => item.dayOfWeek !== day),
     );
   };
@@ -1068,7 +1210,9 @@ function Field({
         aria-invalid={Boolean(error)}
         className={`mt-1 w-full rounded-xl border p-2.5 ${error ? "border-red-300" : ""}`}
       />
-      <small hidden={!error} className="mt-1 block text-xs text-red-600">{error ?? message}</small>
+      <small hidden={!error} className="mt-1 block text-xs text-red-600">
+        {error ?? message}
+      </small>
     </label>
   );
 }
@@ -1099,7 +1243,11 @@ function Area({
         aria-invalid={Boolean(error)}
         className={`mt-1 w-full rounded-xl border p-2.5 ${error ? "border-red-300" : ""}`}
       />
-      {error && <small role="alert" className="mt-1 block text-xs text-red-600">{error}</small>}
+      {error && (
+        <small role="alert" className="mt-1 block text-xs text-red-600">
+          {error}
+        </small>
+      )}
     </label>
   );
 }
