@@ -15,6 +15,7 @@ export { STATUS_COLORS, STATUS_LABELS } from "./status";
 export { SquareFileInput } from "./SquareFileInput";
 export { GalleryAddTile, GalleryThumb } from "./SquareFileInput";
 export type { GalleryFile } from "./SquareFileInput";
+export { SidebarUserFooter } from "./SidebarUserFooter";
 
 // Primitivas de formulario reutilizables (registro, perfil, configuracion...).
 export {
