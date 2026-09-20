@@ -1,10 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
-import { Edit3, ImagePlus, LayoutGrid, List, Loader2, Plus, Power, Star, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  Edit3,
+  ImagePlus,
+  LayoutGrid,
+  List,
+  Loader2,
+  Plus,
+  Power,
+  Star,
+  Trash2,
+  X,
+} from "lucide-react";
 import { ApiError } from "@/shared/auth";
 import { menuService, type Category, type Product, type Status } from "@/shared/services";
-import { PrimaryButton, Select, TemporaryMessage } from "@/shared/components";
+import { PrimaryButton, Select, SquareFileInput, TemporaryMessage } from "@/shared/components";
 import type { RestaurantSummary } from "@/shared/types/restaurant";
 import { formatCop, parseCop } from "@/shared/utils/currency";
 
@@ -50,17 +61,23 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
   const [confirming, setConfirming] = useState<{ product: Product; action: Status } | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  // Estado de la imagen que se cargará al guardar. SquareFileInput se encarga
+  // de la previsualización y del drag-and-drop internamente.
   const [image, setImage] = useState<File | null>(null);
-  // Estado del modal y de la imagen que se cargará al guardar.
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   // Datos derivados: restaurante seleccionado, título del formulario y productos agrupados.
   const selectedRestaurant = restaurants.find((item) => item.id === restaurantId);
   const formTitle = editing ? "Editar producto" : "Nuevo producto";
   const hasRestaurants = restaurants.length > 0;
-  const formValid = form.name.trim().length >= 1 && form.name.trim().length <= 160 &&
-    form.price !== null && Number.isFinite(form.price) && form.price > 0 &&
-    form.description.length <= 2000 && Boolean(form.category) && Boolean(form.status);
+  const formValid =
+    form.name.trim().length >= 1 &&
+    form.name.trim().length <= 160 &&
+    form.price !== null &&
+    Number.isFinite(form.price) &&
+    form.price > 0 &&
+    form.description.length <= 2000 &&
+    Boolean(form.category) &&
+    Boolean(form.status);
   const productsByCategory = CATEGORIES.map((category) => ({
     ...category,
     products: products.filter((product) => product.category === category.value),
@@ -75,17 +92,6 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
   useEffect(() => {
     if (restaurantId) void loadProducts(restaurantId);
   }, [restaurantId, categoryFilter, statusFilter]);
-
-  // Genera y limpia la previsualización local de la imagen seleccionada.
-  useEffect(() => {
-    if (!image) {
-      setImagePreview(null);
-      return;
-    }
-    const preview = URL.createObjectURL(image);
-    setImagePreview(preview);
-    return () => URL.revokeObjectURL(preview);
-  }, [image]);
 
   // Obtiene los restaurantes disponibles y selecciona uno por defecto.
   async function loadRestaurants() {
@@ -146,21 +152,18 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
     setNotice(null);
   }
 
-  // Valida el archivo antes de mostrarlo y enviarlo al servidor.
-  function selectImage(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0] ?? null;
+  // Valida el archivo elegido (o soltado) antes de guardarlo en el estado.
+  function selectImage(file: File | null) {
     if (!file) {
       setImage(null);
       return;
     }
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       setError("La imagen debe ser JPG, PNG o WEBP.");
-      event.target.value = "";
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
       setError("La imagen no puede superar los 5 MB.");
-      event.target.value = "";
       return;
     }
     setError(null);
@@ -286,7 +289,10 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
                 <Select
                   value={restaurantId}
                   onChange={(event) => setRestaurantId(event.target.value)}
-                  options={[{ value: "", label: "Selecciona un restaurante" }, ...restaurants.map((item) => ({ value: item.id, label: item.businessName }))]}
+                  options={[
+                    { value: "", label: "Selecciona un restaurante" },
+                    ...restaurants.map((item) => ({ value: item.id, label: item.businessName })),
+                  ]}
                 />
               </label>
             )}
@@ -419,6 +425,19 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
               </button>
             </div>
             <form onSubmit={save} className="flex flex-col gap-4" noValidate>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-semibold text-gray-600">Imagen del plato</span>
+                <SquareFileInput
+                  label=""
+                  file={image}
+                  existingUrl={editing?.imageUrl ?? undefined}
+                  onChange={selectImage}
+                  square={false}
+                />
+                <span className="text-[11px] text-muted-foreground">
+                  JPG, PNG o WEBP. Máximo 5 MB.
+                </span>
+              </div>
               <label className="flex flex-col gap-1.5">
                 <span className="text-xs font-semibold text-gray-600">Nombre</span>
                 <input
@@ -459,59 +478,32 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
                   />
                 </label>
                 <label className="flex flex-col gap-1.5">
-                  <span className="text-xs font-semibold text-gray-600">Precio</span>
-                  <input
-                    required
-                    inputMode="numeric"
-                    value={formatCop(form.price)}
+                  <span className="text-xs font-semibold text-gray-600">Estado</span>
+                  <Select
+                    value={form.status}
                     onChange={(event) =>
-                      setForm((current) => ({ ...current, price: parseCop(event.target.value) }))
+                      setForm((current) => ({ ...current, status: event.target.value as Status }))
                     }
-                    placeholder="$ 0"
-                    className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900"
+                    options={[
+                      { value: "activo", label: "Activo" },
+                      { value: "inactivo", label: "Inactivo" },
+                    ]}
                   />
                 </label>
               </div>
               <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-semibold text-gray-600">Estado</span>
-                <Select
-                  value={form.status}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, status: event.target.value as Status }))
-                  }
-                  options={[{ value: "activo", label: "Activo" }, { value: "inactivo", label: "Inactivo" }]}
-                />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="inline-flex items-center gap-2 text-xs font-semibold text-gray-700">
-                  <ImagePlus className="h-4 w-4 text-primary" />
-                  Cambiar imagen del plato
-                </span>
+                <span className="text-xs font-semibold text-gray-600">Precio</span>
                 <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={selectImage}
-                  className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-primary"
+                  required
+                  inputMode="numeric"
+                  value={formatCop(form.price)}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, price: parseCop(event.target.value) }))
+                  }
+                  placeholder="$ 0"
+                  className="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900"
                 />
-                <span className="text-[11px] text-muted-foreground">
-                  JPG, PNG o WEBP. Máximo 5 MB.
-                </span>
               </label>
-              {(imagePreview || editing?.imageUrl) && (
-                <div className="overflow-hidden rounded-xl border border-orange-200 bg-orange-50">
-                  <p className="px-3 pt-2 text-xs font-semibold text-gray-700">
-                    {imagePreview ? "Nueva imagen" : "Imagen actual"}
-                  </p>
-                  <img
-                    src={imagePreview || editing?.imageUrl || ""}
-                    alt="Vista previa del producto"
-                    className="h-36 w-full object-cover"
-                  />
-                  <p className="px-3 py-2 text-[11px] text-muted-foreground">
-                    Vista previa local. Se subirá al guardar el producto.
-                  </p>
-                </div>
-              )}
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
@@ -520,10 +512,7 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
                 >
                   Cancelar
                 </button>
-                <PrimaryButton
-                  type="submit"
-                  disabled={saving || !formValid}
-                >
+                <PrimaryButton type="submit" disabled={saving || !formValid}>
                   {saving ? (
                     <span className="flex items-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" />
