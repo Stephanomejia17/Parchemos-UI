@@ -35,7 +35,6 @@ export function Staff() {
 }
 
 function StaffManager() {
-  const [buttonDisabled, setButtonDisabled] = useState(false);
   const [staff, setStaff] = useState<StaffMember[]>([]),
     [restaurants, setRestaurants] = useState<Restaurant[]>([]),
     [locations, setLocations] = useState<Location[]>([]);
@@ -96,6 +95,17 @@ function StaffManager() {
       () => restaurantService.setStaffEnabled(member.id, enabled),
       "No pudimos actualizar el acceso.",
     );
+  // A location only carries its own fields, so to show/scope by brand we look up
+  // which restaurant owns a given location id. We search the full (unfiltered)
+  // restaurants list so we can still resolve the brand even if the member's
+  // current location is no longer "activa".
+  const restaurantForLocation = useCallback(
+    (locationId: string) =>
+      restaurants.find((restaurant) =>
+        restaurant.locations.some((location) => location.id === locationId),
+      ),
+    [restaurants],
+  );
   return (
     <main className="min-h-full bg-gray-50 px-4 py-6">
       <div className="mx-auto max-w-5xl">
@@ -127,6 +137,7 @@ function StaffManager() {
               <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
                 <tr>
                   <th className="px-5 py-3">Personal</th>
+                  <th className="px-5 py-3">Marca</th>
                   <th className="px-5 py-3">Sede</th>
                   <th className="px-5 py-3">Estado</th>
                   <th className="px-5 py-3 text-right">Acciones</th>
@@ -138,6 +149,9 @@ function StaffManager() {
                     <td className="px-5 py-4">
                       <p className="font-medium text-gray-900">{member.fullName}</p>
                       <p className="text-xs text-gray-500">{member.email}</p>
+                    </td>
+                    <td className="px-5 py-4">
+                      {restaurantForLocation(member.location.id)?.businessName ?? "—"}
                     </td>
                     <td className="px-5 py-4">{member.location.name}</td>
                     <td className="px-5 py-4">
@@ -186,7 +200,7 @@ function StaffManager() {
         {selected && (
           <DetailModal
             member={selected}
-            locations={locations}
+            restaurants={restaurants}
             busy={busy}
             close={() => setSelected(null)}
             run={run}
@@ -256,7 +270,8 @@ function CreateModal({
         {noLocationsForBrand ? (
           <p className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-800">
             <AlertCircle className="mr-1 inline h-3.5 w-3.5" />
-            Esta marca no tiene sedes activas. Un administrador revisará tu solicitud y la aprobará/rechazará
+            Esta marca no tiene sedes activas. Un administrador revisará tu solicitud y la
+            aprobará/rechazará
           </p>
         ) : (
           <label className="block text-sm font-medium">
@@ -286,18 +301,29 @@ function CreateModal({
 
 function DetailModal({
   member,
-  locations,
+  restaurants,
   busy,
   close,
   run,
 }: {
   member: StaffMember;
-  locations: Location[];
+  restaurants: Restaurant[];
   busy: boolean;
   close: () => void;
   run: (action: () => Promise<unknown>, fallback: string) => Promise<boolean>;
 }) {
   const [editing, setEditing] = useState(false);
+  const memberRestaurant = restaurants.find((restaurant) =>
+    restaurant.locations.some((location) => location.id === member.location.id),
+  );
+  // The brand being reassigned to. Starts as the member's current brand, but the
+  // person can switch it, which is what lets them move staff across brands, not
+  // just across locations within the same one.
+  const [reassignRestaurantId, setReassignRestaurantId] = useState(memberRestaurant?.id ?? "");
+  const reassignableLocations =
+    restaurants
+      .find((restaurant) => restaurant.id === reassignRestaurantId)
+      ?.locations.filter((location) => location.status === "activa") ?? [];
   const update = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -345,6 +371,7 @@ function DetailModal({
             <Row label="Nombre" value={member.fullName} />
             <Row label="Correo" value={member.email} />
             <Row label="Teléfono" value={member.phone ?? "No registrado"} />
+            <Row label="Marca" value={memberRestaurant?.businessName ?? "—"} />
             <Row label="Sede asignada" value={member.location.name} />
             <Row label="Estado" value={<Status status={member.status} />} />
             <Row label="Fecha de creación" value={dateFormat.format(new Date(member.createdAt))} />
@@ -355,12 +382,49 @@ function DetailModal({
               Editar datos
             </PrimaryButton>
           </div>
-          <form onSubmit={reassign} className="mt-5 border-t pt-4">
+          <form onSubmit={reassign} className="mt-5 space-y-3 border-t pt-4">
             <label className="block text-sm font-medium">
-              Reasignar sede
-              <SelectLocation locations={locations} defaultValue={member.location.id} />
+              Marca
+              <select
+                required
+                value={reassignRestaurantId}
+                onChange={(event) => setReassignRestaurantId(event.target.value)}
+                className="mt-1 w-full rounded-xl border p-2.5 font-normal"
+              >
+                <option value="" disabled>
+                  Selecciona una marca
+                </option>
+                {restaurants.map((restaurant) => (
+                  <option key={restaurant.id} value={restaurant.id}>
+                    {restaurant.businessName}
+                  </option>
+                ))}
+              </select>
             </label>
-            <PrimaryButton type="submit" disabled={busy} className="mt-3">
+            <label className="block text-sm font-medium">
+              Sede
+              <SelectLocation
+                key={reassignRestaurantId}
+                locations={reassignableLocations}
+                disabled={!reassignRestaurantId}
+                defaultValue={
+                  reassignRestaurantId === memberRestaurant?.id ? member.location.id : undefined
+                }
+              />
+            </label>
+            {reassignRestaurantId && !reassignableLocations.length && (
+              <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800">
+                <AlertCircle className="mr-1 inline h-3.5 w-3.5" />
+                Esta marca no tiene sedes activas disponibles para reasignar.
+              </p>
+            )}
+            {reassignRestaurantId !== memberRestaurant?.id && reassignableLocations.length > 0 && (
+              <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-800">
+                <AlertCircle className="mr-1 inline h-3.5 w-3.5" />
+                Estás moviendo a este empleado a otra marca.
+              </p>
+            )}
+            <PrimaryButton type="submit" disabled={busy || !reassignableLocations.length}>
               Guardar sede
             </PrimaryButton>
           </form>
