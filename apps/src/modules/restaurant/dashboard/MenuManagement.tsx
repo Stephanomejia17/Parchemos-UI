@@ -64,11 +64,16 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
   // Estado de la imagen que se cargará al guardar. SquareFileInput se encarga
   // de la previsualización y del drag-and-drop internamente.
   const [image, setImage] = useState<File | null>(null);
+  // Distingue "no se tocó la imagen" de "el usuario la quitó explícitamente",
+  // porque en ambos casos `image` es null.
+  const [imageRemoved, setImageRemoved] = useState(false);
 
   // Datos derivados: restaurante seleccionado, título del formulario y productos agrupados.
   const selectedRestaurant = restaurants.find((item) => item.id === restaurantId);
   const formTitle = editing ? "Editar producto" : "Nuevo producto";
   const hasRestaurants = restaurants.length > 0;
+  // Hay imagen válida si se seleccionó una nueva, o si se está editando y no se removió la existente.
+  const hasImage = image !== null || (Boolean(editing?.imageUrl) && !imageRemoved);
   const formValid =
     form.name.trim().length >= 1 &&
     form.name.trim().length <= 160 &&
@@ -77,7 +82,8 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
     form.price > 0 &&
     form.description.length <= 2000 &&
     Boolean(form.category) &&
-    Boolean(form.status);
+    Boolean(form.status) &&
+    hasImage;
   const productsByCategory = CATEGORIES.map((category) => ({
     ...category,
     products: products.filter((product) => product.category === category.value),
@@ -132,6 +138,7 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
     setEditing(null);
     setForm(emptyForm);
     setImage(null);
+    setImageRemoved(false);
     setError(null);
     setNotice(null);
   }
@@ -148,14 +155,18 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
       status: product.status,
     });
     setImage(null);
+    setImageRemoved(false);
     setError(null);
     setNotice(null);
   }
 
   // Valida el archivo elegido (o soltado) antes de guardarlo en el estado.
+  // file === null significa que el usuario dio clic en "Quitar" (o soltó algo
+  // inválido en el drop), así que lo tratamos como una remoción explícita.
   function selectImage(file: File | null) {
     if (!file) {
       setImage(null);
+      setImageRemoved(true);
       return;
     }
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
@@ -167,6 +178,7 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
       return;
     }
     setError(null);
+    setImageRemoved(false);
     setImage(file);
   }
 
@@ -182,6 +194,10 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
     }
     if (price === null || !Number.isFinite(price) || price <= 0) {
       setError("El precio es obligatorio y debe ser mayor que 0.");
+      return;
+    }
+    if (!hasImage) {
+      setError("Debes agregar una imagen para guardar el producto.");
       return;
     }
     setSaving(true);
@@ -200,6 +216,7 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
       setFormOpen(false);
       setForm(emptyForm);
       setImage(null);
+      setImageRemoved(false);
       setNotice(editing ? "Producto actualizado correctamente." : "Producto creado correctamente.");
     } catch (err) {
       setError(messageFrom(err));
@@ -430,13 +447,18 @@ export function MenuManagement({ restaurantId: initialRestaurantId }: { restaura
                 <SquareFileInput
                   label=""
                   file={image}
-                  existingUrl={editing?.imageUrl ?? undefined}
+                  existingUrl={imageRemoved ? undefined : (editing?.imageUrl ?? undefined)}
                   onChange={selectImage}
                   square={false}
                 />
                 <span className="text-[11px] text-muted-foreground">
                   JPG, PNG o WEBP. Máximo 5 MB.
                 </span>
+                {!hasImage && (
+                  <span className="text-[11px] font-medium text-red-600">
+                    Debes agregar una imagen para guardar el producto.
+                  </span>
+                )}
               </div>
               <label className="flex flex-col gap-1.5">
                 <span className="text-xs font-semibold text-gray-600">Nombre</span>
