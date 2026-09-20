@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
+import { LogOut } from "lucide-react";
 import type { NavigationItem } from "@/shared/navigation/types";
+
+const initialOf = (name?: string | null) => (name?.trim()[0] ?? "A").toUpperCase();
 
 export function Sidebar({
   items,
@@ -52,13 +55,30 @@ export function Sidebar({
       </nav>
       {footer ??
         (!collapsed && (
-          <button
-            type="button"
-            onClick={onLogout}
-            className="border-t border-border p-3 text-left text-sm text-muted-foreground"
-          >
-            Cerrar sesión · {user?.fullName ?? "Mi cuenta"}
-          </button>
+          <div className="border-t border-border p-2">
+            <div className="flex items-center gap-2.5 px-1.5 py-2">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center flex-shrink-0">
+                <span className="text-[11px] font-bold text-gray-600">
+                  {initialOf(user?.fullName)}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[12px] font-semibold text-gray-800 truncate">
+                  {user?.fullName ?? "Mi cuenta"}
+                </div>
+                <div className="text-[10px] text-gray-400 truncate">{user?.email ?? ""}</div>
+              </div>
+              <button
+                type="button"
+                onClick={onLogout}
+                title="Cerrar sesión"
+                aria-label="Cerrar sesión"
+                className="text-gray-300 hover:text-gray-600 transition-colors flex-shrink-0"
+              >
+                <LogOut size={13} />
+              </button>
+            </div>
+          </div>
         ))}
     </aside>
   );
