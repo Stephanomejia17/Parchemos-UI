@@ -511,6 +511,8 @@ function LocationWizard({
                 />
               ))}
               <GalleryAddTile
+                className="col-span-full"
+                square={false}
                 remaining={5 - data.gallery.length}
                 onAdd={(files) => update({ gallery: [...data.gallery, ...files] })}
               />
