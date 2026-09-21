@@ -23,6 +23,11 @@ export interface Location {
   rejectionReason: string | null;
   logoUrl: string | null;
   coverUrl: string | null;
+  priceRange: number | null;
+  avgRating: number;
+  ratingCount: number;
+  latitude: number | null;
+  longitude: number | null;
   schedules: Schedule[];
   images: GalleryImage[];
 }
