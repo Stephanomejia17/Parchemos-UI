@@ -1,3 +1,4 @@
+import type { UserRole } from "../../auth/types";
 import { apiFetch } from "../http/api-client";
 
 /** GP-08: estados del pedido, tal como los devuelve la API. */
@@ -29,6 +30,16 @@ export interface OrderStatusInfo {
   actualizadoEn: string;
 }
 
+/** GP-08 CA6: una transición del historial del pedido. */
+export interface OrderStatusChange {
+  desde: OrderStatus | null;
+  hacia: OrderStatus;
+  fecha: string;
+  /** Rol de quien hizo el cambio; null si lo hizo el sistema. */
+  cambiadoPorRol: UserRole | null;
+  nota: string | null;
+}
+
 interface ApiEnvelope<T> {
   success: boolean;
   data: T;
@@ -40,4 +51,7 @@ export const ordersService = {
 
   getStatus: (orderId: string) =>
     apiFetch<ApiEnvelope<OrderStatusInfo>>(`/pedidos/${orderId}/estado`),
+
+  getHistory: (orderId: string) =>
+    apiFetch<ApiEnvelope<OrderStatusChange[]>>(`/pedidos/${orderId}/historial`),
 };

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChefHat, ChevronLeft, CircleX, PackageCheck, RefreshCw } from "lucide-react";
-import { ordersService, type OrderStatusInfo } from "@/shared/services";
+import { ordersService, type OrderStatusChange, type OrderStatusInfo } from "@/shared/services";
 import { formatCop } from "@/shared/utils/currency";
 import {
   ORDER_STATUS_DESCRIPTIONS,
@@ -12,6 +12,7 @@ import {
   formatDateTime,
   timelineFor,
 } from "./order-status";
+import { OrderStatusHistory } from "./OrderStatusHistory";
 
 /** Respaldo por si el canal en tiempo real no está disponible. */
 const POLL_INTERVAL_MS = 20_000;
@@ -19,13 +20,18 @@ const POLL_INTERVAL_MS = 20_000;
 export function OrderTracking({ orderId }: { orderId: string }) {
   const router = useRouter();
   const [order, setOrder] = useState<OrderStatusInfo | null>(null);
+  const [history, setHistory] = useState<OrderStatusChange[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
-      const response = await ordersService.getStatus(orderId);
-      setOrder(response.data);
+      const [status, changes] = await Promise.all([
+        ordersService.getStatus(orderId),
+        ordersService.getHistory(orderId),
+      ]);
+      setOrder(status.data);
+      setHistory(changes.data);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No pudimos consultar el pedido.");
@@ -78,6 +84,7 @@ export function OrderTracking({ orderId }: { orderId: string }) {
         )}
 
         {order && <OrderStatusCard order={order} />}
+        {order && <OrderStatusHistory changes={history} />}
       </div>
     </div>
   );

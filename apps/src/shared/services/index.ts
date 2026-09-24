@@ -6,5 +6,10 @@ export { profileService } from "./profile/profile.service";
 export { restaurantService } from "./restaurant/restaurant.service";
 export { adminService } from "./admin/admin.service";
 export { ordersService } from "./orders/orders.service";
-export type { OrderFulfillment, OrderStatus, OrderStatusInfo } from "./orders/orders.service";
+export type {
+  OrderFulfillment,
+  OrderStatus,
+  OrderStatusChange,
+  OrderStatusInfo,
+} from "./orders/orders.service";
 export type { LocationReview } from "./admin/admin.service";
