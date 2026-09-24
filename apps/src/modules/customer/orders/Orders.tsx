@@ -1,13 +1,35 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, Star } from "lucide-react";
 import { RemoteImage } from "@/shared/components/media/RemoteImage";
+import { ordersService, type OrderStatusInfo } from "@/shared/services";
+import { formatCop } from "@/shared/utils/currency";
 import { ORDER_HISTORY } from "@/mocks/customer/orders";
+import { ORDER_STATUS_LABELS } from "@/modules/customer/order-tracking/order-status";
 
 export function Orders() {
   const router = useRouter();
-  const goOrderSummary = () => router.push("/order-summary");
+  const [activeOrders, setActiveOrders] = useState<OrderStatusInfo[]>([]);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    ordersService
+      .listMine()
+      .then((response) => {
+        if (!cancelled) setActiveOrders(response.data.filter((order) => !order.finalizado));
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setOrdersError(err instanceof Error ? err.message : "No pudimos consultar tus pedidos.");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <div className="flex flex-col h-full bg-background overflow-y-auto">
@@ -16,35 +38,41 @@ export function Orders() {
       </div>
 
       <div className="p-4 md:p-6 flex flex-col gap-4">
-        {/* Active order */}
-        <div className="bg-gradient-to-r from-primary/10 to-secondary/10 rounded-2xl p-4 border border-orange-100">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <p className="text-sm font-semibold text-primary">Pedido activo</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <RemoteImage
-              src="https://images.unsplash.com/photo-1552566626-52f8b828add9?w=60&h=60&fit=crop&auto=format"
-              alt="rest"
-              className="w-14 h-14 rounded-xl"
-              sizes="56px"
-            />
-            <div className="flex-1">
-              <p className="font-bold text-gray-900">La Paloma Gastrobar</p>
-              <p className="text-sm text-muted-foreground">Mesa 12 · 4 items</p>
-              <div className="flex items-center gap-1 mt-1">
-                <Clock className="w-3.5 h-3.5 text-primary" />
-                <span className="text-sm text-primary font-semibold">~18 min restantes</span>
-              </div>
-            </div>
-          </div>
-          <button
-            onClick={goOrderSummary}
-            className="w-full mt-3 bg-white border border-orange-200 rounded-xl py-2.5 text-sm font-semibold text-primary hover:bg-orange-50 transition-colors"
+        {/* Active orders (GP-08) */}
+        {activeOrders.map((order) => (
+          <div
+            key={order.id}
+            className="bg-gradient-to-r from-primary/10 to-secondary/10 rounded-2xl p-4 border border-orange-100"
           >
-            Ver estado del pedido
-          </button>
-        </div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <p className="text-sm font-semibold text-primary">Pedido activo</p>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-bold text-gray-900 truncate">{order.sedeNombre}</p>
+                <p className="text-sm text-muted-foreground">
+                  Pedido #{order.numero} · {formatCop(order.total)}
+                </p>
+              </div>
+              <span className="flex items-center gap-1 text-sm text-primary font-semibold flex-shrink-0">
+                <Clock className="w-3.5 h-3.5" />
+                {ORDER_STATUS_LABELS[order.estado]}
+              </span>
+            </div>
+            <button
+              onClick={() => router.push(`/orders/${order.id}`)}
+              className="w-full mt-3 bg-white border border-orange-200 rounded-xl py-2.5 text-sm font-semibold text-primary hover:bg-orange-50 transition-colors"
+            >
+              Ver estado del pedido
+            </button>
+          </div>
+        ))}
+        {ordersError && (
+          <div className="bg-red-50 border border-red-100 text-red-700 rounded-2xl p-4 text-sm">
+            {ordersError}
+          </div>
+        )}
 
         {/* History */}
         <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
