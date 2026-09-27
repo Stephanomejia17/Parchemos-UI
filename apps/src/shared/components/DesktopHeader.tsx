@@ -14,6 +14,7 @@ export interface DesktopHeaderProps {
   avatarHref?: string;
   backHref?: string;
   onBack?: () => void;
+  cart?: ReactNode;
 }
 
 export function DesktopHeader({
@@ -22,6 +23,7 @@ export function DesktopHeader({
   avatarHref = "/profile",
   backHref,
   onBack,
+  cart,
 }: DesktopHeaderProps) {
   const backButton = (
     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200">
@@ -71,6 +73,7 @@ export function DesktopHeader({
           <Bell className="h-4 w-4" />
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full border-2 border-white bg-primary" />
         </button>
+        {cart}
         <Link href={avatarHref} aria-label="Ir al perfil">
           {avatar}
         </Link>

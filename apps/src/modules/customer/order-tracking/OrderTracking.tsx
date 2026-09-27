@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChefHat, ChevronLeft, CircleX, PackageCheck, RefreshCw } from "lucide-react";
 import {
-  ordersService,
+  orderService,
   subscribeToOrderStatus,
   type OrderStatusChange,
   type OrderStatusInfo,
@@ -32,8 +32,8 @@ export function OrderTracking({ orderId }: { orderId: string }) {
   const load = useCallback(async () => {
     try {
       const [status, changes] = await Promise.all([
-        ordersService.getStatus(orderId),
-        ordersService.getHistory(orderId),
+        orderService.getStatus(orderId),
+        orderService.getHistory(orderId),
       ]);
       setOrder(status.data);
       setHistory(changes.data);

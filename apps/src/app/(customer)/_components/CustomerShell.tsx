@@ -12,12 +12,18 @@ import {
 import { NavigationHeader } from "@/shared/components/navigation/NavigationHeader";
 import { breadcrumbsForPath, backHrefForPath, navigationForRole } from "@/shared/navigation";
 import { OrderStatusNotifications } from "@/modules/customer/order-notifications/OrderStatusNotifications";
+import { LocationProvider } from "@/shared/context/location-context";
+import { OrderProvider } from "@/shared/context/order-context";
 
 export function CustomerShell({ children }: { children: ReactNode }) {
   return (
-    <RequireAuth loginPath="/login" allowedRoles={["comensal"]}>
-      <CustomerFrame>{children}</CustomerFrame>
-    </RequireAuth>
+    <LocationProvider>
+      <OrderProvider>
+        <RequireAuth loginPath="/login" allowedRoles={["comensal"]}>
+          <CustomerFrame>{children}</CustomerFrame>
+        </RequireAuth>
+      </OrderProvider>
+    </LocationProvider>
   );
 }
 
@@ -62,10 +68,11 @@ function CustomerContent({
         <NavigationHeader
           breadcrumbs={breadcrumbs}
           backHref={backHrefForPath(pathname, items.find((item) => item.id === activeId)?.href)}
+          showCart
         />
         <div className="relative min-h-0 flex-1 overflow-hidden">
           <div className="mx-auto flex h-full w-full max-w-md flex-col overflow-hidden bg-white md:max-w-none md:bg-transparent">
-            <div className="min-h-0 flex-1 overflow-hidden md:overflow-y-auto">{children}</div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain">{children}</div>
             <BottomNav items={items} activeId={activeId} />
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { io, type Socket } from "socket.io-client";
 import { resolveApiOrigin, tokenStore, tryRefresh } from "../http/api-client";
-import type { OrderStatus, OrderStatusInfo } from "./orders.service";
+import type { OrderStatus, OrderStatusInfo } from "./order.service";
 
 /** Evento `pedido.estado` que emite la API cuando el restaurante cambia un pedido. */
 export interface OrderStatusEvent extends OrderStatusInfo {

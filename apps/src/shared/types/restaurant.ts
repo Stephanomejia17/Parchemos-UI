@@ -32,6 +32,19 @@ export interface Location {
   images: GalleryImage[];
 }
 
+export interface PublicLocationProfile {
+  id: string;
+  name: string;
+  address: string;
+  description: string;
+  latitude: number | null;
+  longitude: number | null;
+  logoUrl: string;
+  coverUrl: string;
+  gallery: GalleryImage[];
+  isOpen: boolean;
+}
+
 export interface Restaurant {
   id: string;
   businessName: string;

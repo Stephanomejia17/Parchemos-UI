@@ -44,6 +44,9 @@ export interface ProductInput {
 export const menuService = {
   listMyRestaurants: () => apiFetch<RestaurantSummary[]>("/restaurantes/mios"),
 
+  listLocationMenu: (locationId: string) =>
+    apiFetch<ProductPageResponse>(`/publicos/${encodeURIComponent(locationId)}/menu`),
+
   listProducts: (restaurantId: string, filters: ProductFilters = {}) => {
     const params = new URLSearchParams({ page: "1", limit: "100" });
     if (filters.category) params.set("category", filters.category);

@@ -2,28 +2,40 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChefHat, ChevronLeft, Minus, Plus, QrCode } from "lucide-react";
+import { Check, ChefHat, ChevronLeft, Minus, Plus, QrCode, Trash2 } from "lucide-react";
 import { PrimaryButton } from "@/shared/components";
-
-const ITEMS = [
-  { name: "Double Smash BBQ", qty: 2, price: 36500 },
-  { name: "Smash Burger Clásica", qty: 1, price: 28500 },
-  { name: "Papas Smash Cargadas", qty: 2, price: 18500 },
-  { name: "Milkshake Vainilla", qty: 2, price: 16500 },
-];
+import { useOrder } from "@/shared/context/order-context";
+import { useRestaurantContext } from "@/shared/context/location-context";
 
 const STEPS = ["Recibido", "Preparando", "Listo", "Entregado"];
 
-export function OrderSummary() {
+function OrderSummaryContent() {
   const router = useRouter();
   const [splitEnabled, setSplitEnabled] = useState(false);
   const [guests, setGuests] = useState(2);
+  // AC6 — este es el mismo pedido que se armó en /menu (misma key de localStorage)
+  const {
+    lines,
+    subtotal,
+    decrementQuantity,
+    incrementQuantity,
+    removeItem,
+    availabilityStatus,
+    unavailableLines,
+    refreshAvailability,
+  } = useOrder();
+  const { restaurantId } = useRestaurantContext();
 
-  const goPayment = () => router.push("/payment");
+  const goPayment = async () => {
+    if (await refreshAvailability()) router.push("/payment");
+  };
 
-  const subtotal = ITEMS.reduce((a, i) => a + i.price * i.qty, 0);
   const service = Math.round(subtotal * 0.1);
   const total = subtotal + service;
+  const canPay =
+    lines.length > 0 && availabilityStatus === "checked" && unavailableLines.length === 0;
+  const goMenu = () =>
+    router.push(restaurantId ? `/menu?locationId=${encodeURIComponent(restaurantId)}` : "/menu");
 
   return (
     <div className="flex flex-col h-full bg-background overflow-y-auto">
@@ -40,6 +52,32 @@ export function OrderSummary() {
       </div>
 
       <div className="p-4 md:p-6 md:max-w-4xl md:mx-auto md:w-full">
+        {availabilityStatus === "loading" && lines.length > 0 && (
+          <p role="status" className="mb-4 rounded-xl bg-blue-50 p-3 text-sm text-blue-800">
+            Verificando disponibilidad de los productos…
+          </p>
+        )}
+        {availabilityStatus === "error" && lines.length > 0 && (
+          <div role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">
+            No pudimos confirmar la disponibilidad del pedido. Vuelve al menú e inténtalo de nuevo.
+            <button type="button" onClick={goMenu} className="ml-2 font-bold underline">
+              Ir al menú
+            </button>
+          </div>
+        )}
+        {unavailableLines.length > 0 && (
+          <div role="alert" className="mb-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+            No puedes pagar todavía. Estos productos ya no están disponibles:
+            <ul className="mt-1 list-inside list-disc">
+              {unavailableLines.map(({ item }) => (
+                <li key={item.id}>{item.name}</li>
+              ))}
+            </ul>
+            <button type="button" onClick={goMenu} className="mt-2 font-bold underline">
+              Volver al menú para actualizar el pedido
+            </button>
+          </div>
+        )}
         <div className="md:grid md:grid-cols-2 md:gap-6 flex flex-col gap-4">
           {/* Left col */}
           <div className="flex flex-col gap-4">
@@ -141,22 +179,58 @@ export function OrderSummary() {
               <div className="px-4 py-3 border-b border-border">
                 <p className="font-semibold text-gray-900">Resumen del pedido</p>
               </div>
-              {ITEMS.map((item, i) => (
-                <div
-                  key={i}
-                  className={`flex items-center justify-between px-4 py-3 ${i < ITEMS.length - 1 ? "border-b border-border" : ""}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center text-xs font-bold text-primary">
-                      {item.qty}
+              {lines.length === 0 ? (
+                <p className="px-4 py-6 text-sm text-muted-foreground text-center">
+                  Tu pedido está vacío.
+                </p>
+              ) : (
+                lines.map(({ item, quantity }, i) => (
+                  <div
+                    key={item.id}
+                    className={`flex items-center justify-between px-4 py-3 ${i < lines.length - 1 ? "border-b border-border" : ""}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center text-xs font-bold text-primary">
+                        {quantity}
+                      </div>
+                      <span className="text-sm text-gray-800">{item.name}</span>
                     </div>
-                    <span className="text-sm text-gray-800">{item.name}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => decrementQuantity(item.id)}
+                          aria-label={`Disminuir cantidad de ${item.name}`}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </button>
+                        <span className="w-5 text-center text-xs font-bold">{quantity}</span>
+                        <button
+                          type="button"
+                          onClick={() => incrementQuantity(item.id)}
+                          aria-label={`Aumentar cantidad de ${item.name}`}
+                          disabled={!item.available}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-white disabled:opacity-40"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(item.id)}
+                          aria-label={`Eliminar ${item.name} del pedido`}
+                          className="ml-1 flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-red-600"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <span className="min-w-16 text-right text-sm font-semibold text-gray-900">
+                        ${(item.price * quantity).toLocaleString()}
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-sm font-semibold text-gray-900">
-                    ${(item.price * item.qty).toLocaleString()}
-                  </span>
-                </div>
-              ))}
+                ))
+              )}
               <div className="px-4 py-3 border-t border-border bg-gray-50">
                 <div className="flex justify-between mb-1.5">
                   <span className="text-sm text-muted-foreground">Subtotal</span>
@@ -172,12 +246,18 @@ export function OrderSummary() {
                 </div>
               </div>
             </div>
-            <PrimaryButton onClick={goPayment} size="lg" className="w-full">
-              💳 Ir a pagar · ${total.toLocaleString()}
+            <PrimaryButton onClick={goPayment} size="lg" className="w-full" disabled={!canPay}>
+              {availabilityStatus === "loading" && lines.length > 0
+                ? "Verificando disponibilidad…"
+                : `💳 Ir a pagar · $${total.toLocaleString()}`}
             </PrimaryButton>
           </div>
         </div>
       </div>
     </div>
   );
+}
+
+export function OrderSummary() {
+  return <OrderSummaryContent />;
 }

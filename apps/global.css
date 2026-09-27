@@ -5,21 +5,21 @@
 
 :root {
   --font-size: 16px;
-  --background: #F8F9FA;
+  --background: #f8f9fa;
   --foreground: #212529;
   --card: #ffffff;
   --card-foreground: #212529;
-  --primary: #FF6B35;
+  --primary: #ff6b35;
   --primary-foreground: #ffffff;
-  --secondary: #F4B400;
+  --secondary: #f4b400;
   --secondary-foreground: #212529;
-  --muted: #E9ECEF;
-  --muted-foreground: #6C757D;
-  --accent: #34A853;
+  --muted: #e9ecef;
+  --muted-foreground: #6c757d;
+  --accent: #34a853;
   --accent-foreground: #ffffff;
-  --destructive: #E03131;
-  --border: #E9ECEF;
-  --input-background: #F8F9FA;
+  --destructive: #e03131;
+  --border: #e9ecef;
+  --input-background: #f8f9fa;
   --ring: rgba(255, 107, 53, 0.3);
   --radius: 1rem;
 }
@@ -47,10 +47,21 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+:root {
+  --font-inter: Arial;
+  --font-poppins: Arial;
+}
+
 @layer base {
-  * { @apply border-border outline-ring/50; }
-  body { @apply bg-background text-foreground; }
-  html { font-size: var(--font-size); }
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    font-size: var(--font-size);
+  }
 }
 
 html,
