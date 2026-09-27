@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, Star } from "lucide-react";
 import { RemoteImage } from "@/shared/components/media/RemoteImage";
-import { ordersService, type OrderStatusInfo } from "@/shared/services";
+import { ordersService, subscribeToOrderStatus, type OrderStatusInfo } from "@/shared/services";
 import { formatCop } from "@/shared/utils/currency";
 import { ORDER_HISTORY } from "@/mocks/customer/orders";
 import { ORDER_STATUS_LABELS } from "@/modules/customer/order-tracking/order-status";
@@ -30,6 +30,18 @@ export function Orders() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(
+    () =>
+      subscribeToOrderStatus((event) => {
+        setActiveOrders((current) =>
+          current
+            .map((order) => (order.id === event.id ? { ...order, ...event } : order))
+            .filter((order) => !order.finalizado),
+        );
+      }),
+    [],
+  );
 
   return (
     <div className="flex flex-col h-full bg-background overflow-y-auto">

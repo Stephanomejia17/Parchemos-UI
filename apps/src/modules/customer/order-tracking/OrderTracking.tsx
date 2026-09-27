@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChefHat, ChevronLeft, CircleX, PackageCheck, RefreshCw } from "lucide-react";
-import { ordersService, type OrderStatusChange, type OrderStatusInfo } from "@/shared/services";
+import {
+  ordersService,
+  subscribeToOrderStatus,
+  type OrderStatusChange,
+  type OrderStatusInfo,
+} from "@/shared/services";
 import { formatCop } from "@/shared/utils/currency";
 import {
   ORDER_STATUS_DESCRIPTIONS,
@@ -43,6 +48,15 @@ export function OrderTracking({ orderId }: { orderId: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Tiempo real: recarga estado e historial apenas el restaurante lo cambia.
+  useEffect(
+    () =>
+      subscribeToOrderStatus((event) => {
+        if (event.id === orderId) void load();
+      }),
+    [orderId, load],
+  );
 
   useEffect(() => {
     if (!order || order.finalizado) return;

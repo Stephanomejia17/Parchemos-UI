@@ -15,6 +15,11 @@ function resolveBaseUrl(): string {
   );
 }
 
+/** Origen del servidor de la API (sin `/api`), p. ej. para los sockets. */
+export function resolveApiOrigin(): string {
+  return new URL(resolveBaseUrl()).origin;
+}
+
 /**
  * El access token vive solo en memoria.
  *
