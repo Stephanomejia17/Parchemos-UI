@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Bell,
   CheckCircle2,
   ClipboardList,
   Clock3,
@@ -13,12 +12,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { useAuth } from "@/shared/auth";
 import { PrimaryButton, SurfaceCard } from "@/shared/components";
-
-const MOCK_ORDERS = [
-  { table: "Mesa 4", detail: "2 platos · 1 bebida", status: "En preparación", tone: "amber" },
-  { table: "Mesa 7", detail: "1 plato · 2 bebidas", status: "Listo para entregar", tone: "green" },
-  { table: "Mesa 10", detail: "3 platos", status: "Nueva orden", tone: "blue" },
-];
+import { OrderStatusPanel } from "./OrderStatusPanel";
 
 export function WorkroomDashboard() {
   const { user, logout } = useAuth();
@@ -79,28 +73,13 @@ export function WorkroomDashboard() {
         </section>
 
         <section className="grid gap-6 lg:grid-cols-[1fr_320px]">
-          <SurfaceCard className="overflow-hidden">
-            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-              <div>
-                <h2 className="font-semibold text-gray-900">Actividad reciente</h2>
-                <p className="text-xs text-gray-500">Datos de demostración del panel</p>
-              </div>
-              <Bell className="h-5 w-5 text-primary" />
-            </div>
-            <div className="divide-y divide-gray-100">
-              {MOCK_ORDERS.map((order) => (
-                <div key={order.table} className="flex items-center justify-between gap-4 px-5 py-4">
-                  <div>
-                    <p className="font-medium text-gray-900">{order.table}</p>
-                    <p className="text-xs text-gray-500">{order.detail}</p>
-                  </div>
-                  <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusClass(order.tone)}`}>
-                    {order.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </SurfaceCard>
+          {location ? (
+            <OrderStatusPanel locationId={location.id} />
+          ) : (
+            <SurfaceCard className="p-5 text-sm text-gray-500">
+              Cuando te asignen una sede verás aquí sus pedidos en curso.
+            </SurfaceCard>
+          )}
 
           <SurfaceCard className="p-5">
             <h2 className="font-semibold text-gray-900">Próximamente</h2>
@@ -127,10 +106,4 @@ function Kpi({ icon, label, value }: { icon: ReactNode; label: string; value: st
       <p className="mt-1 text-xl font-bold text-gray-900">{value}</p>
     </SurfaceCard>
   );
-}
-
-function statusClass(tone: string) {
-  if (tone === "green") return "bg-emerald-50 text-emerald-700";
-  if (tone === "blue") return "bg-blue-50 text-blue-700";
-  return "bg-amber-50 text-amber-700";
 }

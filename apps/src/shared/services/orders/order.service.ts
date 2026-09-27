@@ -88,4 +88,14 @@ export const orderService = {
 
   getHistory: (orderId: string) =>
     apiFetch<ApiEnvelope<OrderStatusChange[]>>(`/pedidos/${orderId}/historial`),
+
+  /** Panel de sala: pedidos confirmados y aún no finalizados de una sede. */
+  listInProgressForLocation: (locationId: string) =>
+    apiFetch<ApiEnvelope<OrderStatusInfo[]>>(`/pedidos/sede/${locationId}`),
+
+  updateStatus: (orderId: string, estado: OrderStatus, nota?: string) =>
+    apiFetch<ApiEnvelope<OrderStatusInfo>>(`/pedidos/${orderId}/estado`, {
+      method: "PATCH",
+      body: nota ? { estado, nota } : { estado },
+    }),
 };

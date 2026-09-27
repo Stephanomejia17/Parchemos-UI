@@ -1,15 +1,6 @@
 import type { OrderFulfillment, OrderStatus } from "@/shared/services";
 
-export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
-  borrador: "Sin confirmar",
-  pendiente: "Recibido",
-  confirmado: "Confirmado",
-  en_preparacion: "En preparación",
-  listo: "Listo",
-  en_camino: "En camino",
-  entregado: "Entregado",
-  cancelado: "Cancelado",
-};
+export { ORDER_STATUS_LABELS } from "@/shared/constants";
 
 export const ORDER_STATUS_DESCRIPTIONS: Record<OrderStatus, string> = {
   borrador: "Aún no has confirmado este pedido.",
