@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, ChefHat, ChevronDown, PackageCheck, RefreshCw } from "lucide-react";
+import {
+  CheckCircle2,
+  ChefHat,
+  ChevronDown,
+  ClipboardCheck,
+  PackageCheck,
+  RefreshCw,
+} from "lucide-react";
 import { SurfaceCard } from "@/shared/components";
 import { ORDER_STATUS_LABELS } from "@/shared/constants";
 import {
@@ -20,6 +27,7 @@ const POLL_INTERVAL_MS = 60_000;
 const NEW_ORDER_HIGHLIGHT_MS = 30_000;
 
 const ACTIONS: { estado: OrderStatus; label: string; Icon: typeof ChefHat }[] = [
+  { estado: "confirmado", label: "Confirmar", Icon: ClipboardCheck },
   { estado: "en_preparacion", label: "En preparación", Icon: ChefHat },
   { estado: "listo", label: "Marcar como Listo", Icon: CheckCircle2 },
   { estado: "entregado", label: "Marcar como Entregado", Icon: PackageCheck },
@@ -38,6 +46,8 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [newOrderIds, setNewOrderIds] = useState<ReadonlySet<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  // Nota opcional por pedido: se envía con el próximo cambio de estado y queda en el historial.
+  const [notes, setNotes] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     try {
@@ -83,7 +93,13 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
   const changeStatus = async (order: RoomOrder, estado: OrderStatus) => {
     setUpdatingId(order.id);
     try {
-      const { data } = await orderService.updateStatus(order.id, estado);
+      const nota = notes[order.id]?.trim() || undefined;
+      const { data } = await orderService.updateStatus(order.id, estado, nota);
+      setNotes((current) => {
+        const next = { ...current };
+        delete next[order.id];
+        return next;
+      });
       setOrders((current) =>
         data.finalizado
           ? current.filter((o) => o.id !== data.id)
@@ -187,7 +203,24 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
                 })}
               </div>
             </div>
-            {expandedId === order.id && <RoomOrderDetail order={order} />}
+            {expandedId === order.id && (
+              <>
+                <RoomOrderDetail order={order} />
+                <label className="block text-xs text-gray-600">
+                  Nota para el próximo cambio (opcional)
+                  <input
+                    type="text"
+                    maxLength={300}
+                    value={notes[order.id] ?? ""}
+                    onChange={(e) =>
+                      setNotes((current) => ({ ...current, [order.id]: e.target.value }))
+                    }
+                    placeholder="Ej.: sale por la ventanilla 2"
+                    className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                  />
+                </label>
+              </>
+            )}
           </li>
         ))}
       </ul>
