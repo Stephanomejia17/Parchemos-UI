@@ -14,5 +14,9 @@ export type {
   OrderStatus,
   OrderStatusChange,
   OrderStatusInfo,
+  RoomOrder,
+  RoomOrderItem,
+  TableOrders,
+  TableRef,
 } from "./orders/order.service";
 export type { LocationReview } from "./admin/admin.service";

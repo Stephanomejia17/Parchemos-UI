@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, ChefHat, PackageCheck, RefreshCw } from "lucide-react";
+import { CheckCircle2, ChefHat, ChevronDown, PackageCheck, RefreshCw } from "lucide-react";
 import { SurfaceCard } from "@/shared/components";
 import { ORDER_STATUS_LABELS } from "@/shared/constants";
 import {
@@ -9,9 +9,10 @@ import {
   subscribeToNewOrders,
   subscribeToOrderStatus,
   type OrderStatus,
-  type OrderStatusInfo,
+  type RoomOrder,
 } from "@/shared/services";
 import { formatCop } from "@/shared/utils/currency";
+import { RoomOrderDetail } from "./RoomOrderDetail";
 
 /** Respaldo por si el canal en tiempo real se cae: los sockets son la vía principal. */
 const POLL_INTERVAL_MS = 60_000;
@@ -31,16 +32,17 @@ const TIME = new Intl.DateTimeFormat("es-CO", { hour: "numeric", minute: "2-digi
  * habilita solo si la API permite esa transición desde el estado actual.
  */
 export function OrderStatusPanel({ locationId }: { locationId: string }) {
-  const [orders, setOrders] = useState<OrderStatusInfo[]>([]);
+  const [orders, setOrders] = useState<RoomOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [newOrderIds, setNewOrderIds] = useState<ReadonlySet<string>>(new Set());
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const response = await orderService.listInProgressForLocation(locationId);
-      setOrders(response.data);
+      const response = await orderService.listRoomByTable(locationId);
+      setOrders(response.data.flatMap((mesa) => mesa.pedidos));
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No pudimos consultar los pedidos.");
@@ -78,14 +80,14 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
     };
   }, [locationId, load]);
 
-  const changeStatus = async (order: OrderStatusInfo, estado: OrderStatus) => {
+  const changeStatus = async (order: RoomOrder, estado: OrderStatus) => {
     setUpdatingId(order.id);
     try {
       const { data } = await orderService.updateStatus(order.id, estado);
       setOrders((current) =>
         data.finalizado
           ? current.filter((o) => o.id !== data.id)
-          : current.map((o) => (o.id === data.id ? data : o)),
+          : current.map((o) => (o.id === data.id ? { ...o, ...data } : o)),
       );
       setError(null);
     } catch (err) {
@@ -133,44 +135,59 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
         {orders.map((order) => (
           <li
             key={order.id}
-            className={`flex flex-col gap-3 px-5 py-4 md:flex-row md:items-center ${newOrderIds.has(order.id) ? "bg-orange-50/60" : ""}`}
+            className={`space-y-3 px-5 py-4 ${newOrderIds.has(order.id) ? "bg-orange-50/60" : ""}`}
           >
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <p className="font-medium text-gray-900">Pedido #{order.numero}</p>
-                {newOrderIds.has(order.id) && (
-                  <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-white">
-                    Nuevo
+            <div className="flex flex-col gap-3 md:flex-row md:items-center">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-gray-900">Pedido #{order.numero}</p>
+                  {newOrderIds.has(order.id) && (
+                    <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-white">
+                      Nuevo
+                    </span>
+                  )}
+                  <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                    {ORDER_STATUS_LABELS[order.estado]}
                   </span>
-                )}
-                <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
-                  {ORDER_STATUS_LABELS[order.estado]}
-                </span>
+                </div>
+                <p className="text-xs text-gray-500">
+                  {order.confirmadoEn
+                    ? `Recibido ${TIME.format(new Date(order.confirmadoEn))} · `
+                    : ""}
+                  {formatCop(order.total)}
+                  {order.mesa ? ` · ${order.mesa.codigo}` : ""}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setExpandedId(expandedId === order.id ? null : order.id)}
+                  aria-expanded={expandedId === order.id}
+                  className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-primary"
+                >
+                  {expandedId === order.id ? "Ocultar detalle" : "Ver detalle"}
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 transition-transform ${expandedId === order.id ? "rotate-180" : ""}`}
+                  />
+                </button>
               </div>
-              <p className="text-xs text-gray-500">
-                {order.confirmadoEn
-                  ? `Recibido ${TIME.format(new Date(order.confirmadoEn))} · `
-                  : ""}
-                {formatCop(order.total)}
-              </p>
+              <div className="flex flex-wrap gap-2">
+                {ACTIONS.map(({ estado, label, Icon }) => {
+                  const allowed = order.siguientesEstados.includes(estado);
+                  return (
+                    <button
+                      key={estado}
+                      type="button"
+                      disabled={!allowed || updatingId === order.id}
+                      onClick={() => void changeStatus(order, estado)}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 enabled:hover:border-primary enabled:hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {ACTIONS.map(({ estado, label, Icon }) => {
-                const allowed = order.siguientesEstados.includes(estado);
-                return (
-                  <button
-                    key={estado}
-                    type="button"
-                    disabled={!allowed || updatingId === order.id}
-                    onClick={() => void changeStatus(order, estado)}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 enabled:hover:border-primary enabled:hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
+            {expandedId === order.id && <RoomOrderDetail order={order} />}
           </li>
         ))}
       </ul>
