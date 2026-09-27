@@ -14,6 +14,7 @@ export type {
   OrderStatus,
   OrderStatusChange,
   OrderStatusInfo,
+  LocationSummary,
   RoomOrder,
   RoomOrderItem,
   TableOrders,

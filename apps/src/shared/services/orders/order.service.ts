@@ -99,6 +99,15 @@ export interface TableOrders {
   pedidos: RoomOrder[];
 }
 
+/** GP-05: indicadores del día del panel de sala. */
+export interface LocationSummary {
+  ordenesHoy: number;
+  pendientes: number;
+  mesasOcupadas: number;
+  mesasTotales: number;
+  entregadasHoy: number;
+}
+
 interface ApiEnvelope<T> {
   success: boolean;
   data: T;
@@ -118,6 +127,9 @@ export const orderService = {
     apiFetch<ApiEnvelope<OrderStatusChange[]>>(`/pedidos/${orderId}/historial`),
 
   /** Panel de sala: pedidos en curso de una sede agrupados por mesa, con su detalle. */
+  getLocationSummary: (locationId: string) =>
+    apiFetch<ApiEnvelope<LocationSummary>>(`/pedidos/sede/${locationId}/resumen`),
+
   listRoomByTable: (locationId: string) =>
     apiFetch<ApiEnvelope<TableOrders[]>>(`/pedidos/sede/${locationId}/mesas`),
 
