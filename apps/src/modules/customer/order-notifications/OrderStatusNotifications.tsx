@@ -13,9 +13,11 @@ const MAX_VISIBLE = 3;
  * GP-08 CA5: aviso en pantalla cada vez que el restaurante cambia el estado de
  * uno de los pedidos del comensal, esté en la pantalla que esté.
  */
+type Notice = OrderStatusEvent & { notificacionId: string };
+
 export function OrderStatusNotifications() {
   const router = useRouter();
-  const [notices, setNotices] = useState<OrderStatusEvent[]>([]);
+  const [notices, setNotices] = useState<Notice[]>([]);
 
   const dismiss = useCallback((notificacionId: string) => {
     setNotices((current) => current.filter((n) => n.notificacionId !== notificacionId));
@@ -24,8 +26,10 @@ export function OrderStatusNotifications() {
   useEffect(
     () =>
       subscribeToOrderStatus((event) => {
-        setNotices((current) => [event, ...current].slice(0, MAX_VISIBLE));
-        window.setTimeout(() => dismiss(event.notificacionId), AUTO_DISMISS_MS);
+        const { notificacionId } = event;
+        if (!notificacionId) return;
+        setNotices((current) => [{ ...event, notificacionId }, ...current].slice(0, MAX_VISIBLE));
+        window.setTimeout(() => dismiss(notificacionId), AUTO_DISMISS_MS);
       }),
     [dismiss],
   );

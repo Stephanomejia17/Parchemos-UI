@@ -5,16 +5,22 @@ import type { OrderStatus, OrderStatusInfo } from "./order.service";
 /** Evento `pedido.estado` que emite la API cuando el restaurante cambia un pedido. */
 export interface OrderStatusEvent extends OrderStatusInfo {
   estadoAnterior: OrderStatus;
-  notificacionId: string;
+  /** Solo llega al comensal: el personal de la sede recibe el cambio sin notificación. */
+  notificacionId?: string;
 }
 
-type Listener = (event: OrderStatusEvent) => void;
+/** GP-05: evento `pedido.nuevo` que recibe el personal cuando un comensal confirma un pedido. */
+export type NewOrderEvent = OrderStatusInfo;
 
 const ORDER_STATUS_EVENT = "pedido.estado";
+const NEW_ORDER_EVENT = "pedido.nuevo";
 /** Reintentos seguidos tras un rechazo del servidor (token vencido). */
 const MAX_AUTH_RETRIES = 2;
 
-const listeners = new Set<Listener>();
+const listeners = {
+  [ORDER_STATUS_EVENT]: new Set<(event: OrderStatusEvent) => void>(),
+  [NEW_ORDER_EVENT]: new Set<(event: NewOrderEvent) => void>(),
+};
 let socket: Socket | null = null;
 let authRetries = 0;
 
@@ -30,7 +36,11 @@ function connect(): Socket {
   });
 
   client.on(ORDER_STATUS_EVENT, (event: OrderStatusEvent) => {
-    listeners.forEach((listener) => listener(event));
+    listeners[ORDER_STATUS_EVENT].forEach((listener) => listener(event));
+  });
+
+  client.on(NEW_ORDER_EVENT, (event: NewOrderEvent) => {
+    listeners[NEW_ORDER_EVENT].forEach((listener) => listener(event));
   });
 
   // La API desconecta el socket si el token no es valido: se renueva la
@@ -47,19 +57,29 @@ function connect(): Socket {
 }
 
 /**
- * GP-08 CA5: escucha en tiempo real los cambios de estado de los pedidos del
- * usuario. Todas las suscripciones comparten un solo socket, que se cierra
- * cuando se va el último suscriptor.
+ * Todas las suscripciones comparten un solo socket, que se cierra cuando se
+ * va el último suscriptor.
  */
-export function subscribeToOrderStatus(listener: Listener): () => void {
-  listeners.add(listener);
+function subscribe<T>(set: Set<(event: T) => void>, listener: (event: T) => void) {
+  set.add(listener);
   socket ??= connect();
 
   return () => {
-    listeners.delete(listener);
-    if (listeners.size === 0 && socket) {
+    set.delete(listener);
+    const quedan = listeners[ORDER_STATUS_EVENT].size + listeners[NEW_ORDER_EVENT].size;
+    if (quedan === 0 && socket) {
       socket.disconnect();
       socket = null;
     }
   };
+}
+
+/** GP-08 CA5: cambios de estado de los pedidos del usuario (o de su sede, si es personal). */
+export function subscribeToOrderStatus(listener: (event: OrderStatusEvent) => void): () => void {
+  return subscribe(listeners[ORDER_STATUS_EVENT], listener);
+}
+
+/** GP-05 CA1: pedidos nuevos de las sedes que gestiona el usuario. */
+export function subscribeToNewOrders(listener: (event: NewOrderEvent) => void): () => void {
+  return subscribe(listeners[NEW_ORDER_EVENT], listener);
 }

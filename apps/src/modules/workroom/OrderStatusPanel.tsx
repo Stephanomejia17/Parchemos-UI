@@ -4,11 +4,19 @@ import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, ChefHat, PackageCheck, RefreshCw } from "lucide-react";
 import { SurfaceCard } from "@/shared/components";
 import { ORDER_STATUS_LABELS } from "@/shared/constants";
-import { orderService, type OrderStatus, type OrderStatusInfo } from "@/shared/services";
+import {
+  orderService,
+  subscribeToNewOrders,
+  subscribeToOrderStatus,
+  type OrderStatus,
+  type OrderStatusInfo,
+} from "@/shared/services";
 import { formatCop } from "@/shared/utils/currency";
 
-/** El panel no tiene socket propio todavía: se refresca solo cada tanto. */
-const POLL_INTERVAL_MS = 15_000;
+/** Respaldo por si el canal en tiempo real se cae: los sockets son la vía principal. */
+const POLL_INTERVAL_MS = 60_000;
+/** Cuánto tiempo se destaca un pedido recién llegado. */
+const NEW_ORDER_HIGHLIGHT_MS = 30_000;
 
 const ACTIONS: { estado: OrderStatus; label: string; Icon: typeof ChefHat }[] = [
   { estado: "en_preparacion", label: "En preparación", Icon: ChefHat },
@@ -27,6 +35,7 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [newOrderIds, setNewOrderIds] = useState<ReadonlySet<string>>(new Set());
 
   const load = useCallback(async () => {
     try {
@@ -45,6 +54,29 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
     const timer = window.setInterval(() => void load(), POLL_INTERVAL_MS);
     return () => window.clearInterval(timer);
   }, [load]);
+
+  // GP-05 CA1: los pedidos nuevos y los cambios de otros compañeros llegan por socket.
+  useEffect(() => {
+    const unsubscribeNew = subscribeToNewOrders((event) => {
+      if (event.sedeId !== locationId) return;
+      setNewOrderIds((current) => new Set(current).add(event.id));
+      window.setTimeout(() => {
+        setNewOrderIds((current) => {
+          const next = new Set(current);
+          next.delete(event.id);
+          return next;
+        });
+      }, NEW_ORDER_HIGHLIGHT_MS);
+      void load();
+    });
+    const unsubscribeStatus = subscribeToOrderStatus((event) => {
+      if (event.sedeId === locationId) void load();
+    });
+    return () => {
+      unsubscribeNew();
+      unsubscribeStatus();
+    };
+  }, [locationId, load]);
 
   const changeStatus = async (order: OrderStatusInfo, estado: OrderStatus) => {
     setUpdatingId(order.id);
@@ -70,7 +102,9 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
       <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
         <div>
           <h2 className="font-semibold text-gray-900">Pedidos en curso</h2>
-          <p className="text-xs text-gray-500">Actualiza el estado para avisarle al comensal</p>
+          <p className="text-xs text-gray-500">
+            Los pedidos nuevos aparecen solos; actualiza el estado para avisarle al comensal
+          </p>
         </div>
         <button
           type="button"
@@ -97,10 +131,18 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
 
       <ul className="divide-y divide-gray-100">
         {orders.map((order) => (
-          <li key={order.id} className="flex flex-col gap-3 px-5 py-4 md:flex-row md:items-center">
+          <li
+            key={order.id}
+            className={`flex flex-col gap-3 px-5 py-4 md:flex-row md:items-center ${newOrderIds.has(order.id) ? "bg-orange-50/60" : ""}`}
+          >
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <p className="font-medium text-gray-900">Pedido #{order.numero}</p>
+                {newOrderIds.has(order.id) && (
+                  <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-white">
+                    Nuevo
+                  </span>
+                )}
                 <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
                   {ORDER_STATUS_LABELS[order.estado]}
                 </span>
