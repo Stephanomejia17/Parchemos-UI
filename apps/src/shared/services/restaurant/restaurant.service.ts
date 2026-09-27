@@ -2,6 +2,7 @@ import { apiFetch, apiUpload } from "../http/api-client";
 import type {
   GalleryImage,
   Location,
+  PublicLocationProfile,
   Restaurant,
   Schedule,
   StaffMember,
@@ -47,43 +48,30 @@ export interface LocationReview {
 export const restaurantService = {
   listMyRestaurants: () => apiFetch<Restaurant[]>("/restaurantes/mios"),
 
-  listPublicLocations: () =>
-    apiFetch<Location[]>("/restaurantes/publicos"),
+  listPublicLocations: () => apiFetch<Location[]>("/restaurantes/publicos"),
 
   getPublicLocation: (locationId: string) =>
-    apiFetch<Location>(`/restaurantes/publicos/${locationId}`),
+    apiFetch<PublicLocationProfile>(`/restaurantes/publicos/${locationId}`),
 
   listLocationReviews: (locationId: string) =>
-    apiFetch<LocationReview[]>(
-      `/restaurantes/publicos/${locationId}/calificaciones`,
-    ),
+    apiFetch<LocationReview[]>(`/restaurantes/publicos/${locationId}/calificaciones`),
 
-  createLocationReview: (
-    locationId: string,
-    rating: number,
-    comment?: string,
-  ) =>
-    apiFetch<LocationReview>(
-      `/restaurantes/${locationId}/calificaciones`,
-      {
-        method: "POST",
-        body: {
-          rating,
-          ...(comment !== undefined ? { comment } : {}),
-        },
+  createLocationReview: (locationId: string, rating: number, comment?: string) =>
+    apiFetch<LocationReview>(`/restaurantes/${locationId}/calificaciones`, {
+      method: "POST",
+      body: {
+        rating,
+        ...(comment !== undefined ? { comment } : {}),
       },
-    ),
+    }),
 
   updateLocationReview: (reviewId: string, comment: string) =>
-    apiFetch<LocationReview>(
-      `/restaurantes/calificaciones/${reviewId}`,
-      {
-        method: "PUT",
-        body: {
-          comment,
-        },
+    apiFetch<LocationReview>(`/restaurantes/calificaciones/${reviewId}`, {
+      method: "PUT",
+      body: {
+        comment,
       },
-    ),
+    }),
 
   createRestaurant: (businessName: string) =>
     apiFetch<Restaurant>("/restaurantes", {
@@ -97,51 +85,31 @@ export const restaurantService = {
       body,
     }),
 
-  updateLocationInfo: (
-    locationId: string,
-    body: UpdateLocationInfoInput,
-  ) =>
+  updateLocationInfo: (locationId: string, body: UpdateLocationInfoInput) =>
     apiFetch<Location>(`/restaurantes/sedes/${locationId}`, {
       method: "PATCH",
       body,
     }),
 
   updateSchedules: (locationId: string, schedules: Schedule[]) =>
-    apiFetch<Schedule[]>(
-      `/restaurantes/sedes/${locationId}/horarios`,
-      {
-        method: "PUT",
-        body: { schedules },
-      },
-    ),
+    apiFetch<Schedule[]>(`/restaurantes/sedes/${locationId}/horarios`, {
+      method: "PUT",
+      body: { schedules },
+    }),
 
-  updateLocationImage: (
-    locationId: string,
-    kind: "logo" | "portada",
-    url: string,
-  ) =>
-    apiFetch<Location>(
-      `/restaurantes/sedes/${locationId}/${kind}`,
-      {
-        method: "PUT",
-        body: { url },
-      },
-    ),
+  updateLocationImage: (locationId: string, kind: "logo" | "portada", url: string) =>
+    apiFetch<Location>(`/restaurantes/sedes/${locationId}/${kind}`, {
+      method: "PUT",
+      body: { url },
+    }),
 
   addGalleryImage: (locationId: string, url: string) =>
-    apiFetch<GalleryImage>(
-      `/restaurantes/sedes/${locationId}/galeria`,
-      {
-        method: "POST",
-        body: { url },
-      },
-    ),
+    apiFetch<GalleryImage>(`/restaurantes/sedes/${locationId}/galeria`, {
+      method: "POST",
+      body: { url },
+    }),
 
-  uploadLocationImage: (
-    locationId: string,
-    kind: "logo" | "portada" | "galeria",
-    file: File,
-  ) => {
+  uploadLocationImage: (locationId: string, kind: "logo" | "portada" | "galeria", file: File) => {
     const formData = new FormData();
     formData.append("file", file);
 
@@ -152,23 +120,16 @@ export const restaurantService = {
   },
 
   removeGalleryImage: (locationId: string, imageId: string) =>
-    apiFetch<void>(
-      `/restaurantes/sedes/${locationId}/galeria/${imageId}`,
-      {
-        method: "DELETE",
-      },
-    ),
+    apiFetch<void>(`/restaurantes/sedes/${locationId}/galeria/${imageId}`, {
+      method: "DELETE",
+    }),
 
   requestLocationApproval: (locationId: string) =>
-    apiFetch<Location>(
-      `/restaurantes/sedes/${locationId}/solicitud-autorizacion`,
-      {
-        method: "POST",
-      },
-    ),
+    apiFetch<Location>(`/restaurantes/sedes/${locationId}/solicitud-autorizacion`, {
+      method: "POST",
+    }),
 
-  listStaff: () =>
-    apiFetch<StaffMember[]>("/restaurantes/personal"),
+  listStaff: () => apiFetch<StaffMember[]>("/restaurantes/personal"),
 
   createStaffMember: (body: CreateStaffMemberInput) =>
     apiFetch<StaffMember>("/restaurantes/personal", {
@@ -178,35 +139,21 @@ export const restaurantService = {
 
   setStaffEnabled: (memberId: string, enabled: boolean) =>
     apiFetch<StaffMember>(
-      `/restaurantes/personal/${memberId}/${
-        enabled ? "habilitar" : "deshabilitar"
-      }`,
+      `/restaurantes/personal/${memberId}/${enabled ? "habilitar" : "deshabilitar"}`,
       {
         method: "POST",
       },
     ),
 
-  updateStaffMember: (
-    memberId: string,
-    body: UpdateStaffMemberInput,
-  ) =>
-    apiFetch<StaffMember>(
-      `/restaurantes/personal/${memberId}`,
-      {
-        method: "PATCH",
-        body,
-      },
-    ),
+  updateStaffMember: (memberId: string, body: UpdateStaffMemberInput) =>
+    apiFetch<StaffMember>(`/restaurantes/personal/${memberId}`, {
+      method: "PATCH",
+      body,
+    }),
 
-  reassignStaffLocation: (
-    memberId: string,
-    locationId: string,
-  ) =>
-    apiFetch<StaffMember>(
-      `/restaurantes/personal/${memberId}/sede`,
-      {
-        method: "PUT",
-        body: { locationId },
-      },
-    ),
+  reassignStaffLocation: (memberId: string, locationId: string) =>
+    apiFetch<StaffMember>(`/restaurantes/personal/${memberId}/sede`, {
+      method: "PUT",
+      body: { locationId },
+    }),
 };

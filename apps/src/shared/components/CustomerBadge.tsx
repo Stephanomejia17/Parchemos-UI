@@ -6,6 +6,8 @@ const COLORS: Record<string, string> = {
   yellow: "bg-yellow-100 text-yellow-700",
   gray: "bg-gray-100 text-gray-600",
   blue: "bg-blue-100 text-blue-600",
+  // Agregado para AC2 — marcar productos no disponibles.
+  red: "bg-red-100 text-red-600",
 };
 
 export function CustomerBadge({
