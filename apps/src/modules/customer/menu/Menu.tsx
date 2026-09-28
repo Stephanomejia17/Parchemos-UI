@@ -1,17 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Clock, Flame, Minus, Plus, ShoppingBag } from "lucide-react";
 import { RemoteImage } from "@/shared/components/media/RemoteImage";
 import { MENU_SECTIONS } from "@/mocks/customer/menu";
 
-export function Menu() {
+export function Menu({ mesaId }: { mesaId?: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeTableId = mesaId ?? searchParams.get("mesa") ?? undefined;
   const [cart, setCart] = useState<Record<number, number>>({});
   const [activeSection, setActiveSection] = useState(0);
 
-  const goOrderSummary = () => router.push("/order-summary");
+  const goOrderSummary = () => router.push(activeTableId ? `/order-summary?mesa=${encodeURIComponent(activeTableId)}` : "/order-summary");
 
   const addToCart = (id: number) => setCart((prev) => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
   const removeFromCart = (id: number) =>

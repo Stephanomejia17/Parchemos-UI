@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Check, ChefHat, ChevronLeft, Minus, Plus, QrCode } from "lucide-react";
 import { PrimaryButton } from "@/shared/components";
 
@@ -16,10 +17,12 @@ const STEPS = ["Recibido", "Preparando", "Listo", "Entregado"];
 
 export function OrderSummary() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const mesaId = searchParams.get("mesa") ?? (typeof window !== "undefined" ? window.localStorage.getItem("parchemos:mesa") : null);
   const [splitEnabled, setSplitEnabled] = useState(false);
   const [guests, setGuests] = useState(2);
 
-  const goPayment = () => router.push("/payment");
+  const goPayment = () => router.push(mesaId ? `/payment?mesa=${encodeURIComponent(mesaId)}` : "/payment");
 
   const subtotal = ITEMS.reduce((a, i) => a + i.price * i.qty, 0);
   const service = Math.round(subtotal * 0.1);

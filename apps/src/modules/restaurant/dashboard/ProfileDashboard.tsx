@@ -23,6 +23,7 @@ import {
 } from "recharts";
 import { CustomerBadge as Badge } from "@/shared/components";
 import { SALES_DATA } from "@/mocks/restaurant/dashboard";
+import { TableManagement } from "@/modules/restaurant/tables/TableManagement";
 
 const KPIS = [
   { label: "Ventas hoy", value: "$3.12M", change: "+18%", icon: DollarSign },
@@ -63,6 +64,7 @@ export function ProfileDashboard() {
       </div>
 
       <div className="p-4 md:p-6 flex flex-col gap-4">
+        <TableManagement />
         {/* KPIs — 2 cols on mobile, 4 on md+ */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {KPIS.map((kpi, i) => (
