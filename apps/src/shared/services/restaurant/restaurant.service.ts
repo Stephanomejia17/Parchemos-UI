@@ -2,6 +2,7 @@ import { apiFetch, apiUpload } from "../http/api-client";
 import type {
   GalleryImage,
   Location,
+  PublicLocationProfile,
   Restaurant,
   Schedule,
   StaffMember,
@@ -16,7 +17,7 @@ export interface CreateLocationInput {
 export interface UpdateLocationInfoInput {
   name: string;
   address: string;
-  description: string;
+  description?: string;
 }
 
 export interface CreateStaffMemberInput {
@@ -32,17 +33,63 @@ export interface UpdateStaffMemberInput {
   phone: string;
 }
 
+export interface LocationReview {
+  id: string;
+  locationId: string;
+  userId: string;
+  rating: number;
+  comment: string | null;
+  status: string;
+  editedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const restaurantService = {
   listMyRestaurants: () => apiFetch<Restaurant[]>("/restaurantes/mios"),
 
+  listPublicLocations: () => apiFetch<Location[]>("/restaurantes/publicos"),
+
+  getPublicLocation: (locationId: string) =>
+    apiFetch<PublicLocationProfile>(`/restaurantes/publicos/${locationId}`),
+
+  listLocationReviews: (locationId: string) =>
+    apiFetch<LocationReview[]>(`/restaurantes/publicos/${locationId}/calificaciones`),
+
+  createLocationReview: (locationId: string, rating: number, comment?: string) =>
+    apiFetch<LocationReview>(`/restaurantes/${locationId}/calificaciones`, {
+      method: "POST",
+      body: {
+        rating,
+        ...(comment !== undefined ? { comment } : {}),
+      },
+    }),
+
+  updateLocationReview: (reviewId: string, comment: string) =>
+    apiFetch<LocationReview>(`/restaurantes/calificaciones/${reviewId}`, {
+      method: "PUT",
+      body: {
+        comment,
+      },
+    }),
+
   createRestaurant: (businessName: string) =>
-    apiFetch<Restaurant>("/restaurantes", { method: "POST", body: { businessName } }),
+    apiFetch<Restaurant>("/restaurantes", {
+      method: "POST",
+      body: { businessName },
+    }),
 
   createLocation: (restaurantId: string, body: CreateLocationInput) =>
-    apiFetch<Location>(`/restaurantes/${restaurantId}/sedes`, { method: "POST", body }),
+    apiFetch<Location>(`/restaurantes/${restaurantId}/sedes`, {
+      method: "POST",
+      body,
+    }),
 
   updateLocationInfo: (locationId: string, body: UpdateLocationInfoInput) =>
-    apiFetch<Location>(`/restaurantes/sedes/${locationId}`, { method: "PATCH", body }),
+    apiFetch<Location>(`/restaurantes/sedes/${locationId}`, {
+      method: "PATCH",
+      body,
+    }),
 
   updateSchedules: (locationId: string, schedules: Schedule[]) =>
     apiFetch<Schedule[]>(`/restaurantes/sedes/${locationId}/horarios`, {
@@ -65,6 +112,7 @@ export const restaurantService = {
   uploadLocationImage: (locationId: string, kind: "logo" | "portada" | "galeria", file: File) => {
     const formData = new FormData();
     formData.append("file", file);
+
     return apiUpload<Location | GalleryImage>(
       `/restaurantes/sedes/${locationId}/${kind}/upload`,
       formData,
@@ -72,7 +120,9 @@ export const restaurantService = {
   },
 
   removeGalleryImage: (locationId: string, imageId: string) =>
-    apiFetch<void>(`/restaurantes/sedes/${locationId}/galeria/${imageId}`, { method: "DELETE" }),
+    apiFetch<void>(`/restaurantes/sedes/${locationId}/galeria/${imageId}`, {
+      method: "DELETE",
+    }),
 
   requestLocationApproval: (locationId: string) =>
     apiFetch<Location>(`/restaurantes/sedes/${locationId}/solicitud-autorizacion`, {
@@ -82,7 +132,10 @@ export const restaurantService = {
   listStaff: () => apiFetch<StaffMember[]>("/restaurantes/personal"),
 
   createStaffMember: (body: CreateStaffMemberInput) =>
-    apiFetch<StaffMember>("/restaurantes/personal", { method: "POST", body }),
+    apiFetch<StaffMember>("/restaurantes/personal", {
+      method: "POST",
+      body,
+    }),
 
   setStaffEnabled: (memberId: string, enabled: boolean) =>
     apiFetch<StaffMember>(
@@ -93,7 +146,10 @@ export const restaurantService = {
     ),
 
   updateStaffMember: (memberId: string, body: UpdateStaffMemberInput) =>
-    apiFetch<StaffMember>(`/restaurantes/personal/${memberId}`, { method: "PATCH", body }),
+    apiFetch<StaffMember>(`/restaurantes/personal/${memberId}`, {
+      method: "PATCH",
+      body,
+    }),
 
   reassignStaffLocation: (memberId: string, locationId: string) =>
     apiFetch<StaffMember>(`/restaurantes/personal/${memberId}/sede`, {

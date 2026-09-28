@@ -5,4 +5,19 @@ export type { Category, Product, ProductInput, Status } from "./menu/menu.servic
 export { profileService } from "./profile/profile.service";
 export { restaurantService } from "./restaurant/restaurant.service";
 export { adminService } from "./admin/admin.service";
+export { orderService } from "./orders/order.service";
+export type { CreateOrderInput, CreatedOrder } from "./orders/order.service";
+export { subscribeToNewOrders, subscribeToOrderStatus } from "./orders/order-events";
+export type { NewOrderEvent, OrderStatusEvent } from "./orders/order-events";
+export type {
+  OrderFulfillment,
+  OrderStatus,
+  OrderStatusChange,
+  OrderStatusInfo,
+  LocationSummary,
+  RoomOrder,
+  RoomOrderItem,
+  TableOrders,
+  TableRef,
+} from "./orders/order.service";
 export type { LocationReview } from "./admin/admin.service";

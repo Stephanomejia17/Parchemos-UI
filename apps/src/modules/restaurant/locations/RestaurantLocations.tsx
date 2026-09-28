@@ -5,9 +5,13 @@ import { useRouter } from "next/navigation";
 import { Building2, Loader2, MapPin, Plus, Send, Store, Trash2, X } from "lucide-react";
 import { ApiError, RequireAuth } from "@/shared/auth";
 import { restaurantService } from "@/shared/services";
+import type { GalleryFile } from "@/shared/components";
 import {
   FormStepper,
+  GalleryAddTile,
+  GalleryThumb,
   PrimaryButton,
+  SquareFileInput,
   SurfaceCard,
   TemporaryMessage,
   type FormStep,
@@ -55,7 +59,7 @@ interface LocationWizardData {
   schedules: Schedule[];
   logo: File | null;
   cover: File | null;
-  gallery: File[];
+  gallery: GalleryFile[];
 }
 
 export function RestaurantLocations() {
@@ -140,9 +144,10 @@ function Manager() {
         throw new Error("No se pudieron guardar los horarios de la sede.");
       }
       if (data.logo) await restaurantService.uploadLocationImage(created.id, "logo", data.logo);
-      if (data.cover) await restaurantService.uploadLocationImage(created.id, "portada", data.cover);
-      for (const image of data.gallery) {
-        await restaurantService.uploadLocationImage(created.id, "galeria", image);
+      if (data.cover)
+        await restaurantService.uploadLocationImage(created.id, "portada", data.cover);
+      for (const { file } of data.gallery) {
+        await restaurantService.uploadLocationImage(created.id, "galeria", file);
       }
       await restaurantService.requestLocationApproval(created.id);
       setRestaurantId(null);
@@ -199,17 +204,30 @@ function Manager() {
                       onClick={() => setLocation(item)}
                       className="w-full rounded-xl border bg-gray-50 p-3 text-left hover:border-orange-300"
                     >
-                      <div className="flex justify-between gap-2">
-                        <b className="truncate text-sm">{item.name}</b>
-                        <StatusBadge status={item.status} />
+                      <div className="flex gap-3">
+                        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border bg-white">
+                          {item.logoUrl ? (
+                            <img src={item.logoUrl} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                              <Store className="h-5 w-5 text-gray-400" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex justify-between gap-2">
+                            <b className="truncate text-sm">{item.name}</b>
+                            <StatusBadge status={item.status} />
+                          </div>
+                          <p className="mt-1 text-xs text-gray-500">
+                            <MapPin className="mr-1 inline h-3 w-3" />
+                            {item.address}
+                          </p>
+                          {item.rejectionReason && (
+                            <p className="mt-1 text-xs text-red-600">{item.rejectionReason}</p>
+                          )}
+                        </div>
                       </div>
-                      <p className="mt-1 text-xs text-gray-500">
-                        <MapPin className="mr-1 inline h-3 w-3" />
-                        {item.address}
-                      </p>
-                      {item.rejectionReason && (
-                        <p className="mt-1 text-xs text-red-600">{item.rejectionReason}</p>
-                      )}
                     </button>
                   ))}
                 </div>
@@ -244,11 +262,7 @@ function Manager() {
           </Modal>
         )}
         {restaurantId && (
-          <LocationWizard
-            busy={busy}
-            close={() => setRestaurantId(null)}
-            submit={finishLocation}
-          />
+          <LocationWizard busy={busy} close={() => setRestaurantId(null)} submit={finishLocation} />
         )}
         {location && (
           <Profile location={location} busy={busy} close={() => setLocation(null)} run={run} />
@@ -277,7 +291,8 @@ function LocationWizard({
     cover: null,
     gallery: [],
   });
-  const update = (patch: Partial<LocationWizardData>) => setData((current) => ({ ...current, ...patch }));
+  const update = (patch: Partial<LocationWizardData>) =>
+    setData((current) => ({ ...current, ...patch }));
   const infoErrors = {
     name:
       data.name.trim().length === 0
@@ -329,6 +344,7 @@ function LocationWizard({
       <FormStepper steps={LOCATION_STEPS} current={step} className="mb-7" />
       {step === 0 && (
         <section>
+          <p className="mb-3 text-xs text-gray-500">Los campos marcados con * son obligatorios.</p>
           <Field
             label="Nombre de la sede"
             name="name"
@@ -373,10 +389,36 @@ function LocationWizard({
             </p>
           )}
           <div className="space-y-2">
+            <div className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-xl p-3">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={data.schedules.length === DAYS.length}
+                  onChange={(event) =>
+                    update({
+                      schedules: event.target.checked
+                        ? DAYS.map(({ value }) => {
+                            const existing = data.schedules.find(
+                              (item) => item.dayOfWeek === value,
+                            );
+                            return (
+                              existing ?? { dayOfWeek: value, startsAt: "09:00", endsAt: "18:00" }
+                            );
+                          })
+                        : [],
+                    })
+                  }
+                />
+                Seleccionar todos
+              </label>
+            </div>
             {DAYS.map(({ label, value }) => {
               const schedule = data.schedules.find((item) => item.dayOfWeek === value);
               return (
-                <div key={label} className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-xl border p-3">
+                <div
+                  key={label}
+                  className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-xl border p-3"
+                >
                   <label className="flex items-center gap-2 text-sm font-medium">
                     <input
                       type="checkbox"
@@ -384,7 +426,10 @@ function LocationWizard({
                       onChange={(event) =>
                         update({
                           schedules: event.target.checked
-                            ? [...data.schedules, { dayOfWeek: value, startsAt: "09:00", endsAt: "18:00" }]
+                            ? [
+                                ...data.schedules,
+                                { dayOfWeek: value, startsAt: "09:00", endsAt: "18:00" },
+                              ]
                             : data.schedules.filter((item) => item.dayOfWeek !== value),
                         })
                       }
@@ -395,58 +440,134 @@ function LocationWizard({
                     type="time"
                     disabled={!schedule}
                     value={schedule?.startsAt ?? "09:00"}
-                    onChange={(event) => update({ schedules: data.schedules.map((item) => item.dayOfWeek === value ? { ...item, startsAt: event.target.value } : item) })}
+                    onChange={(event) =>
+                      update({
+                        schedules: data.schedules.map((item) =>
+                          item.dayOfWeek === value
+                            ? { ...item, startsAt: event.target.value }
+                            : item,
+                        ),
+                      })
+                    }
                     className="rounded-lg border px-2 py-1 disabled:bg-gray-100"
                   />
                   <input
                     type="time"
                     disabled={!schedule}
                     value={schedule?.endsAt ?? "18:00"}
-                    onChange={(event) => update({ schedules: data.schedules.map((item) => item.dayOfWeek === value ? { ...item, endsAt: event.target.value } : item) })}
+                    onChange={(event) =>
+                      update({
+                        schedules: data.schedules.map((item) =>
+                          item.dayOfWeek === value ? { ...item, endsAt: event.target.value } : item,
+                        ),
+                      })
+                    }
                     className="rounded-lg border px-2 py-1 disabled:bg-gray-100"
                   />
                 </div>
               );
             })}
           </div>
-          <WizardNavigation step={step} back={() => setStep(0)} next={next} busy={busy} />
+          <WizardNavigation
+            step={step}
+            back={() => setStep(0)}
+            next={next}
+            busy={busy}
+            disabled={!valid()}
+          />
         </section>
       )}
+
       {step === 2 && (
-        <section className="space-y-4">
-          <FileInput label="Logo (opcional)" file={data.logo} onChange={(logo) => update({ logo })} />
-          <FileInput label="Portada (opcional)" file={data.cover} onChange={(cover) => update({ cover })} />
+        <section className="space-y-5">
+          <div className="grid grid-cols-2 gap-4">
+            <SquareFileInput
+              label="Logo (opcional)"
+              file={data.logo}
+              onChange={(logo) => update({ logo })}
+            />
+            <SquareFileInput
+              label="Portada (opcional)"
+              file={data.cover}
+              onChange={(cover) => update({ cover })}
+            />
+          </div>
+
           <div>
             <label className="block text-sm font-medium">Galería (mínimo 2, máximo 5)</label>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              multiple
-              onChange={(event) => update({ gallery: Array.from(event.target.files ?? []).slice(0, 5) })}
-              className="mt-1 block w-full rounded-xl border p-2 text-sm"
-            />
-            <p role={data.gallery.length >= 2 ? undefined : "alert"} className={`mt-1 text-xs ${data.gallery.length >= 2 ? "text-emerald-700" : "text-red-600"}`}>
+            <p
+              className={`mt-1 text-xs ${data.gallery.length >= 2 ? "text-emerald-700" : "text-red-600"}`}
+            >
               {data.gallery.length} de 5 imágenes seleccionadas.
             </p>
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
-              {data.gallery.map((file) => <img key={`${file.name}-${file.lastModified}`} src={URL.createObjectURL(file)} alt={file.name} className="aspect-square rounded-xl object-cover" />)}
+            <div className="mt-2 grid grid-cols-3 gap-3 sm:grid-cols-5">
+              {data.gallery.map(({ id, file }) => (
+                <GalleryThumb
+                  key={id}
+                  src={URL.createObjectURL(file)}
+                  onRemove={() =>
+                    update({ gallery: data.gallery.filter((item) => item.id !== id) })
+                  }
+                />
+              ))}
+              <GalleryAddTile
+                className="col-span-full"
+                square={false}
+                remaining={5 - data.gallery.length}
+                onAdd={(files) => update({ gallery: [...data.gallery, ...files] })}
+              />
             </div>
           </div>
-          <WizardNavigation step={step} back={() => setStep(1)} next={next} busy={busy} disabled={!valid()} />
+
+          <WizardNavigation
+            step={step}
+            back={() => setStep(1)}
+            next={next}
+            busy={busy}
+            disabled={!valid()}
+          />
         </section>
       )}
+
       {step === 3 && (
         <section>
           <div className="rounded-2xl border bg-gray-50 p-5">
             <h3 className="text-lg font-semibold">{data.name}</h3>
             <p className="mt-1 text-sm text-gray-600">{data.address}</p>
             {data.description && <p className="mt-3 text-sm">{data.description}</p>}
-            <p className="mt-3 text-sm text-gray-600">{data.schedules.length} días configurados · {data.gallery.length} imágenes de galería</p>
+            <p className="mt-3 text-sm text-gray-600">
+              {data.schedules.length} días configurados · {data.gallery.length} imágenes de galería
+            </p>
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
-              {[...data.gallery, ...(data.logo ? [data.logo] : []), ...(data.cover ? [data.cover] : [])].map((file) => <img key={`${file.name}-${file.lastModified}`} src={URL.createObjectURL(file)} alt={file.name} className="aspect-square rounded-xl object-cover" />)}
+              {data.gallery.map(({ id, file }) => (
+                <img
+                  key={id}
+                  src={URL.createObjectURL(file)}
+                  alt={file.name}
+                  className="aspect-square rounded-xl object-cover"
+                />
+              ))}
+              {data.logo && (
+                <img
+                  key="logo-preview"
+                  src={URL.createObjectURL(data.logo)}
+                  alt={data.logo.name}
+                  className="aspect-square rounded-xl object-cover"
+                />
+              )}
+              {data.cover && (
+                <img
+                  key="cover-preview"
+                  src={URL.createObjectURL(data.cover)}
+                  alt={data.cover.name}
+                  className="aspect-square rounded-xl object-cover"
+                />
+              )}
             </div>
           </div>
-          <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">Al finalizar, la sede quedará pendiente de aprobación por el administrador.</p>
+          <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+            Al finalizar, la sede quedará pendiente de aprobación por el administrador.
+          </p>
           <WizardNavigation
             step={step}
             back={() => setStep(2)}
@@ -460,26 +581,36 @@ function LocationWizard({
   );
 }
 
-function WizardNavigation({ step, back, next, submit, busy, disabled = false }: { step: number; back: () => void; next?: () => void; submit?: () => void; busy: boolean; disabled?: boolean }) {
+function WizardNavigation({
+  step,
+  back,
+  next,
+  submit,
+  busy,
+  disabled = false,
+}: {
+  step: number;
+  back: () => void;
+  next?: () => void;
+  submit?: () => void;
+  busy: boolean;
+  disabled?: boolean;
+}) {
   return (
     <div className="mt-6 flex justify-between gap-3 border-t pt-4">
-      <PrimaryButton type="button" variant="secondary" onClick={back}>Atrás</PrimaryButton>
+      <PrimaryButton type="button" variant="secondary" onClick={back}>
+        Atrás
+      </PrimaryButton>
       {step === LOCATION_STEPS.length - 1 ? (
-        <PrimaryButton type="button" onClick={submit} disabled={busy}>{busy ? "Guardando..." : "Finalizar y solicitar aprobación"}</PrimaryButton>
+        <PrimaryButton type="button" onClick={submit} disabled={busy}>
+          {busy ? "Guardando..." : "Finalizar y solicitar aprobación"}
+        </PrimaryButton>
       ) : (
-        <PrimaryButton type="button" onClick={next} disabled={busy || disabled}>Siguiente</PrimaryButton>
+        <PrimaryButton type="button" onClick={next} disabled={busy || disabled}>
+          Siguiente
+        </PrimaryButton>
       )}
     </div>
-  );
-}
-
-function FileInput({ label, file, onChange }: { label: string; file: File | null; onChange: (file: File | null) => void }) {
-  return (
-    <label className="block text-sm font-medium">
-      {label}
-      <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => onChange(event.target.files?.[0] ?? null)} className="mt-1 block w-full rounded-xl border p-2 text-sm" />
-      {file && <img src={URL.createObjectURL(file)} alt={file.name} className="mt-3 h-24 w-24 rounded-xl object-cover" />}
-    </label>
   );
 }
 
@@ -494,90 +625,116 @@ function Profile({
   close: () => void;
   run: (action: () => Promise<void>, fallback: string) => Promise<boolean>;
 }) {
-  const [tab, setTab] = useState<"info" | "hours" | "images" | "preview">("info"),
-    [draft, setDraft] = useState(location),
-    [requestSuccess, setRequestSuccess] = useState(false);
-  const saveInfo = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const description = String(form.get("description")).trim();
-    await run(
-      async () =>
-        setDraft(
-          await restaurantService.updateLocationInfo(draft.id, {
-            name: String(form.get("name")).trim(),
-            address: String(form.get("address")).trim(),
-            description,
-          }),
-        ),
-      "No pudimos guardar; la información anterior se conserva.",
+  const [step, setStep] = useState(0);
+  const [draft, setDraft] = useState({
+    name: location.name,
+    address: location.address,
+    description: location.description ?? "",
+    schedules: location.schedules,
+    images: location.images,
+    removedImageIds: [] as string[],
+    logoFile: null as File | null,
+    coverFile: null as File | null,
+    newGalleryFiles: [] as GalleryFile[],
+  });
+  const [requestSuccess, setRequestSuccess] = useState(false);
+
+  const update = (patch: Partial<typeof draft>) =>
+    setDraft((current) => ({ ...current, ...patch }));
+
+  const infoErrors = {
+    name:
+      draft.name.trim().length < 2
+        ? "El nombre debe tener al menos 2 caracteres."
+        : draft.name.length > 120
+          ? "El nombre no puede superar 120 caracteres."
+          : null,
+    address:
+      draft.address.trim().length < 5
+        ? "La dirección debe tener al menos 5 caracteres."
+        : draft.address.length > 250
+          ? "La dirección no puede superar 250 caracteres."
+          : null,
+    description:
+      draft.description.length > 0 && draft.description.trim().length < 20
+        ? "Si agregas una descripción, debe tener al menos 20 caracteres."
+        : draft.description.length > 2000
+          ? "La descripción no puede superar 2000 caracteres."
+          : null,
+  };
+  const scheduleError =
+    draft.schedules.length === 0
+      ? "Selecciona al menos un día y define su horario de atención."
+      : draft.schedules.some((item) => item.endsAt <= item.startsAt)
+        ? "La hora de cierre debe ser posterior a la hora de apertura."
+        : null;
+  const visibleGalleryCount =
+    draft.images.filter((img) => !draft.removedImageIds.includes(img.id)).length +
+    draft.newGalleryFiles.length;
+
+  const valid = () => {
+    if (step === 0) return !infoErrors.name && !infoErrors.address && !infoErrors.description;
+    if (step === 1) return !scheduleError;
+    if (step === 2) return visibleGalleryCount >= 2 && visibleGalleryCount <= 5;
+    return (
+      !infoErrors.name &&
+      !infoErrors.address &&
+      !infoErrors.description &&
+      !scheduleError &&
+      visibleGalleryCount >= 2 &&
+      visibleGalleryCount <= 5
     );
   };
-  const saveHours = () =>
-    run(async () => {
-      const schedules = draft.schedules.map(({ dayOfWeek, startsAt, endsAt }) => ({
-        dayOfWeek,
-        startsAt,
-        endsAt,
-      }));
-      setDraft({
-        ...draft,
-        schedules: await restaurantService.updateSchedules(draft.id, schedules),
+  const next = () => {
+    if (valid()) setStep((current) => Math.min(current + 1, LOCATION_STEPS.length - 1));
+  };
+  const back = () => setStep((current) => Math.max(current - 1, 0));
+
+  const submit = async () => {
+    const success = await run(async () => {
+      await restaurantService.updateLocationInfo(location.id, {
+        name: draft.name.trim(),
+        address: draft.address.trim(),
+        description: draft.description.trim() || undefined,
       });
-    }, "No pudimos guardar los horarios.");
-  const saveImage = (kind: "logo" | "portada", url: string) =>
-    run(
-      async () => setDraft(await restaurantService.updateLocationImage(draft.id, kind, url)),
-      "No pudimos guardar la imagen.",
-    );
-  const addGallery = (url: string) =>
-    run(async () => {
-      const image = await restaurantService.addGalleryImage(draft.id, url);
-      setDraft({ ...draft, images: [...draft.images, image] });
-    }, "No pudimos agregar la imagen.");
-  const removeGallery = (id: string) =>
-    run(async () => {
-      await restaurantService.removeGalleryImage(draft.id, id);
-      setDraft({ ...draft, images: draft.images.filter((image) => image.id !== id) });
-    }, "No pudimos eliminar la imagen.");
-  const requestApproval = async () => {
-    const sent = await run(
-      async () => setDraft(await restaurantService.requestLocationApproval(draft.id)),
-      "No pudimos enviar la solicitud.",
-    );
-    setRequestSuccess(sent);
+      await restaurantService.updateSchedules(
+        location.id,
+        draft.schedules.map(({ dayOfWeek, startsAt, endsAt }) => ({ dayOfWeek, startsAt, endsAt })),
+      );
+      if (draft.logoFile) {
+        await restaurantService.uploadLocationImage(location.id, "logo", draft.logoFile);
+      }
+      if (draft.coverFile) {
+        await restaurantService.uploadLocationImage(location.id, "portada", draft.coverFile);
+      }
+      for (const id of draft.removedImageIds) {
+        await restaurantService.removeGalleryImage(location.id, id);
+      }
+      for (const { file } of draft.newGalleryFiles) {
+        await restaurantService.uploadLocationImage(location.id, "galeria", file);
+      }
+      if (location.status !== "activa") {
+        await restaurantService.requestLocationApproval(location.id);
+      }
+    }, "No pudimos guardar los cambios; inténtalo de nuevo.");
+    if (success) setRequestSuccess(true);
   };
+
   return (
-    <Modal title={draft.name} close={close} wide>
-      {requestSuccess && (
-        <p
-          role="status"
-          className="mb-4 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
-        >
-          Solicitud enviada con éxito. Quedó pendiente de aprobación.
-        </p>
-      )}
-      <nav className="mb-5 flex gap-4 border-b">
-        {(["info", "hours", "images", "preview"] as const).map((key) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`pb-2 text-sm font-medium ${tab === key ? "border-b-2 border-primary text-primary" : "text-gray-500"}`}
-          >
-            {
-              {
-                info: "Información",
-                hours: "Horarios",
-                images: "Imágenes",
-                preview: "Vista previa",
-              }[key]
-            }
-          </button>
-        ))}
-      </nav>
-      {tab === "info" && (
-        <form onSubmit={saveInfo}>
-          <Field label="Nombre" name="name" min={2} max={120} required value={draft.name} />
+    <Modal title={location.name} close={close} wide>
+      <FormStepper steps={LOCATION_STEPS} current={step} className="mb-7" />
+      {step === 0 && (
+        <section>
+          <Field
+            label="Nombre"
+            name="name"
+            min={2}
+            max={120}
+            required
+            value={draft.name}
+            error={infoErrors.name}
+            onChange={(name) => update({ name })}
+          />
           <Field
             label="Dirección"
             name="address"
@@ -585,47 +742,232 @@ function Profile({
             max={250}
             required
             value={draft.address}
+            error={infoErrors.address}
+            onChange={(address) => update({ address })}
           />
           <Area
             label="Descripción (opcional)"
             name="description"
             max={2000}
-            value={draft.description ?? ""}
+            value={draft.description}
+            error={infoErrors.description}
+            onChange={(description) => update({ description })}
           />
-          <Save busy={busy} label="Guardar información" />
-        </form>
+          <div className="flex justify-end">
+            <PrimaryButton type="button" onClick={next} disabled={!valid()}>
+              Siguiente
+            </PrimaryButton>
+          </div>
+        </section>
       )}
-      {tab === "hours" && (
-        <Hours
-          schedules={draft.schedules}
-          setSchedules={(schedules) => setDraft({ ...draft, schedules })}
-          save={saveHours}
-          busy={busy}
-        />
+      {step === 1 && (
+        <section>
+          {scheduleError && (
+            <p role="alert" className="mb-3 text-xs text-red-600">
+              {scheduleError}
+            </p>
+          )}
+          <div className="space-y-2">
+            <div className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-xl p-3">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={draft.schedules.length === DAYS.length}
+                  onChange={(e) =>
+                    update({
+                      schedules: e.target.checked
+                        ? DAYS.map(({ value }) => {
+                            const existing = draft.schedules.find(
+                              (item) => item.dayOfWeek === value,
+                            );
+                            return (
+                              existing ?? { dayOfWeek: value, startsAt: "09:00", endsAt: "18:00" }
+                            );
+                          })
+                        : [],
+                    })
+                  }
+                />
+                Seleccionar todos
+              </label>
+            </div>
+            {DAYS.map(({ label, value }) => {
+              const schedule = draft.schedules.find((item) => item.dayOfWeek === value);
+              return (
+                <div
+                  key={label}
+                  className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-xl border p-3"
+                >
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(schedule)}
+                      onChange={(e) =>
+                        update({
+                          schedules: e.target.checked
+                            ? [
+                                ...draft.schedules,
+                                { dayOfWeek: value, startsAt: "09:00", endsAt: "18:00" },
+                              ]
+                            : draft.schedules.filter((item) => item.dayOfWeek !== value),
+                        })
+                      }
+                    />
+                    {label}
+                  </label>
+                  <input
+                    type="time"
+                    disabled={!schedule}
+                    value={schedule?.startsAt ?? "09:00"}
+                    onChange={(e) =>
+                      update({
+                        schedules: draft.schedules.map((item) =>
+                          item.dayOfWeek === value ? { ...item, startsAt: e.target.value } : item,
+                        ),
+                      })
+                    }
+                    className="rounded-lg border px-2 py-1 disabled:bg-gray-100"
+                  />
+                  <input
+                    type="time"
+                    disabled={!schedule}
+                    value={schedule?.endsAt ?? "18:00"}
+                    onChange={(e) =>
+                      update({
+                        schedules: draft.schedules.map((item) =>
+                          item.dayOfWeek === value ? { ...item, endsAt: e.target.value } : item,
+                        ),
+                      })
+                    }
+                    className="rounded-lg border px-2 py-1 disabled:bg-gray-100"
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <WizardNavigation step={step} back={back} next={next} busy={busy} />
+        </section>
       )}
-      {tab === "images" && (
-        <Images
-          location={draft}
-          busy={busy}
-          saveImage={saveImage}
-          addGallery={addGallery}
-          removeGallery={removeGallery}
-        />
+
+      {step === 2 && (
+        <section className="space-y-5">
+          <div className="grid grid-cols-2 gap-4">
+            <SquareFileInput
+              label="Logo (opcional)"
+              file={draft.logoFile}
+              existingUrl={location.logoUrl ?? undefined}
+              onChange={(logoFile) => update({ logoFile })}
+            />
+            <SquareFileInput
+              label="Portada (opcional)"
+              file={draft.coverFile}
+              existingUrl={location.coverUrl ?? undefined}
+              onChange={(coverFile) => update({ coverFile })}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium">Galería (mínimo 2, máximo 5)</label>
+            <p
+              className={`mt-1 text-xs ${visibleGalleryCount >= 2 ? "text-emerald-700" : "text-red-600"}`}
+            >
+              {visibleGalleryCount} de 5 imágenes seleccionadas.
+            </p>
+            <div className="mt-2 grid grid-cols-3 gap-3 sm:grid-cols-5">
+              {draft.images
+                .filter((img) => !draft.removedImageIds.includes(img.id))
+                .map((img) => (
+                  <GalleryThumb
+                    key={img.id}
+                    src={img.url}
+                    onRemove={() => update({ removedImageIds: [...draft.removedImageIds, img.id] })}
+                  />
+                ))}
+              {draft.newGalleryFiles.map(({ id, file }) => (
+                <GalleryThumb
+                  key={id}
+                  src={URL.createObjectURL(file)}
+                  onRemove={() =>
+                    update({
+                      newGalleryFiles: draft.newGalleryFiles.filter((item) => item.id !== id),
+                    })
+                  }
+                />
+              ))}
+              {visibleGalleryCount < 5 && (
+                <GalleryAddTile
+                  remaining={5 - visibleGalleryCount}
+                  onAdd={(files) =>
+                    update({ newGalleryFiles: [...draft.newGalleryFiles, ...files] })
+                  }
+                />
+              )}
+            </div>
+          </div>
+
+          <WizardNavigation step={step} back={back} next={next} busy={busy} disabled={!valid()} />
+        </section>
       )}
-      {tab === "preview" && <Preview location={draft} />}
-      <footer className="mt-5 flex items-center justify-between border-t pt-4">
-        <StatusBadge status={draft.status} />
-        {draft.status !== "activa" && (
-          <PrimaryButton
-            disabled={busy || draft.status === "pendiente_aprobacion"}
-            onClick={() => void requestApproval()}
-          >
-            <Send className="h-4 w-4" />
-            Solicitar autorización
-          </PrimaryButton>
-        )}
-      </footer>
+
+      {requestSuccess && (
+        <p
+          role="status"
+          className="mb-4 rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
+        >
+          Cambios guardados correctamente.
+        </p>
+      )}
+      {step === 3 && (
+        <section>
+          <div className="rounded-2xl border bg-gray-50 p-5">
+            <h3 className="text-lg font-semibold">{draft.name}</h3>
+            <p className="mt-1 text-sm text-gray-600">{draft.address}</p>
+            {draft.description && <p className="mt-3 text-sm">{draft.description}</p>}
+            <p className="mt-3 text-sm text-gray-600">
+              {draft.schedules.length} días configurados · {visibleGalleryCount} imágenes de galería
+            </p>
+          </div>
+          {location.status !== "activa" && (
+            <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+              Al guardar, la sede quedará pendiente de aprobación por el administrador.
+            </p>
+          )}
+          <WizardNavigation
+            step={step}
+            back={back}
+            submit={requestSuccess ? close : () => void submit()}
+            busy={busy}
+            disabled={!valid()}
+          />
+        </section>
+      )}
     </Modal>
+  );
+}
+
+function AddImageUrl({ disabled, onAdd }: { disabled: boolean; onAdd: (url: string) => void }) {
+  const [value, setValue] = useState("");
+  return (
+    <div className="mt-1 flex gap-2">
+      <input
+        type="url"
+        value={value}
+        disabled={disabled}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="https://imagen..."
+        className="min-w-0 flex-1 rounded-lg border px-2 py-1.5 text-sm disabled:bg-gray-100"
+      />
+      <PrimaryButton
+        type="button"
+        disabled={disabled || !value.trim()}
+        onClick={() => {
+          onAdd(value.trim());
+          setValue("");
+        }}
+      >
+        <Plus className="h-4 w-4" />
+      </PrimaryButton>
+    </div>
   );
 }
 
@@ -851,6 +1193,7 @@ function Field({
   return (
     <label className="mb-3 block text-sm">
       {label}
+      {required && <span className="text-red-600"> *</span>}
       <input
         required={required}
         name={name}
@@ -869,7 +1212,9 @@ function Field({
         aria-invalid={Boolean(error)}
         className={`mt-1 w-full rounded-xl border p-2.5 ${error ? "border-red-300" : ""}`}
       />
-      <small hidden={!error} className="mt-1 block text-xs text-red-600">{error ?? message}</small>
+      <small hidden={!error} className="mt-1 block text-xs text-red-600">
+        {error ?? message}
+      </small>
     </label>
   );
 }
@@ -900,7 +1245,11 @@ function Area({
         aria-invalid={Boolean(error)}
         className={`mt-1 w-full rounded-xl border p-2.5 ${error ? "border-red-300" : ""}`}
       />
-      {error && <small role="alert" className="mt-1 block text-xs text-red-600">{error}</small>}
+      {error && (
+        <small role="alert" className="mt-1 block text-xs text-red-600">
+          {error}
+        </small>
+      )}
     </label>
   );
 }

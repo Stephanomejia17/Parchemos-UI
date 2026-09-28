@@ -1,10 +1,9 @@
-import { apiFetch } from "../http/api-client";
+import { apiFetch, apiUpload } from "../http/api-client";
 
 export interface UpdateProfilePayload {
   fullName: string;
   phone: string;
   city: string;
-  profilePhotoUrl: string | null;
 }
 
 export interface DeletionRequestResult {
@@ -14,6 +13,18 @@ export interface DeletionRequestResult {
 
 export const profileService = {
   update: (payload: UpdateProfilePayload) =>
-    apiFetch<void>("/auth/me", { method: "PATCH", body: payload }),
-  requestDeletion: () => apiFetch<DeletionRequestResult>("/auth/me", { method: "DELETE" }),
+    apiFetch<void>("/auth/me", {
+      method: "PATCH",
+      body: payload,
+    }),
+
+  uploadPhoto: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    return apiUpload<void>("/auth/me/photo", formData);
+  },
+
+  requestDeletion: () =>
+    apiFetch<DeletionRequestResult>("/auth/me", { method: "DELETE" }),
 };

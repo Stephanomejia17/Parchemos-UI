@@ -23,8 +23,26 @@ export interface Location {
   rejectionReason: string | null;
   logoUrl: string | null;
   coverUrl: string | null;
+  priceRange: number | null;
+  avgRating: number;
+  ratingCount: number;
+  latitude: number | null;
+  longitude: number | null;
   schedules: Schedule[];
   images: GalleryImage[];
+}
+
+export interface PublicLocationProfile {
+  id: string;
+  name: string;
+  address: string;
+  description: string;
+  latitude: number | null;
+  longitude: number | null;
+  logoUrl: string;
+  coverUrl: string;
+  gallery: GalleryImage[];
+  isOpen: boolean;
 }
 
 export interface Restaurant {

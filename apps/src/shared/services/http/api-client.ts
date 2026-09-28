@@ -11,11 +11,14 @@ function resolveBaseUrl(): string {
   // En producción no hay fallback silencioso: apuntar a localhost por defecto
   // dejaría la app rota sin que nadie lo note hasta que un usuario falle.
   throw new Error(
-    "NEXT_PUBLIC_API_URL no está definida. Configúrala en las variables de entorno del ambiente de despliegue.",
+    "API_URL no está definida. Configúrala en las variables de entorno del ambiente de despliegue.",
   );
 }
 
-const BASE_URL = resolveBaseUrl();
+/** Origen del servidor de la API (sin `/api`), p. ej. para los sockets. */
+export function resolveApiOrigin(): string {
+  return new URL(resolveBaseUrl()).origin;
+}
 
 /**
  * El access token vive solo en memoria.
@@ -47,7 +50,7 @@ async function raw(path: string, options: RequestOptions = {}): Promise<Response
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
-  return fetch(`${BASE_URL}${path}`, {
+  return fetch(`${resolveBaseUrl()}${path}`, {
     method: options.method ?? "GET",
     headers,
     // Imprescindible para que viaje la cookie del refresh token.

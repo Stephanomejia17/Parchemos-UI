@@ -16,6 +16,7 @@ export function Profile() {
   const [phone, setPhone] = useState("");
   const [city, setCity] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -29,15 +30,22 @@ export function Profile() {
   }, [user]);
 
   const selectPhoto = (file: File | undefined) => {
-    if (!file) return;
-    if (!["image/jpeg", "image/png"].includes(file.type) || file.size > 5 * 1024 * 1024) {
-      setError("La foto debe ser JPG o PNG y no superar 5 MB.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => setPhoto(String(reader.result));
-    reader.readAsDataURL(file);
-  };
+      if (!file) return;
+
+      if (
+        !["image/jpeg", "image/png"].includes(file.type) ||
+        file.size > 5 * 1024 * 1024
+      ) {
+        setError("La foto debe ser JPG o PNG y no superar 5 MB.");
+        return;
+      }
+
+      setPhotoFile(file);
+
+      const reader = new FileReader();
+      reader.onload = () => setPhoto(String(reader.result));
+      reader.readAsDataURL(file);
+    };
 
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -49,9 +57,14 @@ export function Profile() {
         fullName: fullName.trim(),
         phone: phone.trim(),
         city: city.trim(),
-        profilePhotoUrl: photo,
       });
+
+      if (photoFile) {
+        await profileService.uploadPhoto(photoFile);
+      }
+
       await refreshUser();
+      setPhotoFile(null);
       setMessage("Perfil actualizado correctamente.");
     } catch (err) {
       setError(errorMessage(err, "No pudimos actualizar tu perfil."));
