@@ -22,19 +22,21 @@ type FeedPost = (typeof FEED_POSTS)[number] & {
 };
 
 const CATEGORY_SLUGS: Record<string, string> = {
-  Burgers: "hamburguesas",
+  Hamburguesas: "hamburguesas",
   Pizza: "pizza",
   Café: "cafe",
   Sushi: "japonesa",
   Carnes: "parrilla",
   Asiático: "asiatica",
+  Panadería: "panaderia",
+  Cócteles: "cocteles",
 };
 
 const PRICE_OPTIONS = [
-  { label: "$", value: 1 },
-  { label: "$$", value: 2 },
-  { label: "$$$", value: 3 },
-  { label: "$$$$", value: 4 },
+  { label: "Económico", value: 1 },
+  { label: "Medio", value: 2 },
+  { label: "Alto", value: 3 },
+  { label: "Muy alto", value: 4 },
 ];
 
 export function Home() {
@@ -147,7 +149,7 @@ export function Home() {
     setSelectedPrices((current) =>
       current.includes(price)
         ? current.filter((value) => value !== price)
-        : [...current, price],
+        : [price],
     );
   };
 
@@ -275,16 +277,11 @@ export function Home() {
             <button
               key={i}
               type="button"
-              disabled={!CATEGORY_SLUGS[cat.label]}
               onClick={() => toggleCategory(cat.label)}
               className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-sm font-semibold flex-shrink-0 transition-all ${
                 selectedCategories.includes(CATEGORY_SLUGS[cat.label])
                   ? "bg-primary text-white shadow-sm shadow-orange-200"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              } ${
-                !CATEGORY_SLUGS[cat.label]
-                  ? "opacity-50 cursor-not-allowed"
-                  : ""
               }`}
             >
               <span>{cat.icon}</span>
@@ -315,20 +312,28 @@ export function Home() {
             Precio:
           </span>
 
-          {PRICE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => togglePrice(option.value)}
-              className={`px-3 py-1.5 rounded-2xl text-xs font-semibold flex-shrink-0 ${
-                selectedPrices.includes(option.value)
-                  ? "bg-primary text-white"
-                  : "bg-gray-100 text-gray-700"
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
+          <select
+            value={selectedPrices[0] ?? ""}
+            onChange={(event) => {
+              const value = Number(event.target.value);
+
+              setSelectedPrices(
+                value ? [value] : [],
+              );
+            }}
+            className="px-3 py-1.5 rounded-2xl border border-border text-xs font-semibold text-gray-700 bg-white flex-shrink-0 outline-none"
+          >
+            <option value="">Todos</option>
+
+            {PRICE_OPTIONS.map((option) => (
+              <option
+                key={option.value}
+                value={option.value}
+              >
+                {option.label}
+              </option>
+            ))}
+          </select>
 
           <button
             type="button"
