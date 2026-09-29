@@ -26,13 +26,23 @@ export function Home() {
 
   const [posts, setPosts] = useState<FeedPost[]>(FEED_POSTS);
   const [activeCategory, setActiveCategory] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     const loadRestaurants = async () => {
       try {
-        const locations = await restaurantService.listPublicLocations();
+        const locations = await restaurantService.listPublicLocations(
+          searchTerm.trim()
+            ? {
+                nombre: searchTerm.trim(),
+              }
+            : undefined,
+        );
 
         if (!locations.length) {
+          if (searchTerm.trim()) {
+            setPosts([]);
+          }
           return;
         }
 
@@ -79,7 +89,7 @@ export function Home() {
     };
 
     loadRestaurants();
-  }, []);
+  }, [searchTerm]);
 
   const goRestaurant = (locationId?: string) => {
     if (locationId) {
@@ -155,6 +165,8 @@ export function Home() {
           <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
 
           <input
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
             className="bg-transparent text-sm outline-none flex-1 placeholder-muted-foreground"
             placeholder="Buscar restaurantes..."
           />
