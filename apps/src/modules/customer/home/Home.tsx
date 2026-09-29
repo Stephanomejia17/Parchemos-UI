@@ -21,23 +21,48 @@ type FeedPost = (typeof FEED_POSTS)[number] & {
   locationId?: string;
 };
 
+const CATEGORY_SLUGS: Record<string, string> = {
+  Burgers: "hamburguesas",
+  Pizza: "pizza",
+  Café: "cafe",
+  Sushi: "japonesa",
+  Carnes: "parrilla",
+  Asiático: "asiatica",
+};
+
+const PRICE_OPTIONS = [
+  { label: "$", value: 1 },
+  { label: "$$", value: 2 },
+  { label: "$$$", value: 3 },
+  { label: "$$$$", value: 4 },
+];
+
 export function Home() {
   const router = useRouter();
 
   const [posts, setPosts] = useState<FeedPost[]>(FEED_POSTS);
-  const [activeCategory, setActiveCategory] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedPrices, setSelectedPrices] = useState<number[]>([]);
+  const [appliedCategories, setAppliedCategories] = useState<string[]>([]);
+  const [appliedPrices, setAppliedPrices] = useState<number[]>([]);
+  const [sortBy, setSortBy] = useState("");
 
   useEffect(() => {
     const loadRestaurants = async () => {
       try {
-        const locations = await restaurantService.listPublicLocations(
-          searchTerm.trim()
-            ? {
-                nombre: searchTerm.trim(),
-              }
-            : undefined,
-        );
+        const locations = await restaurantService.listPublicLocations({
+          nombre: searchTerm.trim() || undefined,
+          categoria:
+            appliedCategories.length > 0
+              ? appliedCategories.join(",")
+              : undefined,
+          precio:
+            appliedPrices.length > 0
+              ? appliedPrices.join(",")
+              : undefined,
+          ordenar_por: sortBy || undefined,
+        });
 
         if (!locations.length) {
           if (searchTerm.trim()) {
@@ -89,7 +114,7 @@ export function Home() {
     };
 
     loadRestaurants();
-  }, [searchTerm]);
+  }, [searchTerm, appliedCategories, appliedPrices, sortBy]);
 
   const goRestaurant = (locationId?: string) => {
     if (locationId) {
@@ -101,6 +126,41 @@ export function Home() {
   };
 
   const goMenu = () => router.push("/menu");
+
+  const toggleCategory = (label: string) => {
+    const slug = CATEGORY_SLUGS[label];
+
+    if (!slug) {
+      return;
+    }
+
+    setSelectedCategories((current) =>
+      current.includes(slug)
+        ? current.filter((category) => category !== slug)
+        : [...current, slug],
+    );
+  };
+
+  const togglePrice = (price: number) => {
+    setSelectedPrices((current) =>
+      current.includes(price)
+        ? current.filter((value) => value !== price)
+        : [...current, price],
+    );
+  };
+
+  const applyFilters = () => {
+    setAppliedCategories(selectedCategories);
+    setAppliedPrices(selectedPrices);
+  };
+
+  const clearFilters = () => {
+    setSelectedCategories([]);
+    setSelectedPrices([]);
+    setAppliedCategories([]);
+    setAppliedPrices([]);
+    setSortBy("");
+  };
 
   const toggleLike = (id: number) =>
     setPosts((prev) =>
@@ -212,17 +272,77 @@ export function Home() {
           {CATEGORIES.map((cat, i) => (
             <button
               key={i}
-              onClick={() => setActiveCategory(i)}
+              type="button"
+              disabled={!CATEGORY_SLUGS[cat.label]}
+              onClick={() => toggleCategory(cat.label)}
               className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-sm font-semibold flex-shrink-0 transition-all ${
-                activeCategory === i
+                selectedCategories.includes(CATEGORY_SLUGS[cat.label])
                   ? "bg-primary text-white shadow-sm shadow-orange-200"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              } ${
+                !CATEGORY_SLUGS[cat.label]
+                  ? "opacity-50 cursor-not-allowed"
+                  : ""
               }`}
             >
               <span>{cat.icon}</span>
               <span>{cat.label}</span>
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white border-b border-border px-4 py-3 md:px-6">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+          <span className="text-sm font-semibold text-gray-700 flex-shrink-0">
+            Ordenar:
+          </span>
+
+          <select
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value)}
+            className="px-3 py-1.5 rounded-2xl border border-border text-xs font-semibold text-gray-700 bg-white flex-shrink-0 outline-none"
+          >
+            <option value="">Más recientes</option>
+            <option value="calificacion">Más calificados</option>
+            <option value="precio">Menor precio</option>
+          </select>
+
+          <span className="text-sm font-semibold text-gray-700 flex-shrink-0">
+            Precio:
+          </span>
+
+          {PRICE_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => togglePrice(option.value)}
+              className={`px-3 py-1.5 rounded-2xl text-xs font-semibold flex-shrink-0 ${
+                selectedPrices.includes(option.value)
+                  ? "bg-primary text-white"
+                  : "bg-gray-100 text-gray-700"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+
+          <button
+            type="button"
+            onClick={applyFilters}
+            className="px-4 py-1.5 rounded-2xl bg-primary text-white text-xs font-semibold flex-shrink-0"
+          >
+            Aplicar filtros
+          </button>
+
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="px-4 py-1.5 rounded-2xl border border-border text-gray-700 text-xs font-semibold flex-shrink-0"
+          >
+            Limpiar filtros
+          </button>
         </div>
       </div>
 
