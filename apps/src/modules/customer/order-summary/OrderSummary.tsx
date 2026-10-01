@@ -2,12 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChefHat, ChevronLeft, Minus, Plus, QrCode, Trash2 } from "lucide-react";
+import { ChevronLeft, Minus, Plus, QrCode, Trash2 } from "lucide-react";
 import { PrimaryButton } from "@/shared/components";
 import { useOrder } from "@/shared/context/order-context";
 import { useRestaurantContext } from "@/shared/context/location-context";
-
-const STEPS = ["Recibido", "Preparando", "Listo", "Entregado"];
 
 function OrderSummaryContent() {
   const router = useRouter();
@@ -81,48 +79,6 @@ function OrderSummaryContent() {
         <div className="md:grid md:grid-cols-2 md:gap-6 flex flex-col gap-4">
           {/* Left col */}
           <div className="flex flex-col gap-4">
-            {/* Status */}
-            <div className="bg-white rounded-2xl p-4 border border-border shadow-sm">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-accent/10 rounded-2xl flex items-center justify-center">
-                  <ChefHat className="w-5 h-5 text-accent" />
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-900 text-sm">Estado del pedido</p>
-                  <p className="text-xs text-accent font-semibold">Preparando tu orden...</p>
-                </div>
-                <div className="ml-auto text-right">
-                  <p className="font-bold text-gray-900">~18 min</p>
-                  <p className="text-xs text-muted-foreground">Tiempo estimado</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {STEPS.map((step, i) => (
-                  <div key={step} className="flex items-center flex-1">
-                    <div
-                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${i <= 1 ? "bg-primary text-white" : "bg-gray-200 text-gray-500"}`}
-                    >
-                      {i <= 1 ? <Check className="w-3 h-3" /> : i + 1}
-                    </div>
-                    {i < 3 && (
-                      <div className={`flex-1 h-0.5 ${i < 1 ? "bg-primary" : "bg-gray-200"}`} />
-                    )}
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-between mt-1">
-                {STEPS.map((step) => (
-                  <span
-                    key={step}
-                    className="text-xs text-muted-foreground text-center"
-                    style={{ width: "25%" }}
-                  >
-                    {step}
-                  </span>
-                ))}
-              </div>
-            </div>
-
             {/* Split */}
             <div className="bg-white rounded-2xl border border-border shadow-sm p-4">
               <div className="flex items-center justify-between mb-3">
