@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronLeft, Minus, Plus, ShoppingBag, Star, Trash2, X } from "lucide-react";
+import { Minus, Plus, ShoppingBag, Star, Trash2, X } from "lucide-react";
 import { RemoteImage } from "@/shared/components/media/RemoteImage";
 import { CustomerBadge } from "@/shared/components";
 import { menuService, type Product } from "@/shared/services/menu/menu.service";
@@ -20,7 +20,6 @@ function MenuContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { restaurantId, setRestaurantId } = useRestaurantContext();
-  const [activeSection, setActiveSection] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[] | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<MenuItem | null>(null);
@@ -150,37 +149,6 @@ function MenuContent() {
   return (
     <div className="flex flex-col h-full bg-background md:flex-row">
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <div className="bg-white px-4 pt-4 pb-3 border-b border-border sticky top-0 z-10 md:px-6">
-          <div className="flex items-center gap-3 mb-3">
-            <button
-              onClick={() => router.back()}
-              className="w-9 h-9 bg-gray-100 rounded-2xl flex items-center justify-center"
-            >
-              <ChevronLeft className="w-5 h-5 text-gray-900" />
-            </button>
-            <div>
-              {/* Antes hardcodeado "La Paloma Gastrobar". El nombre real vive en
-                  restaurantService.getPublicLocation, que Menu.tsx hoy no consulta
-                  (fuera del alcance de esta HU). Placeholder genérico mientras tanto. */}
-              <h2 className="text-lg font-bold text-gray-900 font-heading">Menú</h2>
-              <p className="text-xs text-muted-foreground">
-                {products.length} opcion{products.length === 1 ? "" : "es"}
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide">
-            {sections.map((s, i) => (
-              <button
-                key={s.title}
-                onClick={() => setActiveSection(i)}
-                className={`px-3.5 py-1.5 rounded-2xl text-xs font-semibold flex-shrink-0 transition-all ${activeSection === i ? "bg-primary text-white" : "bg-gray-100 text-gray-700"}`}
-              >
-                {s.title}
-              </button>
-            ))}
-          </div>
-        </div>
-
         <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-4">
           {featuredItems.length > 0 && (
             <section aria-labelledby="featured-products-title">
