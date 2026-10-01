@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Minus, Plus, UsersRound, Trash2 } from "lucide-react";
+import { ChevronLeft, Minus, Plus, ShoppingBag, UsersRound, Trash2 } from "lucide-react";
 import { PrimaryButton } from "@/shared/components";
+import { RemoteImage } from "@/shared/components/media/RemoteImage";
 import { useOrder } from "@/shared/context/order-context";
 import { useRestaurantContext } from "@/shared/context/location-context";
 
@@ -92,15 +93,34 @@ function OrderSummaryContent() {
               lines.map(({ item, quantity }, i) => (
                 <div
                   key={item.id}
-                  className={`flex items-center justify-between px-4 py-3 ${i < lines.length - 1 ? "border-b border-border" : ""}`}
+                  className={`flex items-center justify-between gap-3 px-3 py-3 sm:px-4 ${i < lines.length - 1 ? "border-b border-border" : ""}`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 bg-orange-100 rounded-lg flex items-center justify-center text-xs font-bold text-primary">
-                      {quantity}
+                  <div className="flex min-w-0 items-center gap-3">
+                    {item.imageUrl ? (
+                      <RemoteImage
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="h-14 w-14 shrink-0 rounded-xl"
+                        sizes="56px"
+                      />
+                    ) : (
+                      <div
+                        aria-hidden="true"
+                        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-primary"
+                      >
+                        <ShoppingBag className="h-5 w-5" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-gray-800">
+                        {item.name}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        ${item.price.toLocaleString()} c/u
+                      </span>
                     </div>
-                    <span className="text-sm text-gray-800">{item.name}</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
@@ -129,10 +149,10 @@ function OrderSummaryContent() {
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
-                    <span className="min-w-16 text-right text-sm font-semibold text-gray-900">
-                      ${(item.price * quantity).toLocaleString()}
-                    </span>
                   </div>
+                  <span className="text-xs font-semibold text-gray-900">
+                    ${(item.price * quantity).toLocaleString()} total
+                  </span>
                 </div>
               ))
             )}
