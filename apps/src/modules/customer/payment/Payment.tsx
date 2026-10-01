@@ -79,7 +79,7 @@ export function Payment() {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-background">
-      <div className="sticky top-0 z-10 border-b border-border bg-white px-4 pb-3 pt-4 md:px-6">
+      <div className="sticky top-0 z-10 border-b border-border bg-white px-4 pb-3 pt-4 md:hidden">
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
