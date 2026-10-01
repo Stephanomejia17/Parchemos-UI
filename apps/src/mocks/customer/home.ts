@@ -1,11 +1,11 @@
 export const CATEGORIES = [
-  { icon: "🍔", label: "Burgers" },
+  { icon: "🍔", label: "Hamburguesas" },
   { icon: "🍕", label: "Pizza" },
   { icon: "☕", label: "Café" },
   { icon: "🍣", label: "Sushi" },
   { icon: "🥩", label: "Carnes" },
   { icon: "🍜", label: "Asiático" },
-  { icon: "🥐", label: "Bakery" },
+  { icon: "🥐", label: "Panadería" },
   { icon: "🍹", label: "Cócteles" },
 ];
 
