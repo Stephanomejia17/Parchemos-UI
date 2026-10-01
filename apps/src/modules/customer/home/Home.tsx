@@ -21,20 +21,59 @@ type FeedPost = (typeof FEED_POSTS)[number] & {
   locationId?: string;
 };
 
+const CATEGORY_SLUGS: Record<string, string> = {
+  Hamburguesas: "hamburguesas",
+  Pizza: "pizza",
+  Café: "cafe",
+  Sushi: "japonesa",
+  Carnes: "parrilla",
+  Asiático: "asiatica",
+  Panadería: "panaderia",
+  Cócteles: "cocteles",
+};
+
+const PRICE_OPTIONS = [
+  { label: "Económico", value: 1 },
+  { label: "Medio", value: 2 },
+  { label: "Alto", value: 3 },
+  { label: "Muy alto", value: 4 },
+];
+
 export function Home() {
   const router = useRouter();
 
   const [posts, setPosts] = useState<FeedPost[]>(FEED_POSTS);
-  const [activeCategory, setActiveCategory] = useState(0);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedPrices, setSelectedPrices] = useState<number[]>([]);
+  const [appliedCategories, setAppliedCategories] = useState<string[]>([]);
+  const [appliedPrices, setAppliedPrices] = useState<number[]>([]);
+  const [sortBy, setSortBy] = useState("");
+  const [noResults, setNoResults] = useState(false);
 
   useEffect(() => {
     const loadRestaurants = async () => {
       try {
-        const locations = await restaurantService.listPublicLocations();
+        const locations = await restaurantService.listPublicLocations({
+          nombre: searchTerm.trim() || undefined,
+          categoria:
+            appliedCategories.length > 0
+              ? appliedCategories.join(",")
+              : undefined,
+          precio:
+            appliedPrices.length > 0
+              ? appliedPrices.join(",")
+              : undefined,
+          ordenar_por: sortBy || undefined,
+        });
 
         if (!locations.length) {
+          setPosts([]);
+          setNoResults(true);
           return;
         }
+
+        setNoResults(false);
 
         const realPosts = locations.map((location, index) => {
           const mockPost = FEED_POSTS[index % FEED_POSTS.length];
@@ -79,7 +118,7 @@ export function Home() {
     };
 
     loadRestaurants();
-  }, []);
+  }, [searchTerm, appliedCategories, appliedPrices, sortBy]);
 
   const goRestaurant = (locationId?: string) => {
     if (locationId) {
@@ -91,6 +130,41 @@ export function Home() {
   };
 
   const goMenu = () => router.push("/menu");
+
+  const toggleCategory = (label: string) => {
+    const slug = CATEGORY_SLUGS[label];
+
+    if (!slug) {
+      return;
+    }
+
+    setSelectedCategories((current) =>
+      current.includes(slug)
+        ? current.filter((category) => category !== slug)
+        : [...current, slug],
+    );
+  };
+
+  const togglePrice = (price: number) => {
+    setSelectedPrices((current) =>
+      current.includes(price)
+        ? current.filter((value) => value !== price)
+        : [price],
+    );
+  };
+
+  const applyFilters = () => {
+    setAppliedCategories(selectedCategories);
+    setAppliedPrices(selectedPrices);
+  };
+
+  const clearFilters = () => {
+    setSelectedCategories([]);
+    setSelectedPrices([]);
+    setAppliedCategories([]);
+    setAppliedPrices([]);
+    setSortBy("");
+  };
 
   const toggleLike = (id: number) =>
     setPosts((prev) =>
@@ -155,6 +229,8 @@ export function Home() {
           <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
 
           <input
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
             className="bg-transparent text-sm outline-none flex-1 placeholder-muted-foreground"
             placeholder="Buscar restaurantes..."
           />
@@ -200,9 +276,10 @@ export function Home() {
           {CATEGORIES.map((cat, i) => (
             <button
               key={i}
-              onClick={() => setActiveCategory(i)}
+              type="button"
+              onClick={() => toggleCategory(cat.label)}
               className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-sm font-semibold flex-shrink-0 transition-all ${
-                activeCategory === i
+                selectedCategories.includes(CATEGORY_SLUGS[cat.label])
                   ? "bg-primary text-white shadow-sm shadow-orange-200"
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
@@ -214,177 +291,252 @@ export function Home() {
         </div>
       </div>
 
-      {/* Feed — single col mobile, 2-col md, 3-col xl */}
+      {/* Filters */}
+      <div className="bg-white border-b border-border px-4 py-3 md:px-6">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+          <span className="text-sm font-semibold text-gray-700 flex-shrink-0">
+            Ordenar:
+          </span>
+
+          <select
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value)}
+            className="px-3 py-1.5 rounded-2xl border border-border text-xs font-semibold text-gray-700 bg-white flex-shrink-0 outline-none"
+          >
+            <option value="">Más recientes</option>
+            <option value="calificacion">Más calificados</option>
+            <option value="precio">Menor precio</option>
+          </select>
+
+          <span className="text-sm font-semibold text-gray-700 flex-shrink-0">
+            Precio:
+          </span>
+
+          <select
+            value={selectedPrices[0] ?? ""}
+            onChange={(event) => {
+              const value = Number(event.target.value);
+
+              setSelectedPrices(
+                value ? [value] : [],
+              );
+            }}
+            className="px-3 py-1.5 rounded-2xl border border-border text-xs font-semibold text-gray-700 bg-white flex-shrink-0 outline-none"
+          >
+            <option value="">Todos</option>
+
+            {PRICE_OPTIONS.map((option) => (
+              <option
+                key={option.value}
+                value={option.value}
+              >
+                {option.label}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            onClick={applyFilters}
+            className="px-4 py-1.5 rounded-2xl bg-primary text-white text-xs font-semibold flex-shrink-0"
+          >
+            Aplicar filtros
+          </button>
+
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="px-4 py-1.5 rounded-2xl border border-border text-gray-700 text-xs font-semibold flex-shrink-0"
+          >
+            Limpiar filtros
+          </button>
+        </div>
+      </div>
+
+      {/* Feed */}
       <div className="px-0 md:px-6 md:py-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 md:gap-4">
-          {posts.map((post) => (
-            <div
-              key={post.id}
-              className="bg-white border-b border-border md:rounded-2xl md:border md:shadow-sm overflow-hidden"
-            >
-              <div className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-2.5">
+        {noResults ? (
+          <div className="bg-white rounded-2xl border border-border p-8 text-center">
+            <p className="text-base font-semibold text-gray-900">
+              No encontramos restaurantes
+            </p>
+
+            <p className="text-sm text-muted-foreground mt-2">
+              No hay restaurantes que coincidan con los filtros o la
+              búsqueda. Intenta modificar los criterios.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 md:gap-4">
+            {posts.map((post) => (
+              <div
+                key={post.id}
+                className="bg-white border-b border-border md:rounded-2xl md:border md:shadow-sm overflow-hidden"
+              >
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-2.5">
+                    <RemoteImage
+                      src={post.user.avatar}
+                      alt={post.user.name}
+                      className="w-9 h-9 rounded-full"
+                      sizes="36px"
+                    />
+
+                    <div>
+                      <button
+                        onClick={() => goRestaurant(post.locationId)}
+                        className="text-sm font-semibold text-gray-900 hover:text-primary transition-colors"
+                      >
+                        {post.restaurant}
+                      </button>
+
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <MapPin className="w-3 h-3 text-muted-foreground" />
+
+                        <span className="text-xs text-muted-foreground">
+                          {post.location}
+                        </span>
+
+                        <span className="text-xs text-muted-foreground mx-1">
+                          ·
+                        </span>
+
+                        <span className="text-xs font-medium text-gray-700">
+                          {post.price}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <StarRating rating={post.rating} />
+                </div>
+
+                <div className="relative">
                   <RemoteImage
-                    src={post.user.avatar}
-                    alt={post.user.name}
-                    className="w-9 h-9 rounded-full"
-                    sizes="36px"
+                    src={post.img}
+                    alt={post.restaurant}
+                    className="w-full h-72 md:h-64"
                   />
 
-                  <div>
+                  {post.type === "video" && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
+                        <Play className="w-6 h-6 text-white fill-white ml-0.5" />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="absolute bottom-3 right-3 flex flex-col gap-2">
                     <button
-                      onClick={() => goRestaurant(post.locationId)}
-                      className="text-sm font-semibold text-gray-900 hover:text-primary transition-colors"
+                      onClick={() => toggleLike(post.id)}
+                      className={`w-10 h-10 rounded-2xl bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm transition-all ${
+                        post.liked ? "scale-110" : ""
+                      }`}
                     >
-                      {post.restaurant}
+                      <Heart
+                        className={`w-5 h-5 transition-colors ${
+                          post.liked
+                            ? "fill-red-500 text-red-500"
+                            : "text-gray-700"
+                        }`}
+                      />
                     </button>
 
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <MapPin className="w-3 h-3 text-muted-foreground" />
-
-                      <span className="text-xs text-muted-foreground">
-                        {post.location}
-                      </span>
-
-                      <span className="text-xs text-muted-foreground mx-1">
-                        ·
-                      </span>
-
-                      <span className="text-xs font-medium text-gray-700">
-                        {post.price}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <StarRating rating={post.rating} />
-              </div>
-
-              <div className="relative">
-                <RemoteImage
-                  src={post.img}
-                  alt={post.restaurant}
-                  className="w-full h-72 md:h-64"
-                />
-
-                {post.type === "video" && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
-                      <Play className="w-6 h-6 text-white fill-white ml-0.5" />
-                    </div>
-                  </div>
-                )}
-
-                <div className="absolute bottom-3 right-3 flex flex-col gap-2">
-                  <button
-                    onClick={() => toggleLike(post.id)}
-                    className={`w-10 h-10 rounded-2xl bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm transition-all ${
-                      post.liked ? "scale-110" : ""
-                    }`}
-                  >
-                    <Heart
-                      className={`w-5 h-5 transition-colors ${
-                        post.liked
-                          ? "fill-red-500 text-red-500"
-                          : "text-gray-700"
-                      }`}
-                    />
-                  </button>
-
-                  <button
-                    onClick={() => toggleSave(post.id)}
-                    className="w-10 h-10 rounded-2xl bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm"
-                  >
-                    <BookmarkPlus
-                      className={`w-5 h-5 transition-colors ${
-                        post.saved
-                          ? "fill-primary text-primary"
-                          : "text-gray-700"
-                      }`}
-                    />
-                  </button>
-                </div>
-              </div>
-
-              <div className="px-4 pt-3 pb-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <button
-                    onClick={() => toggleLike(post.id)}
-                    className="flex items-center gap-1.5"
-                  >
-                    <Heart
-                      className={`w-5 h-5 ${
-                        post.liked
-                          ? "fill-red-500 text-red-500"
-                          : "text-gray-700"
-                      }`}
-                    />
-
-                    <span className="text-sm font-semibold text-gray-700">
-                      {post.likes.toLocaleString()}
-                    </span>
-                  </button>
-
-                  <button className="flex items-center gap-1.5">
-                    <MessageSquare className="w-5 h-5 text-gray-700" />
-
-                    <span className="text-sm font-semibold text-gray-700">
-                      {post.comments}
-                    </span>
-                  </button>
-
-                  <button className="flex items-center gap-1.5">
-                    <Share2 className="w-5 h-5 text-gray-700" />
-                  </button>
-                </div>
-
-                <p className="text-sm text-gray-800 leading-relaxed">
-                  <span className="font-semibold">{post.user.name}</span>{" "}
-                  {post.caption}
-                </p>
-
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {post.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="text-xs text-primary font-medium"
+                    <button
+                      onClick={() => toggleSave(post.id)}
+                      className="w-10 h-10 rounded-2xl bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-sm"
                     >
-                      {tag}
-                    </span>
-                  ))}
+                      <BookmarkPlus
+                        className={`w-5 h-5 transition-colors ${
+                          post.saved
+                            ? "fill-primary text-primary"
+                            : "text-gray-700"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="px-4 pt-3 pb-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <button
+                      onClick={() => toggleLike(post.id)}
+                      className="flex items-center gap-1.5"
+                    >
+                      <Heart
+                        className={`w-5 h-5 ${
+                          post.liked
+                            ? "fill-red-500 text-red-500"
+                            : "text-gray-700"
+                        }`}
+                      />
+
+                      <span className="text-sm font-semibold text-gray-700">
+                        {post.likes.toLocaleString()}
+                      </span>
+                    </button>
+
+                    <button className="flex items-center gap-1.5">
+                      <MessageSquare className="w-5 h-5 text-gray-700" />
+
+                      <span className="text-sm font-semibold text-gray-700">
+                        {post.comments}
+                      </span>
+                    </button>
+
+                    <button className="flex items-center gap-1.5">
+                      <Share2 className="w-5 h-5 text-gray-700" />
+                    </button>
+                  </div>
+
+                  <p className="text-sm text-gray-800 leading-relaxed">
+                    <span className="font-semibold">{post.user.name}</span>{" "}
+                    {post.caption}
+                  </p>
+
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {post.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="text-xs text-primary font-medium"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="px-4 py-3 flex gap-2">
+                  <PrimaryButton
+                    onClick={() => {}}
+                    size="sm"
+                    className="flex-1"
+                  >
+                    📅 Reservar
+                  </PrimaryButton>
+
+                  <PrimaryButton
+                    onClick={goMenu}
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    🍴 Ver menú
+                  </PrimaryButton>
+
+                  <PrimaryButton
+                    onClick={goMenu}
+                    size="sm"
+                    variant="ghost"
+                    className="flex-1"
+                  >
+                    🛍️ Pedir
+                  </PrimaryButton>
                 </div>
               </div>
-
-              <div className="px-4 py-3 flex gap-2">
-                <PrimaryButton
-                  onClick={() => {}}
-                  size="sm"
-                  className="flex-1"
-                >
-                  📅 Reservar
-                </PrimaryButton>
-
-                <PrimaryButton
-                  onClick={goMenu}
-                  size="sm"
-                  variant="outline"
-                  className="flex-1"
-                >
-                  🍴 Ver menú
-                </PrimaryButton>
-
-                <PrimaryButton
-                  onClick={goMenu}
-                  size="sm"
-                  variant="ghost"
-                  className="flex-1"
-                >
-                  🛍️ Pedir
-                </PrimaryButton>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

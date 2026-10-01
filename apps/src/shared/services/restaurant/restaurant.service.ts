@@ -48,7 +48,36 @@ export interface LocationReview {
 export const restaurantService = {
   listMyRestaurants: () => apiFetch<Restaurant[]>("/restaurantes/mios"),
 
-  listPublicLocations: () => apiFetch<Location[]>("/restaurantes/publicos"),
+  listPublicLocations: (params?: {
+    categoria?: string;
+    ordenar_por?: string;
+    precio?: string;
+    nombre?: string;
+  }) => {
+    const searchParams = new URLSearchParams();
+
+    if (params?.categoria) {
+      searchParams.set("categoria", params.categoria);
+    }
+
+    if (params?.ordenar_por) {
+      searchParams.set("ordenar_por", params.ordenar_por);
+    }
+
+    if (params?.precio) {
+      searchParams.set("precio", params.precio);
+    }
+
+    if (params?.nombre) {
+      searchParams.set("nombre", params.nombre);
+    }
+
+    const query = searchParams.toString();
+
+    return apiFetch<Location[]>(
+      `/restaurantes/publicos${query ? `?${query}` : ""}`,
+    );
+  },
 
   getPublicLocation: (locationId: string) =>
     apiFetch<PublicLocationProfile>(`/restaurantes/publicos/${locationId}`),
