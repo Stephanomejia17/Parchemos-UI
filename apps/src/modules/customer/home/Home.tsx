@@ -22,14 +22,18 @@ type FeedPost = (typeof FEED_POSTS)[number] & {
 };
 
 const CATEGORY_SLUGS: Record<string, string> = {
-  Hamburguesas: "hamburguesas",
-  Pizza: "pizza",
+  Postres: "postres",
+  Colombiana: "colombiana",
+  Parrilla: "parrilla",
+  Asiática: "asiatica",
+  Italiana: "italiana",
   Café: "cafe",
-  Sushi: "japonesa",
-  Carnes: "parrilla",
-  Asiático: "asiatica",
-  Panadería: "panaderia",
-  Cócteles: "cocteles",
+  Mexicana: "mexicana",
+  Mariscos: "mariscos",
+  Pizza: "pizza",
+  Hamburguesas: "hamburguesas",
+  Japonesa: "japonesa",
+  Vegetariana: "vegetariana",
 };
 
 const PRICE_OPTIONS = [
