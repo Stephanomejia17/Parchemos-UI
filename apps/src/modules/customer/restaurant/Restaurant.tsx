@@ -10,7 +10,9 @@ import { restaurantService } from "@/shared/services/restaurant/restaurant.servi
 import { getRecommendedItems, mapProductToMenuItem } from "@/shared/services/menu/menu-mapper";
 import { useOrder } from "@/shared/context/order-context";
 import { useRestaurantContext } from "@/shared/context/location-context";
+import { useAuth } from "@/shared/auth/auth-context";
 import type { MenuItem } from "@/shared/types/menu";
+import type { LocationReview } from "@/shared/services/restaurant/restaurant.service";
 const TABS = [
   { key: "menu", label: "Menú" },
   { key: "photos", label: "Fotos" },
@@ -228,6 +230,12 @@ function RestaurantContent() {
         aria-labelledby={`restaurant-tab-${tab}`}
         className="min-h-64 p-4 md:p-6"
       >
+        {tab === "reviews" && effectiveRestaurantId && (
+          <RestaurantReviews
+            locationId={effectiveRestaurantId}
+            locationName={location?.name ?? "este restaurante"}
+          />
+        )}
         {tab === "menu" && (
           <>
             {favoriteProducts.length > 0 && (
@@ -401,6 +409,264 @@ function RestaurantContent() {
         </div>
       )}
     </div>
+  );
+}
+
+function RestaurantReviews({
+  locationId,
+  locationName,
+}: {
+  locationId: string;
+  locationName: string;
+}) {
+  const { user } = useAuth();
+  const [reviews, setReviews] = useState<LocationReview[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [editing, setEditing] = useState(false);
+
+  const currentReview = reviews.find((review) => review.userId === user?.id);
+  const average = reviews.length
+    ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
+    : 0;
+
+  const loadReviews = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setReviews(await restaurantService.listLocationReviews(locationId));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se pudieron cargar las reseñas.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    restaurantService
+      .listLocationReviews(locationId)
+      .then((data) => {
+        if (active) setReviews(data);
+      })
+      .catch((cause: unknown) => {
+        if (active)
+          setError(cause instanceof Error ? cause.message : "No se pudieron cargar las reseñas.");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [locationId]);
+
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError(null);
+    const normalizedComment = comment.trim();
+    if (rating < 3 && normalizedComment.length < 10) {
+      setError(
+        "Para una calificación menor a 3 estrellas, escribe un comentario de al menos 10 caracteres.",
+      );
+      return;
+    }
+    if (normalizedComment && normalizedComment.length < 10) {
+      setError("El comentario debe tener al menos 10 caracteres.");
+      return;
+    }
+    if (normalizedComment.length > 500) {
+      setError("El comentario no puede superar los 500 caracteres.");
+      return;
+    }
+    setSaving(true);
+    try {
+      if (editing && currentReview) {
+        await restaurantService.updateLocationReview(currentReview.id, normalizedComment);
+      } else {
+        await restaurantService.createLocationReview(
+          locationId,
+          rating,
+          normalizedComment || undefined,
+        );
+      }
+      setEditing(false);
+      setComment("");
+      await loadReviews();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se pudo guardar tu reseña.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section className="mx-auto max-w-3xl space-y-6" aria-label={`Reseñas de ${locationName}`}>
+      <header className="rounded-2xl border border-border bg-white p-5">
+        <h3 className="text-lg font-bold text-gray-900">Calificaciones y reseñas</h3>
+        <div className="mt-2 flex items-center gap-2">
+          <span className="text-2xl font-bold text-gray-900">
+            {reviews.length ? average.toFixed(1) : "—"}
+          </span>
+          <span className="flex text-amber-400" aria-label={`${average.toFixed(1)} de 5 estrellas`}>
+            {Array.from({ length: 5 }, (_, index) => (
+              <Star
+                key={index}
+                className={`h-4 w-4 ${index < Math.round(average) ? "fill-amber-400" : ""}`}
+              />
+            ))}
+          </span>
+          <span className="text-sm text-muted-foreground">
+            {reviews.length} {reviews.length === 1 ? "reseña" : "reseñas"}
+          </span>
+        </div>
+      </header>
+
+      {user?.role === "comensal" && (
+        <form onSubmit={submit} className="space-y-3 rounded-2xl border border-border bg-white p-5">
+          <h4 className="font-semibold text-gray-900">
+            {editing
+              ? "Editar mi comentario"
+              : currentReview
+                ? "Actualizar mi calificación"
+                : "Califica tu experiencia"}
+          </h4>
+          {!editing && (
+            <div className="flex gap-1" role="group" aria-label="Selecciona una calificación">
+              {Array.from({ length: 5 }, (_, index) => {
+                const value = index + 1;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setRating(value)}
+                    aria-label={`${value} ${value === 1 ? "estrella" : "estrellas"}`}
+                    aria-pressed={rating === value}
+                    className="rounded p-1 text-amber-400"
+                  >
+                    <Star className={`h-6 w-6 ${value <= rating ? "fill-amber-400" : ""}`} />
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <label className="block text-sm text-gray-700" htmlFor="restaurant-review-comment">
+            Comentario{" "}
+            <span className="text-muted-foreground">
+              (opcional salvo calificaciones menores a 3)
+            </span>
+          </label>
+          <textarea
+            id="restaurant-review-comment"
+            value={comment}
+            onChange={(event) => setComment(event.target.value)}
+            minLength={10}
+            maxLength={500}
+            rows={4}
+            placeholder="Cuéntale a otras personas cómo fue tu experiencia"
+            className="w-full resize-y rounded-xl border border-border p-3 text-sm outline-none focus:border-primary"
+          />
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs text-muted-foreground">{comment.length}/500</span>
+            <div className="flex gap-2">
+              {editing && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditing(false);
+                    setComment("");
+                  }}
+                  className="rounded-xl px-3 py-2 text-sm text-muted-foreground"
+                >
+                  Cancelar
+                </button>
+              )}
+              <PrimaryButton type="submit" size="md" disabled={saving}>
+                {saving
+                  ? "Guardando…"
+                  : editing
+                    ? "Guardar cambios"
+                    : currentReview
+                      ? "Actualizar reseña"
+                      : "Publicar reseña"}
+              </PrimaryButton>
+            </div>
+          </div>
+        </form>
+      )}
+      {!user && (
+        <p className="rounded-xl bg-gray-50 p-4 text-sm text-muted-foreground">
+          Inicia sesión como comensal para calificar este restaurante.
+        </p>
+      )}
+
+      {error && (
+        <div role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-700">
+          {error}
+          {!loading && (
+            <button type="button" onClick={loadReviews} className="ml-2 font-semibold underline">
+              Reintentar
+            </button>
+          )}
+        </div>
+      )}
+      {loading ? (
+        <p className="py-6 text-center text-sm text-muted-foreground">Cargando reseñas…</p>
+      ) : reviews.length === 0 ? (
+        <p className="rounded-xl bg-gray-50 p-6 text-center text-sm text-muted-foreground">
+          Aún no hay reseñas para este restaurante.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {reviews.map((review) => (
+            <article key={review.id} className="rounded-2xl border border-border bg-white p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div
+                  className="flex items-center gap-1 text-amber-400"
+                  aria-label={`${review.rating} de 5 estrellas`}
+                >
+                  {Array.from({ length: 5 }, (_, index) => (
+                    <Star
+                      key={index}
+                      className={`h-4 w-4 ${index < review.rating ? "fill-amber-400" : ""}`}
+                    />
+                  ))}
+                </div>
+                <time className="text-xs text-muted-foreground" dateTime={review.createdAt}>
+                  {new Date(review.editedAt ?? review.createdAt).toLocaleDateString("es-CO", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                  {review.editedAt ? " · Editada" : ""}
+                </time>
+              </div>
+              {review.comment && (
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-gray-700">
+                  {review.comment}
+                </p>
+              )}
+              {review.userId === user?.id && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditing(true);
+                    setComment(review.comment ?? "");
+                    setRating(review.rating);
+                  }}
+                  className="mt-3 text-sm font-semibold text-primary"
+                >
+                  Editar mi comentario
+                </button>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
