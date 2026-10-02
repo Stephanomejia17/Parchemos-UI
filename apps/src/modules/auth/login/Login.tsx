@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react";
-import { PrimaryButton } from "@/shared/components";
+import { BrandLogo, PrimaryButton } from "@/shared/components";
 import { ApiError, roleHomePath, useAuth } from "@/shared/auth";
 import { RemoteImage } from "@/shared/components/media/RemoteImage";
 
@@ -60,9 +60,7 @@ export function Login() {
         <div className="hidden md:flex absolute inset-0 items-end p-12">
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center shadow-lg">
-                <span className="text-2xl">🍽️</span>
-              </div>
+              <BrandLogo className="h-12 w-12 rounded-2xl shadow-lg" />
               <h1 className="text-4xl font-extrabold text-white font-heading">Parchemos</h1>
             </div>
             <p className="text-white/80 text-lg max-w-xs">
@@ -74,9 +72,7 @@ export function Login() {
 
       <div className="bg-white px-6 pt-6 pb-10 flex flex-col gap-4 md:w-96 md:overflow-y-auto md:justify-center md:px-10 md:py-12 lg:w-[440px]">
         <div className="flex items-center gap-3 mb-1 md:hidden">
-          <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center">
-            <span className="text-xl">🍽️</span>
-          </div>
+          <BrandLogo className="h-10 w-10 rounded-2xl" />
           <h2 className="text-2xl font-extrabold text-gray-900 font-heading">Parchemos</h2>
         </div>
         <div className="hidden md:block">

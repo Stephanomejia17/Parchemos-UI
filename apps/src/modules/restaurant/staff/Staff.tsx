@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
+  Info,
   AlertCircle,
   Eye,
   Loader2,
@@ -239,7 +240,7 @@ function CreateModal({
           <span className="inline-flex items-center gap-1">
             Marca
             <span className="group relative inline-flex">
-              <span className="cursor-help text-gray-400">ⓘ</span>
+              <Info className="h-4 w-4 cursor-help text-gray-400" aria-hidden="true" />
               <span
                 role="tooltip"
                 className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 w-56 -translate-x-1/2

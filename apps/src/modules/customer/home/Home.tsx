@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bell,
+  Loader2,
   BookmarkPlus,
   Heart,
   MapPin,
@@ -12,22 +13,37 @@ import {
   Search,
   Share2,
 } from "lucide-react";
-import { PrimaryButton, StarRating } from "@/shared/components";
+import { BrandLogo, PrimaryButton, StarRating } from "@/shared/components";
 import { RemoteImage } from "@/shared/components/media/RemoteImage";
-import { CATEGORIES, FEED_POSTS, STORIES } from "@/mocks/customer/home";
+import { CATEGORIES } from "@/mocks/customer/home";
 import { restaurantService } from "@/shared/services/restaurant/restaurant.service";
 
-type FeedPost = (typeof FEED_POSTS)[number] & {
-  locationId?: string;
+type FeedPost = {
+  id: string;
+  locationId: string;
+  type: "photo";
+  restaurant: string;
+  location: string;
+  rating: number;
+  ratingCount: number;
+  price: string;
+  img: string;
+  caption: string;
+  likes: number;
+  comments: number;
+  tags: string[];
+  user: { name: string; avatar: string };
+  saved: boolean;
+  liked: boolean;
 };
 
 const CATEGORY_SLUGS: Record<string, string> = {
   Postres: "postres",
   Colombiana: "colombiana",
   Parrilla: "parrilla",
-  Asiática: "asiatica",
+  "\u00C1si\u00E1tica": "asiatica",
   Italiana: "italiana",
-  Café: "cafe",
+  "Caf\u00E9": "cafe",
   Mexicana: "mexicana",
   Mariscos: "mariscos",
   Pizza: "pizza",
@@ -37,7 +53,7 @@ const CATEGORY_SLUGS: Record<string, string> = {
 };
 
 const PRICE_OPTIONS = [
-  { label: "Económico", value: 1 },
+  { label: "Econ\u00F3mico", value: 1 },
   { label: "Medio", value: 2 },
   { label: "Alto", value: 3 },
   { label: "Muy alto", value: 4 },
@@ -46,7 +62,8 @@ const PRICE_OPTIONS = [
 export function Home() {
   const router = useRouter();
 
-  const [posts, setPosts] = useState<FeedPost[]>(FEED_POSTS);
+  const [posts, setPosts] = useState<FeedPost[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedPrices, setSelectedPrices] = useState<number[]>([]);
@@ -79,45 +96,35 @@ export function Home() {
 
         setNoResults(false);
 
-        const realPosts = locations.map((location, index) => {
-          const mockPost = FEED_POSTS[index % FEED_POSTS.length];
-
-          let image = mockPost.img;
-
-          if (
-            location.coverUrl &&
-            !location.coverUrl.includes("html.com")
-          ) {
-            image = location.coverUrl;
-          } else if (
-            location.logoUrl &&
-            !location.logoUrl.includes("html.com")
-          ) {
-            image = location.logoUrl;
-          }
-
+        const realPosts = locations.map((location) => {
+          const image = location.coverUrl ?? location.logoUrl ?? location.images[0]?.url ?? "";
           return {
-            ...mockPost,
-            id: index + 1,
+            id: location.id,
             locationId: location.id,
-            restaurant: location.name,
+            type: "photo" as const,
+            restaurant: location.restaurant?.businessName ?? location.name,
             location: location.address,
             rating: location.avgRating,
             ratingCount: location.ratingCount,
-            price:
-              location.priceRange != null
-                ? "$".repeat(location.priceRange)
-                : mockPost.price,
+            price: location.priceRange != null ? "$".repeat(location.priceRange) : "Precio por consultar",
             img: image,
+            caption: location.description ?? "Descubre esta sede en Parchemos.",
+            likes: 0,
+            comments: location.ratingCount,
+            tags: [],
+            user: { name: location.restaurant?.businessName ?? location.name, avatar: image },
+            saved: false,
+            liked: false,
           };
         });
 
         setPosts(realPosts);
+        setLoading(false);
       } catch (error) {
-        console.error(
-          "No se pudieron cargar los restaurantes públicos:",
-          error,
-        );
+        console.error("No se pudieron cargar los restaurantes públicos:", error);
+        setPosts([]);
+        setNoResults(true);
+        setLoading(false);
       }
     };
 
@@ -126,14 +133,14 @@ export function Home() {
 
   const goRestaurant = (locationId?: string) => {
     if (locationId) {
-      router.push(`/restaurant?locationId=${locationId}`);
+      router.push(`/restaurant?locationId=${encodeURIComponent(locationId)}`);
       return;
     }
 
     router.push("/restaurant");
   };
 
-  const goMenu = () => router.push("/menu");
+  const goMenu = (locationId?: string) => router.push(locationId ? `/menu?locationId=${encodeURIComponent(locationId)}` : "/menu");
 
   const toggleCategory = (label: string) => {
     const slug = CATEGORY_SLUGS[label];
@@ -170,7 +177,7 @@ export function Home() {
     setSortBy("");
   };
 
-  const toggleLike = (id: number) =>
+  const toggleLike = (id: string) =>
     setPosts((prev) =>
       prev.map((p) =>
         p.id === id
@@ -183,7 +190,7 @@ export function Home() {
       ),
     );
 
-  const toggleSave = (id: number) =>
+  const toggleSave = (id: string) =>
     setPosts((prev) =>
       prev.map((p) =>
         p.id === id ? { ...p, saved: !p.saved } : p,
@@ -192,13 +199,11 @@ export function Home() {
 
   return (
     <div className="flex flex-col h-full overflow-y-auto bg-background">
-      {/* Top bar — mobile only (desktop uses sidebar header) */}
+      {/* Barra superior m\u00F3vil; en escritorio se usa el encabezado lateral */}
       <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-border px-4 pt-4 pb-3 md:hidden">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center">
-              <span className="text-base">🍽️</span>
-            </div>
+            <BrandLogo className="h-8 w-8 rounded-xl" />
 
             <span className="text-xl font-extrabold text-gray-900 font-heading">
               Parchemos
@@ -225,7 +230,7 @@ export function Home() {
           </h2>
 
           <p className="text-sm text-muted-foreground mt-0.5">
-            Bogotá, Colombia · Descubriendo cerca tuyo
+            Bogotá, Colombia · Descubriendo cerca de ti
           </p>
         </div>
 
@@ -238,39 +243,6 @@ export function Home() {
             className="bg-transparent text-sm outline-none flex-1 placeholder-muted-foreground"
             placeholder="Buscar restaurantes..."
           />
-        </div>
-      </div>
-
-      {/* Stories */}
-      <div className="bg-white border-b border-border md:border-b-0 md:bg-transparent">
-        <div className="flex gap-4 overflow-x-auto scrollbar-hide px-4 py-3 md:px-6">
-          {STORIES.map((s) => (
-            <div
-              key={s.id}
-              className="flex flex-col items-center gap-1.5 flex-shrink-0"
-            >
-              <div
-                className={`p-0.5 rounded-full ${
-                  s.hasNew
-                    ? "bg-gradient-to-tr from-primary to-secondary"
-                    : "bg-gray-200"
-                }`}
-              >
-                <div className="w-14 h-14 rounded-full bg-white p-0.5">
-                  <RemoteImage
-                    src={s.img}
-                    alt={s.name}
-                    className="w-full h-full rounded-full"
-                    sizes="56px"
-                  />
-                </div>
-              </div>
-
-              <span className="text-xs text-gray-600 font-medium max-w-[56px] truncate">
-                {s.name}
-              </span>
-            </div>
-          ))}
         </div>
       </div>
 
@@ -327,7 +299,7 @@ export function Home() {
             }}
             className="px-3 py-1.5 rounded-2xl border border-border text-xs font-semibold text-gray-700 bg-white flex-shrink-0 outline-none"
           >
-            <option value="">Todos</option>
+            <option value="">Más recientes</option>
 
             {PRICE_OPTIONS.map((option) => (
               <option
@@ -359,7 +331,9 @@ export function Home() {
 
       {/* Feed */}
       <div className="px-0 md:px-6 md:py-4">
-        {noResults ? (
+        {loading ? (
+          <div className="flex min-h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" aria-label="Cargando restaurantes" /></div>
+        ) : noResults ? (
           <div className="bg-white rounded-2xl border border-border p-8 text-center">
             <p className="text-base font-semibold text-gray-900">
               No encontramos restaurantes
@@ -367,7 +341,7 @@ export function Home() {
 
             <p className="text-sm text-muted-foreground mt-2">
               No hay restaurantes que coincidan con los filtros o la
-              búsqueda. Intenta modificar los criterios.
+              b\u00FAsqueda. Intenta modificar los criterios.
             </p>
           </div>
         ) : (
@@ -377,58 +351,12 @@ export function Home() {
                 key={post.id}
                 className="bg-white border-b border-border md:rounded-2xl md:border md:shadow-sm overflow-hidden"
               >
-                <div className="flex items-center justify-between px-4 py-3">
-                  <div className="flex items-center gap-2.5">
-                    <RemoteImage
-                      src={post.user.avatar}
-                      alt={post.user.name}
-                      className="w-9 h-9 rounded-full"
-                      sizes="36px"
-                    />
-
-                    <div>
-                      <button
-                        onClick={() => goRestaurant(post.locationId)}
-                        className="text-sm font-semibold text-gray-900 hover:text-primary transition-colors"
-                      >
-                        {post.restaurant}
-                      </button>
-
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <MapPin className="w-3 h-3 text-muted-foreground" />
-
-                        <span className="text-xs text-muted-foreground">
-                          {post.location}
-                        </span>
-
-                        <span className="text-xs text-muted-foreground mx-1">
-                          ·
-                        </span>
-
-                        <span className="text-xs font-medium text-gray-700">
-                          {post.price}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <StarRating rating={post.rating} />
-                </div>
-
                 <div className="relative">
                   <RemoteImage
                     src={post.img}
                     alt={post.restaurant}
                     className="w-full h-72 md:h-64"
                   />
-
-                  {post.type === "video" && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
-                        <Play className="w-6 h-6 text-white fill-white ml-0.5" />
-                      </div>
-                    </div>
-                  )}
 
                   <div className="absolute bottom-3 right-3 flex flex-col gap-2">
                     <button
@@ -461,7 +389,19 @@ export function Home() {
                   </div>
                 </div>
 
-                <div className="px-4 pt-3 pb-1">
+                <div className="px-4 pt-4 pb-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <button type="button" onClick={() => goRestaurant(post.locationId)} className="text-left text-2xl font-extrabold leading-tight text-gray-900 hover:text-primary">
+                        {post.restaurant}
+                      </button>
+                      <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+                        <MapPin className="h-4 w-4" /> {post.location}
+                      </p>
+                    </div>
+                    <StarRating rating={post.rating} />
+                  </div>
+
                   <div className="flex items-center gap-3 mb-2">
                     <button
                       onClick={() => toggleLike(post.id)}
@@ -509,32 +449,9 @@ export function Home() {
                     ))}
                   </div>
                 </div>
-
-                <div className="px-4 py-3 flex gap-2">
-                  <PrimaryButton
-                    onClick={() => {}}
-                    size="sm"
-                    className="flex-1"
-                  >
-                    📅 Reservar
-                  </PrimaryButton>
-
-                  <PrimaryButton
-                    onClick={goMenu}
-                    size="sm"
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    🍴 Ver menú
-                  </PrimaryButton>
-
-                  <PrimaryButton
-                    onClick={goMenu}
-                    size="sm"
-                    variant="ghost"
-                    className="flex-1"
-                  >
-                    🛍️ Pedir
+                <div className="px-4 py-3">
+                  <PrimaryButton onClick={() => goMenu(post.locationId)} size="sm" className="w-full">
+                    Ver menú de la sede
                   </PrimaryButton>
                 </div>
               </div>
@@ -545,3 +462,7 @@ export function Home() {
     </div>
   );
 }
+
+
+
+

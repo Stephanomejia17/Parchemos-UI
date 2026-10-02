@@ -2,6 +2,8 @@ import { apiFetch } from "../http/api-client";
 
 export interface CreateOrderInput {
   locationId: string;
+  /** Mesa activa cuando el pedido se origina desde un QR. */
+  tableId?: string;
   items: Array<{ productId: string; quantity: number }>;
 }
 

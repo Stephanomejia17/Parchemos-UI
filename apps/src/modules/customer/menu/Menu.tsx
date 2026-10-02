@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Minus, Plus, ShoppingBag, Star, Trash2, X } from "lucide-react";
+import { Flame, Minus, Plus, ShoppingBag, Star, Trash2, X } from "lucide-react";
 import { RemoteImage } from "@/shared/components/media/RemoteImage";
 import { CustomerBadge } from "@/shared/components";
 import { menuService, type Product } from "@/shared/services/menu/menu.service";
@@ -16,7 +16,9 @@ import { useRestaurantContext } from "@/shared/context/location-context";
 import type { MenuItem } from "@/shared/types/menu";
 import { PLACEHOLDER_PRODUCT_IMAGE } from "@/shared/constants";
 
-function MenuContent() {
+type MenuProps = { mesaId?: string; locationId?: string };
+
+function MenuContent({ mesaId, locationId }: MenuProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { restaurantId, setRestaurantId } = useRestaurantContext();
@@ -39,13 +41,13 @@ function MenuContent() {
 
   const urlRestaurantId = searchParams.get("locationId") ?? searchParams.get("restaurantId");
   const requestedProductId = searchParams.get("productId");
-  const effectiveRestaurantId = urlRestaurantId ?? restaurantId;
+  const effectiveRestaurantId = locationId ?? urlRestaurantId ?? restaurantId;
 
   useEffect(() => {
-    if (urlRestaurantId && urlRestaurantId !== restaurantId) {
-      setRestaurantId(urlRestaurantId);
+    if (effectiveRestaurantId && effectiveRestaurantId !== restaurantId) {
+      setRestaurantId(effectiveRestaurantId);
     }
-  }, [urlRestaurantId, restaurantId, setRestaurantId]);
+  }, [effectiveRestaurantId, restaurantId, setRestaurantId]);
 
   useEffect(() => {
     if (!effectiveRestaurantId) return;
@@ -97,7 +99,12 @@ function MenuContent() {
     if (product) setSelectedProduct(mapProductToMenuItem(product));
   }, [products, requestedProductId]);
 
-  const goOrderSummary = () => router.push("/order-summary");
+  const goOrderSummary = () => {
+    const params = new URLSearchParams();
+    if (effectiveRestaurantId) params.set("locationId", effectiveRestaurantId);
+    if (mesaId) params.set("mesa", mesaId);
+    router.push(`/order-summary?${params.toString()}`);
+  };
 
   const handleAdd = (item: MenuItem) => {
     const result = addItem(item);
@@ -234,7 +241,7 @@ function MenuContent() {
                             />
                             {item.featured && (
                               <div className="absolute -top-1 -left-1 bg-secondary text-gray-900 text-xs font-bold px-1.5 py-0.5 rounded-lg">
-                                🔥 Popular
+                                <Flame className="mr-1 inline h-3 w-3" /> Popular
                               </div>
                             )}
                           </button>
@@ -357,7 +364,7 @@ function MenuContent() {
                 </button>
                 {selectedProduct.featured && (
                   <span className="absolute bottom-3 left-3 rounded-lg bg-secondary px-2 py-1 text-xs font-bold text-gray-900">
-                    🔥 Destacado
+                    <Flame className="mr-1 inline h-3 w-3" /> Destacado
                   </span>
                 )}
               </div>
@@ -480,6 +487,6 @@ function MenuContent() {
   );
 }
 
-export function Menu() {
-  return <MenuContent />;
+export function Menu(props: MenuProps) {
+  return <MenuContent {...props} />;
 }

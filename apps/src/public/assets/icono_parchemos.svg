@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="orange" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FF8A3D"/>
+      <stop offset="100%" stop-color="#F15A24"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <!-- Rounded orange background -->
+  <rect x="28" y="28" width="200" height="200" rx="58"
+        fill="url(#orange)" filter="url(#shadow)"/>
+
+  <!-- Modern lowercase "p" -->
+  <path d="M92 76
+           C92 69.4 97.4 64 104 64
+           C110.6 64 116 69.4 116 76
+           V89
+           C125 78 137.5 72 151 72
+           C176 72 194 92 194 120
+           C194 148 176 168 151 168
+           C137.5 168 125 162 116 151
+           V196
+           C116 202.6 110.6 208 104 208
+           C97.4 208 92 202.6 92 196
+           Z
+           M116 120
+           C116 137 127 146 143 146
+           C159 146 170 137 170 120
+           C170 103 159 94 143 94
+           C127 94 116 103 116 120
+           Z"
+        fill="#FFFFFF"/>
+</svg>
+

@@ -16,6 +16,8 @@ export { SquareFileInput } from "./SquareFileInput";
 export { GalleryAddTile, GalleryThumb } from "./SquareFileInput";
 export type { GalleryFile } from "./SquareFileInput";
 export { SidebarUserFooter } from "./SidebarUserFooter";
+export { BrandLogo } from "./BrandLogo";
+export { Tooltip } from "./Tooltip";
 
 // Primitivas de formulario reutilizables (registro, perfil, configuracion...).
 export {

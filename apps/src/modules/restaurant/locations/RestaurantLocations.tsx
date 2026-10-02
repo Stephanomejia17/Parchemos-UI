@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, Loader2, MapPin, Plus, Send, Store, Trash2, X } from "lucide-react";
+import { ArrowRight, Building2, Loader2, MapPin, Plus, Send, Store, Trash2, X } from "lucide-react";
 import { ApiError, RequireAuth } from "@/shared/auth";
 import { restaurantService } from "@/shared/services";
 import type { GalleryFile } from "@/shared/components";
@@ -195,7 +195,7 @@ function Manager() {
                   className="mt-4 flex w-full items-center justify-between rounded-xl bg-orange-50 px-4 py-3 text-left text-sm font-semibold text-primary hover:bg-orange-100"
                 >
                   <span>Configuración del menú</span>
-                  <span aria-hidden="true">→</span>
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </button>
                 <div className="mt-4 space-y-2">
                   {restaurant.locations.map((item) => (

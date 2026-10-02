@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookmarkPlus, ChevronLeft, MapPin, Plus, Share2, Star } from "lucide-react";
+import { Armchair, BookmarkPlus, CalendarDays, ChevronLeft, MapPin, Plus, Share2, ShoppingBag, Star, Utensils } from "lucide-react";
 import { CustomerBadge, PrimaryButton } from "@/shared/components";
 import { RemoteImage } from "@/shared/components/media/RemoteImage";
 import { menuService, type Product } from "@/shared/services/menu/menu.service";
@@ -190,16 +190,16 @@ function RestaurantContent() {
           </div>
           <div className="grid grid-cols-2 gap-2 mt-4 md:mt-0 md:flex-shrink-0 md:w-64">
             <PrimaryButton size="md" className="w-full">
-              📅 Reservar
+              <CalendarDays className="h-4 w-4" /> Reservar
             </PrimaryButton>
             <PrimaryButton size="md" variant="outline" className="w-full" onClick={goMenu}>
-              🍴 Ver menú
+              <Utensils className="h-4 w-4" /> Ver menú
             </PrimaryButton>
             <PrimaryButton size="md" variant="secondary" className="w-full" onClick={goMenu}>
-              🛍️ Pedir ahora
+              <ShoppingBag className="h-4 w-4" /> Pedir ahora
             </PrimaryButton>
             <PrimaryButton size="md" variant="ghost" className="w-full border border-gray-200">
-              🪑 Ir a la mesa
+              <Armchair className="h-4 w-4" /> Ir a la mesa
             </PrimaryButton>
           </div>
         </div>

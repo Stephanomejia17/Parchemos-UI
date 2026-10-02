@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { RequireAuth, useAuth } from "@/shared/auth";
 import {
   Sidebar,
@@ -22,11 +22,12 @@ export function RestaurantShell({ children }: { children: ReactNode }) {
 
 function RestaurantFrame({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { user, logout } = useAuth();
   const items = navigationForRole(user?.role);
   return (
     <ActiveTabProvider items={items}>
-      <RestaurantContent items={items} pathname={pathname} user={user} logout={logout}>
+      <RestaurantContent items={items} pathname={pathname} searchParams={searchParams} user={user} logout={logout}>
         {children}
       </RestaurantContent>
     </ActiveTabProvider>
@@ -37,17 +38,19 @@ function RestaurantContent({
   children,
   items,
   pathname,
+  searchParams,
   user,
   logout,
 }: {
   children: ReactNode;
   items: ReturnType<typeof navigationForRole>;
   pathname: string;
+  searchParams: { get(name: string): string | null };
   user: ReturnType<typeof useAuth>["user"];
   logout: () => Promise<void>;
 }) {
   const activeId = useActiveTab();
-  const breadcrumbs = breadcrumbsForPath(pathname, items);
+  const breadcrumbs = breadcrumbsForPath(pathname, items, searchParams);
   return (
     <div className="flex h-full w-full overflow-hidden bg-background">
       <Sidebar
@@ -59,7 +62,7 @@ function RestaurantContent({
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <NavigationHeader
           breadcrumbs={breadcrumbs}
-          backHref={backHrefForPath(pathname, items.find((item) => item.id === activeId)?.href)}
+          backHref={breadcrumbs.length > 1 ? breadcrumbs[breadcrumbs.length - 2]?.href : backHrefForPath(pathname, items.find((item) => item.id === activeId)?.href)}
         />
         <div className="relative min-h-0 flex-1 overflow-hidden">
           <div className="mx-auto flex h-full w-full max-w-md flex-col overflow-hidden bg-white md:max-w-none md:bg-transparent">

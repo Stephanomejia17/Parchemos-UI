@@ -3,7 +3,9 @@ import { DesktopHeader } from "@/shared/components/DesktopHeader";
 import type { BreadcrumbItem } from "@/shared/navigation/types";
 import Link from "next/link";
 import { ShoppingCart } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { useOrder } from "@/shared/context/order-context";
+import { BrandLogo } from "@/shared/components/BrandLogo";
 
 export function NavigationHeader({
   breadcrumbs,
@@ -17,12 +19,29 @@ export function NavigationHeader({
   showCart?: boolean;
 }) {
   return (
-    <DesktopHeader
-      breadcrumbs={breadcrumbs}
-      backHref={backHref}
-      avatar={avatar ?? <span className="h-8 w-8 rounded-xl bg-primary" />}
-      cart={showCart ? <CustomerCartButton /> : undefined}
-    />
+    <>
+      <DesktopHeader
+        breadcrumbs={breadcrumbs}
+        backHref={backHref}
+        avatar={avatar ?? <BrandLogo className="h-8 w-8 rounded-xl" />}
+        cart={showCart ? <CustomerCartButton /> : undefined}
+      />
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-white px-4 md:hidden">
+        {backHref ? (
+          <Link href={backHref} aria-label="Volver" className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100">
+            <ChevronLeft className="h-4 w-4" />
+          </Link>
+        ) : null}
+        <nav aria-label="Breadcrumb" className="min-w-0 truncate text-sm">
+          {breadcrumbs.map((crumb, index) => (
+            <span key={`${crumb.label}-${index}`} className={index === breadcrumbs.length - 1 ? "font-bold text-gray-900" : "text-gray-500"}>
+              {index > 0 ? " / " : ""}{crumb.label}
+            </span>
+          ))}
+        </nav>
+        {showCart ? <div className="ml-auto"><CustomerCartButton /></div> : null}
+      </header>
+    </>
   );
 }
 

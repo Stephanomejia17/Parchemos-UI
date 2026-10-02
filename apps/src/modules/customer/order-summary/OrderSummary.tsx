@@ -1,18 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { ChevronLeft, Minus, Plus, ShoppingBag, UsersRound, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ChevronLeft, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { PrimaryButton } from "@/shared/components";
 import { RemoteImage } from "@/shared/components/media/RemoteImage";
 import { useOrder } from "@/shared/context/order-context";
 import { useRestaurantContext } from "@/shared/context/location-context";
+import { TableAssociation, type PublicTable } from "@/modules/customer/tables/TableAssociation";
 
 function OrderSummaryContent() {
   const router = useRouter();
-  const [splitEnabled, setSplitEnabled] = useState(false);
-  const [guests, setGuests] = useState(2);
-  // AC6 — este es el mismo pedido que se armó en /menu (misma key de localStorage)
+  const searchParams = useSearchParams();
+  const [mesaId, setMesaId] = useState<string | null>(null);
+  const [showAssociation, setShowAssociation] = useState(false);
+  const [associatedTable, setAssociatedTable] = useState<PublicTable | null>(null);
+  // Este es el mismo pedido que se armó en /menu (misma clave de localStorage)
   const {
     lines,
     subtotal,
@@ -25,14 +28,31 @@ function OrderSummaryContent() {
   } = useOrder();
   const { restaurantId } = useRestaurantContext();
 
+  useEffect(() => {
+    const storedLocation = window.localStorage.getItem("parchemos:location");
+    const storedTable = window.localStorage.getItem("parchemos:mesa");
+    const resolved = searchParams.get("mesa") ?? (storedLocation === restaurantId ? storedTable : null);
+    setMesaId(resolved);
+    setShowAssociation(!resolved);
+  }, [restaurantId, searchParams]);
+
   const goPayment = async () => {
-    if (await refreshAvailability()) router.push("/payment");
+    if (!mesaId) {
+      setShowAssociation(true);
+      return;
+    }
+    if (await refreshAvailability()) {
+      const params = new URLSearchParams();
+      if (restaurantId) params.set("locationId", restaurantId);
+      params.set("mesa", mesaId);
+      router.push(`/payment?${params.toString()}`);
+    }
   };
 
   const service = Math.round(subtotal * 0.1);
   const total = subtotal + service;
   const canPay =
-    lines.length > 0 && availabilityStatus === "checked" && unavailableLines.length === 0;
+    lines.length > 0 && Boolean(mesaId) && availabilityStatus === "checked" && unavailableLines.length === 0;
   const goMenu = () =>
     router.push(restaurantId ? `/menu?locationId=${encodeURIComponent(restaurantId)}` : "/menu");
 
@@ -53,7 +73,7 @@ function OrderSummaryContent() {
       <div className="mx-auto w-full max-w-2xl p-4 md:p-6">
         {availabilityStatus === "loading" && lines.length > 0 && (
           <p role="status" className="mb-4 rounded-xl bg-blue-50 p-3 text-sm text-blue-800">
-            Verificando disponibilidad de los productos…
+            Verificando disponibilidad de los productos...
           </p>
         )}
         {availabilityStatus === "error" && lines.length > 0 && (
@@ -87,7 +107,7 @@ function OrderSummaryContent() {
             </div>
             {lines.length === 0 ? (
               <p className="px-4 py-6 text-sm text-muted-foreground text-center">
-                Tu pedido está vacío.
+              Tu pedido está vacío.
               </p>
             ) : (
               lines.map(({ item, quantity }, i) => (
@@ -157,76 +177,6 @@ function OrderSummaryContent() {
               ))
             )}
 
-            <section
-              className="border-t border-border bg-gradient-to-r from-orange-50/80 to-white px-5 py-4"
-              aria-labelledby="split-bill-title"
-            >
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex min-w-0 items-center gap-3">
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <UsersRound className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                  <span className="min-w-0">
-                    <span
-                      id="split-bill-title"
-                      className="block text-sm font-semibold text-gray-900"
-                    >
-                      Dividir cuenta
-                    </span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      Calcula cuánto aporta cada persona.
-                    </span>
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={splitEnabled}
-                  aria-label="Activar división de la cuenta"
-                  onClick={() => setSplitEnabled((enabled) => !enabled)}
-                  className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${splitEnabled ? "bg-primary" : "bg-gray-300"}`}
-                >
-                  <span
-                    className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${splitEnabled ? "translate-x-6" : "translate-x-1"}`}
-                  />
-                </button>
-              </div>
-              {splitEnabled && (
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-orange-100 bg-white p-3 sm:px-4">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground">Personas</p>
-                    <div className="mt-1 flex items-center gap-3">
-                      <button
-                        type="button"
-                        aria-label="Restar una persona"
-                        onClick={() => setGuests((count) => Math.max(1, count - 1))}
-                        disabled={guests <= 1}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-700 transition-colors hover:bg-gray-200 disabled:opacity-40"
-                      >
-                        <Minus className="h-3.5 w-3.5" />
-                      </button>
-                      <span className="min-w-16 text-center text-sm font-semibold text-gray-900">
-                        {guests} {guests === 1 ? "persona" : "personas"}
-                      </span>
-                      <button
-                        type="button"
-                        aria-label="Agregar una persona"
-                        onClick={() => setGuests((count) => count + 1)}
-                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-700 transition-colors hover:bg-gray-200"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                  <div className="text-left sm:text-right">
-                    <p className="text-xs text-muted-foreground">Aproximado por persona</p>
-                    <p className="mt-0.5 text-lg font-bold text-primary">
-                      ${Math.round(total / guests).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </section>
 
             <div className="border-t border-border bg-gray-50 px-5 py-4">
               <div className="flex justify-between mb-1.5">
@@ -243,6 +193,24 @@ function OrderSummaryContent() {
               </div>
             </div>
           </div>
+          {restaurantId && showAssociation && (
+            <TableAssociation
+              locationId={restaurantId}
+              onAssociated={(table) => {
+                setMesaId(table.tableId);
+                setAssociatedTable(table);
+                setShowAssociation(false);
+                window.localStorage.setItem("parchemos:mesa", table.tableId);
+                window.localStorage.setItem("parchemos:location", table.locationId);
+              }}
+            />
+          )}
+          {restaurantId && !showAssociation && mesaId && (
+            <div className="flex items-center justify-between rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+              <span>Mesa asociada{associatedTable?.tableCode ? ` · ${associatedTable.tableCode}` : ""}</span>
+              <button type="button" onClick={() => setShowAssociation(true)} className="font-bold underline">Cambiar</button>
+            </div>
+          )}
           <PrimaryButton
             onClick={goPayment}
             size="lg"
@@ -250,8 +218,8 @@ function OrderSummaryContent() {
             disabled={!canPay}
           >
             {availabilityStatus === "loading" && lines.length > 0
-              ? "Verificando disponibilidad…"
-              : `💳 Ir a pagar · $${total.toLocaleString()}`}
+              ? "Verificando disponibilidad..."
+              : `Ir a pagar · $${total.toLocaleString()}`}
           </PrimaryButton>
         </div>
       </div>
@@ -262,3 +230,13 @@ function OrderSummaryContent() {
 export function OrderSummary() {
   return <OrderSummaryContent />;
 }
+
+
+
+
+
+
+
+
+
+
