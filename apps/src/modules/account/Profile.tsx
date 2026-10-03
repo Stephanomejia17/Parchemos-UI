@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { AlertCircle, Camera, Loader2, LogOut, MapPin, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { AlertCircle, Camera, ChevronLeft, Loader2, LogOut, MapPin, Trash2 } from "lucide-react";
 import { ApiError, useAuth } from "@/shared/auth";
 import { profileService } from "@/shared/services";
 import { ComboBoxField, PrimaryButton } from "@/shared/components";
@@ -10,7 +11,8 @@ import { COLOMBIA_CITY_OPTIONS } from "@/shared/constants";
 const errorMessage = (error: unknown, fallback: string) =>
   error instanceof ApiError ? error.message : fallback;
 
-export function Profile() {
+/** `backHref`: para roles sin menú lateral (p. ej. personal de sala), que si no quedan sin salida. */
+export function Profile({ backHref }: { backHref?: string } = {}) {
   const { user, refreshUser, logout } = useAuth();
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -95,9 +97,20 @@ export function Profile() {
   return (
     <main className="min-h-full overflow-y-auto bg-background px-4 py-6 md:px-8">
       <div className="mx-auto max-w-2xl">
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Mi perfil</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Administra tus datos personales.</p>
+        <header className="mb-6 flex items-start gap-3">
+          {backHref && (
+            <Link
+              href={backHref}
+              aria-label="Volver"
+              className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-gray-100"
+            >
+              <ChevronLeft className="h-5 w-5 text-gray-900" />
+            </Link>
+          )}
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Mi perfil</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Administra tus datos personales.</p>
+          </div>
         </header>
         {error && (
           <div
