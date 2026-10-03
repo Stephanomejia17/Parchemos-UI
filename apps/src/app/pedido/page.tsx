@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { MenuScreen } from "@/modules/customer/menu/MenuScreen";
 import { mapMenuItem } from "@/lib/api/menu";
@@ -10,7 +10,7 @@ import { OrderProvider } from "@/shared/context/order-context";
 import { apiFetch } from "@/shared/services/http/api-client";
 import type { PublicTable } from "@/modules/customer/tables/TableAssociation";
 
-export default function PedidoPage() {
+function PedidoContent() {
   const params = useSearchParams();
   const mesaId = params.get("mesa");
   const [table, setTable] = useState<PublicTable | null>(null);
@@ -64,5 +64,14 @@ export default function PedidoPage() {
         </OrderProvider>
       </LocationProvider>
     </main>
+  );
+}
+
+export default function PedidoPage() {
+  // useSearchParams (la mesa del QR) necesita una frontera de Suspense.
+  return (
+    <Suspense fallback={null}>
+      <PedidoContent />
+    </Suspense>
   );
 }

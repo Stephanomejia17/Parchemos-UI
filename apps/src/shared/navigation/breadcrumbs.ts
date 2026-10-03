@@ -51,7 +51,7 @@ export function breadcrumbsForPath(
   if (locationId) {
     result.push({
       label: locationName ?? "Sede",
-      href: tablesHref(restaurantId, locationId),
+      href: tablesHref(restaurantId ?? undefined, locationId),
     });
   }
   if (detail) result.push({ label: DETAIL_LABELS[detail] });
