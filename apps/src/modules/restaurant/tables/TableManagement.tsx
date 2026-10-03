@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Plus } from "lucide-react";
 import { apiFetch } from "@/shared/services/http/api-client";
@@ -17,16 +17,22 @@ import { useTables } from "./useTables";
 
 export function TableManagement() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [location, setLocation] = useState<Location | null>(null);
   const [loadingRestaurants, setLoadingRestaurants] = useState(true);
   const [restaurantError, setRestaurantError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Table | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const requestedRestaurantId = searchParams.get("restaurantId");
-  const requestedLocationId = searchParams.get("locationId");
-  const locationId = location?.id ?? null;
+  const restaurantId = searchParams.get("restaurantId");
+  const locationId = searchParams.get("locationId");
+  const restaurant = useMemo(
+    () => restaurants.find((item) => item.id === restaurantId) ?? null,
+    [restaurants, restaurantId],
+  );
+  const location = useMemo(
+    () => restaurant?.locations.find((item) => item.id === locationId) ?? null,
+    [restaurant, locationId],
+  );
+  const initialSelectionHandled = useRef(false);
   const {
     tables,
     loadingTables,
@@ -41,19 +47,15 @@ export function TableManagement() {
     (nextRestaurant: Restaurant, nextLocation?: Location) => {
       // La URL es la fuente de verdad de la selección; el layout la usa para
       // pintar los breadcrumbs y esta pantalla para restaurar su estado.
-      router.replace(tablesHref(nextRestaurant.id, nextLocation?.id), { scroll: false });
+      router.push(tablesHref(nextRestaurant.id, nextLocation?.id), { scroll: false });
     },
     [router],
   );
 
   const selectRestaurant = useCallback(
-    (item: Restaurant, requestedLocation?: string) => {
-      const nextLocation =
-        item.locations.find((itemLocation) => itemLocation.id === requestedLocation) ??
-        (item.locations.length === 1 ? item.locations[0] : null);
-      setRestaurant(item);
-      setLocation(nextLocation);
-      updateSelectionUrl(item, nextLocation ?? undefined);
+    (item: Restaurant) => {
+      const nextLocation = item.locations.length === 1 ? item.locations[0] : undefined;
+      updateSelectionUrl(item, nextLocation);
     },
     [updateSelectionUrl],
   );
@@ -67,10 +69,6 @@ export function TableManagement() {
         const data = await apiFetch<Restaurant[]>("/restaurantes/mios");
         if (cancelled) return;
         setRestaurants(data);
-        const requestedRestaurant = data.find((item) => item.id === requestedRestaurantId);
-        if (requestedRestaurant)
-          selectRestaurant(requestedRestaurant, requestedLocationId ?? undefined);
-        else if (data.length === 1) selectRestaurant(data[0]);
       } catch (cause) {
         console.error("No se pudieron cargar los restaurantes.", cause);
         if (!cancelled) setRestaurantError("No pudimos cargar tus restaurantes.");
@@ -82,11 +80,20 @@ export function TableManagement() {
     return () => {
       cancelled = true;
     };
-  }, [requestedLocationId, requestedRestaurantId, selectRestaurant]);
+  }, []);
+
+  useEffect(() => {
+    if (loadingRestaurants || initialSelectionHandled.current) return;
+    initialSelectionHandled.current = true;
+    if (restaurantId || restaurants.length !== 1) return;
+
+    const item = restaurants[0];
+    const nextLocation = item.locations.length === 1 ? item.locations[0] : undefined;
+    router.replace(tablesHref(item.id, nextLocation?.id), { scroll: false });
+  }, [loadingRestaurants, restaurantId, restaurants, router]);
 
   function selectLocation(item: Location) {
     if (!restaurant) return;
-    setLocation(item);
     updateSelectionUrl(restaurant, item);
   }
 
@@ -161,7 +168,6 @@ export function TableManagement() {
           <button
             type="button"
             onClick={() => {
-              setLocation(null);
               updateSelectionUrl(restaurant);
             }}
             className="min-h-11 rounded-xl bg-muted px-4 py-2.5 text-sm font-semibold text-foreground"

@@ -15,6 +15,14 @@ export function tablesHref(restaurantId?: string, locationId?: string): string {
   return query ? `/tables?${query}` : "/tables";
 }
 
+/**
+ * El botón "volver" siempre apunta al breadcrumb inmediatamente anterior.
+ * Mantener esta regla aquí evita que cada shell implemente su propio historial.
+ */
+export function backHrefForBreadcrumbs(breadcrumbs: BreadcrumbItem[]): string | undefined {
+  return breadcrumbs.length > 1 ? breadcrumbs[breadcrumbs.length - 2]?.href : undefined;
+}
+
 const DETAIL_LABELS: Record<string, string> = {
   menu: "Menú",
   dashboard: "Dashboard",
@@ -51,7 +59,7 @@ export function breadcrumbsForPath(
   if (locationId) {
     result.push({
       label: locationName ?? "Sede",
-      href: tablesHref(restaurantId, locationId),
+      href: tablesHref(locationId),
     });
   }
   if (detail) result.push({ label: DETAIL_LABELS[detail] });
