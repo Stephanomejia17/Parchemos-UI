@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
-import { LogOut } from "lucide-react";
+import { LogOut, Menu } from "lucide-react";
+import { BrandLogo } from "@/shared/components";
 import type { NavigationItem } from "@/shared/navigation/types";
 
 const initialOf = (name?: string | null) => (name?.trim()[0] ?? "A").toUpperCase();
@@ -26,9 +27,7 @@ export function Sidebar({
       className={`hidden md:flex flex-col bg-white border-r border-border flex-shrink-0 transition-all ${collapsed ? "w-16" : "w-56 lg:w-60"}`}
     >
       <div className="h-16 flex items-center px-4 border-b border-border gap-3">
-        <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center">
-          <span>🍽️</span>
-        </div>
+        <BrandLogo className="h-8 w-8 rounded-xl" />
         {!collapsed && (
           <span className="font-extrabold text-gray-900 text-lg font-heading">Parchemos</span>
         )}
@@ -37,7 +36,7 @@ export function Sidebar({
           onClick={() => setCollapsed((value) => !value)}
           className="ml-auto text-muted-foreground"
         >
-          ☰
+          <Menu className="h-4 w-4" />
         </button>
       </div>
       <nav className="flex-1 overflow-y-auto py-3 px-2">

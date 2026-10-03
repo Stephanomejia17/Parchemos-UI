@@ -14,17 +14,27 @@ const LocationContext = createContext<LocationContextValue | null>(null);
 // cuando trae el parámetro.
 const STORAGE_KEY = "parchemos:activeLocation";
 
-export function LocationProvider({ children }: { children: ReactNode }) {
-  const [locationId, setLocationIdState] = useState<string | null>(null);
+export function LocationProvider({
+  children,
+  initialLocationId,
+}: {
+  children: ReactNode;
+  initialLocationId?: string;
+}) {
+  const [locationId, setLocationIdState] = useState<string | null>(initialLocationId ?? null);
 
   useEffect(() => {
+    if (initialLocationId) {
+      setLocationIdState(initialLocationId);
+      return;
+    }
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY);
       if (stored) setLocationIdState(stored);
     } catch {
       // arrancamos sin sede activa
     }
-  }, []);
+  }, [initialLocationId]);
 
   const setLocationId = (id: string) => {
     setLocationIdState(id);

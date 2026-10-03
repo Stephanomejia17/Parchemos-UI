@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { roleHomePath, useAuth } from "@/shared/auth";
+import { BrandLogo } from "@/shared/components";
 
 export function Splash() {
   const router = useRouter();
@@ -21,9 +22,7 @@ export function Splash() {
   return (
     <div className="fixed inset-0 bg-white flex flex-col items-center justify-center z-50">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-24 h-24 bg-primary rounded-3xl flex items-center justify-center shadow-xl shadow-orange-200">
-          <span className="text-5xl">🍽️</span>
-        </div>
+        <BrandLogo className="h-24 w-24 rounded-3xl shadow-xl shadow-orange-200" />
         <div className="text-center">
           <h1 className="text-4xl font-extrabold text-gray-900 font-heading">Parchemos</h1>
           <p className="text-muted-foreground text-sm mt-1">Descubre. Reserva. Disfruta.</p>

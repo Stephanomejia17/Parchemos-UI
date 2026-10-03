@@ -1,13 +1,18 @@
 export const CATEGORIES = [
-  { icon: "🍔", label: "Hamburguesas" },
-  { icon: "🍕", label: "Pizza" },
+  { icon: "🍰", label: "Postres" },
+  { icon: "🫓", label: "Colombiana" },
+  { icon: "🥩", label: "Parrilla" },
+  { icon: "🍜", label: "Asiática" },
+  { icon: "🍝", label: "Italiana" },
   { icon: "☕", label: "Café" },
-  { icon: "🍣", label: "Sushi" },
-  { icon: "🥩", label: "Carnes" },
-  { icon: "🍜", label: "Asiático" },
-  { icon: "🥐", label: "Panadería" },
-  { icon: "🍹", label: "Cócteles" },
+  { icon: "🌮", label: "Mexicana" },
+  { icon: "🦐", label: "Mariscos" },
+  { icon: "🍕", label: "Pizza" },
+  { icon: "🍔", label: "Hamburguesas" },
+  { icon: "🍣", label: "Japonesa" },
+  { icon: "🥗", label: "Vegetariana" },
 ];
+
 
 export const STORIES = [
   {

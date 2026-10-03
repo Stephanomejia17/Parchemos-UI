@@ -30,6 +30,7 @@ export interface Location {
   longitude: number | null;
   schedules: Schedule[];
   images: GalleryImage[];
+  restaurant?: { id: string; businessName: string };
 }
 
 export interface PublicLocationProfile {

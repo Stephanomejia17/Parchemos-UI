@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
+  Check,
   Edit3,
   ImagePlus,
   LayoutGrid,
@@ -710,7 +711,7 @@ function ProductRow({
           className="rounded-xl bg-green-50 p-2 text-green-700"
           aria-label={`Activar ${product.name}`}
         >
-          <span className="text-xs font-bold">✓</span>
+          <Check className="h-3 w-3" aria-hidden="true" />
         </button>
       )}
     </article>

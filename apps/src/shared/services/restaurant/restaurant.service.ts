@@ -43,6 +43,22 @@ export interface LocationReview {
   editedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Información pública mínima del comensal que publicó la reseña. */
+  author: {
+    fullName: string;
+    photoUrl: string | null;
+  };
+}
+
+export interface LocationReviewSummary {
+  average: number;
+  total: number;
+  distribution: Record<1 | 2 | 3 | 4 | 5, number>;
+}
+
+export interface LocationReviewList {
+  reviews: LocationReview[];
+  summary: LocationReviewSummary;
 }
 
 export const restaurantService = {
@@ -83,7 +99,7 @@ export const restaurantService = {
     apiFetch<PublicLocationProfile>(`/restaurantes/publicos/${locationId}`),
 
   listLocationReviews: (locationId: string) =>
-    apiFetch<LocationReview[]>(`/restaurantes/publicos/${locationId}/calificaciones`),
+    apiFetch<LocationReviewList>(`/restaurantes/publicos/${locationId}/calificaciones`),
 
   createLocationReview: (locationId: string, rating: number, comment?: string) =>
     apiFetch<LocationReview>(`/restaurantes/${locationId}/calificaciones`, {
@@ -94,10 +110,11 @@ export const restaurantService = {
       },
     }),
 
-  updateLocationReview: (reviewId: string, comment: string) =>
+  updateLocationReview: (reviewId: string, rating: number, comment: string | null) =>
     apiFetch<LocationReview>(`/restaurantes/calificaciones/${reviewId}`, {
       method: "PUT",
       body: {
+        rating,
         comment,
       },
     }),

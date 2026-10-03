@@ -5,10 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { useAuth } from "@/shared/auth";
-import { SidebarUserFooter } from "@/shared/components";
+import { BrandLogo, SidebarUserFooter } from "@/shared/components";
 import { navigationForRole } from "@/shared/navigation";
-
-const ACCENT = "#FF6B35";
 
 export function AdminSidebar() {
   const pathname = usePathname();
@@ -25,12 +23,7 @@ export function AdminSidebar() {
       <div
         className={`flex items-center gap-2.5 px-4 py-5 border-b border-gray-50 ${collapsed ? "justify-center" : ""}`}
       >
-        <div
-          className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ background: ACCENT }}
-        >
-          <span className="text-white font-bold text-[12px]">P</span>
-        </div>
+        <BrandLogo className="h-7 w-7 rounded-lg" />
         {!collapsed && (
           <div>
             <div className="text-[13px] font-bold text-gray-900 leading-none">Parchemos</div>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Check, ChevronLeft } from "lucide-react";
 import { PrimaryButton } from "@/shared/components";
 import { useOrder } from "@/shared/context/order-context";
@@ -10,16 +10,25 @@ import { orderService, type CreatedOrder } from "@/shared/services/orders/order.
 
 export function Payment() {
   const router = useRouter();
-  const { restaurantId: locationId } = useRestaurantContext();
+  const searchParams = useSearchParams();
+  const { restaurantId: contextLocationId } = useRestaurantContext();
+  const locationId = searchParams.get("locationId") ?? contextLocationId ?? (typeof window !== "undefined" ? window.localStorage.getItem("parchemos:location") : null);
+  const [tableId, setTableId] = useState<string | null>(null);
   const { lines, subtotal, availabilityStatus, unavailableLines, refreshAvailability, clearOrder } =
     useOrder();
   const [submittedOrder, setSubmittedOrder] = useState<CreatedOrder | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  useEffect(() => {
+    const storedLocation = window.localStorage.getItem("parchemos:location");
+    const storedTable = window.localStorage.getItem("parchemos:mesa");
+    setTableId(searchParams.get("mesa") ?? (storedLocation === locationId ? storedTable : null));
+  }, [locationId, searchParams]);
   const total = subtotal + Math.round(subtotal * 0.1);
   const canSubmit =
     lines.length > 0 &&
     Boolean(locationId) &&
+    Boolean(tableId) &&
     availabilityStatus === "checked" &&
     unavailableLines.length === 0 &&
     !submitting;
@@ -37,6 +46,7 @@ export function Payment() {
       }
       const order = await orderService.create({
         locationId,
+        ...(tableId ? { tableId } : {}),
         items: lines.map(({ item, quantity }) => ({ productId: item.id, quantity })),
       });
       setSubmittedOrder(order);
@@ -79,7 +89,7 @@ export function Payment() {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-background">
-      <div className="sticky top-0 z-10 border-b border-border bg-white px-4 pb-3 pt-4 md:px-6">
+      <div className="sticky top-0 z-10 border-b border-border bg-white px-4 pb-3 pt-4 md:hidden">
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}

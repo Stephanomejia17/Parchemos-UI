@@ -17,6 +17,7 @@ import {
   UserRound,
   UtensilsCrossed,
 } from "lucide-react";
+import { BrandLogo } from "@/shared/components";
 import {
   CheckboxField,
   ChoiceCardGroup,
@@ -173,9 +174,7 @@ export function Register() {
       <div className="w-full max-w-xl flex flex-col gap-5">
         <header className="flex flex-col gap-2">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 bg-primary rounded-2xl flex items-center justify-center">
-              <span className="text-xl">🍽️</span>
-            </div>
+            <BrandLogo className="h-11 w-11 rounded-2xl" />
             <h1 className="text-2xl font-extrabold text-gray-900 font-heading">Crea tu cuenta</h1>
           </div>
           <p className="text-sm text-muted-foreground">

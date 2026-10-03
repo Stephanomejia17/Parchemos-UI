@@ -16,6 +16,7 @@ import {
   User,
   Users,
   UsersRound,
+  QrCode,
 } from "lucide-react";
 import type { UserRole } from "@/shared/auth";
 import type { NavigationItem } from "./types";
@@ -31,6 +32,7 @@ const CUSTOMER_NAVIGATION: NavigationItem[] = [
 const RESTAURANT_NAVIGATION: NavigationItem[] = [
   { id: "home", href: "/profile/dashboard", icon: Home, label: "Dashboard" },
   { id: "restaurants", href: "/restaurants", icon: Store, label: "Restaurantes" },
+  { id: "tables", href: "/tables", icon: QrCode, label: "Configuración mesas" },
   { id: "staff", href: "/staff", icon: UsersRound, label: "Personal" },
   { id: "profile", href: "/restaurant-profile", icon: User, label: "Mi perfil" },
 ];

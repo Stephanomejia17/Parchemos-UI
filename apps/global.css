@@ -6,10 +6,12 @@
 :root {
   --font-size: 16px;
   --background: #f8f9fa;
+  --surface: #ffffff;
   --foreground: #212529;
   --card: #ffffff;
   --card-foreground: #212529;
   --primary: #ff6b35;
+  --primary-soft: #fff1eb;
   --primary-foreground: #ffffff;
   --secondary: #f4b400;
   --secondary-foreground: #212529;
@@ -30,6 +32,7 @@
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-primary: var(--primary);
+  --color-primary-soft: var(--primary-soft);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -37,6 +40,7 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-surface: var(--surface);
   --color-destructive: var(--destructive);
   --color-border: var(--border);
   --color-input-background: var(--input-background);

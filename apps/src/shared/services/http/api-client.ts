@@ -1,6 +1,6 @@
 import { ApiError } from "../../auth/types";
 
-function resolveBaseUrl(): string {
+export function resolveBaseUrl(): string {
   const configured = process.env.NEXT_PUBLIC_API_URL;
   if (configured) return configured.replace(/\/$/, "");
 
@@ -13,6 +13,10 @@ function resolveBaseUrl(): string {
   throw new Error(
     "API_URL no está definida. Configúrala en las variables de entorno del ambiente de despliegue.",
   );
+}
+
+export function buildApiUrl(path: string): string {
+  return `${resolveBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 /** Origen del servidor de la API (sin `/api`), p. ej. para los sockets. */
@@ -50,7 +54,7 @@ async function raw(path: string, options: RequestOptions = {}): Promise<Response
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
-  return fetch(`${resolveBaseUrl()}${path}`, {
+  return fetch(buildApiUrl(path), {
     method: options.method ?? "GET",
     headers,
     // Imprescindible para que viaje la cookie del refresh token.
