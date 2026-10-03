@@ -11,6 +11,7 @@ import {
 } from "@/shared/components/navigation";
 import { NavigationHeader } from "@/shared/components/navigation/NavigationHeader";
 import { breadcrumbsForPath, backHrefForPath, navigationForRole } from "@/shared/navigation";
+import { OrderStatusNotifications } from "@/modules/customer/order-notifications/OrderStatusNotifications";
 import { LocationProvider } from "@/shared/context/location-context";
 import { OrderProvider } from "@/shared/context/order-context";
 
@@ -35,6 +36,7 @@ function CustomerFrame({ children }: { children: ReactNode }) {
       <CustomerContent items={items} pathname={pathname} user={user} logout={logout}>
         {children}
       </CustomerContent>
+      <OrderStatusNotifications />
     </ActiveTabProvider>
   );
 }

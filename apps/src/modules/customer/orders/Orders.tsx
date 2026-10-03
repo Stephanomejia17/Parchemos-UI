@@ -3,18 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, RefreshCw } from "lucide-react";
-import { orderService, type CreatedOrder } from "@/shared/services/orders/order.service";
-
-const STATUS_LABELS: Record<string, string> = {
-  borrador: "Borrador",
-  pendiente: "Pendiente de confirmación",
-  confirmado: "Confirmado",
-  en_preparacion: "En preparación",
-  listo: "Listo",
-  en_camino: "En camino",
-  entregado: "Entregado",
-  cancelado: "Cancelado",
-};
+import {
+  orderService,
+  subscribeToOrderStatus,
+  type CreatedOrder,
+  type OrderStatus,
+} from "@/shared/services";
+import { ORDER_STATUS_LABELS } from "@/modules/customer/order-tracking/order-status";
 
 export function Orders() {
   const router = useRouter();
@@ -38,6 +33,19 @@ export function Orders() {
   useEffect(() => {
     void loadOrders();
   }, [loadOrders]);
+
+  // GP-08: el estado de cada pedido se actualiza en vivo cuando el restaurante lo cambia.
+  useEffect(
+    () =>
+      subscribeToOrderStatus((event) => {
+        setOrders((current) =>
+          current.map((order) =>
+            order.id === event.id ? { ...order, status: event.estado } : order,
+          ),
+        );
+      }),
+    [],
+  );
 
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-background">
@@ -87,7 +95,7 @@ export function Orders() {
                 <p className="text-sm text-muted-foreground">Pedido #{order.orderNumber}</p>
               </div>
               <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-semibold text-primary">
-                {STATUS_LABELS[order.status] ?? order.status}
+                {ORDER_STATUS_LABELS[order.status as OrderStatus] ?? order.status}
               </span>
             </div>
             <ul className="my-4 space-y-2 border-y border-border py-3">
@@ -108,6 +116,12 @@ export function Orders() {
               </span>
               <span className="font-bold text-gray-900">Total ${order.total.toLocaleString()}</span>
             </div>
+            <button
+              onClick={() => router.push(`/orders/${order.id}`)}
+              className="mt-3 w-full rounded-xl border border-orange-200 bg-white py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-orange-50"
+            >
+              Ver estado del pedido
+            </button>
           </article>
         ))}
       </div>

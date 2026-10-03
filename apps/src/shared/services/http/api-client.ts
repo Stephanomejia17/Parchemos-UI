@@ -19,6 +19,11 @@ export function buildApiUrl(path: string): string {
   return `${resolveBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
+/** Origen del servidor de la API (sin `/api`), p. ej. para los sockets. */
+export function resolveApiOrigin(): string {
+  return new URL(resolveBaseUrl()).origin;
+}
+
 /**
  * El access token vive solo en memoria.
  *
