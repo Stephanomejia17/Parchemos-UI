@@ -73,6 +73,43 @@ export interface OrderStatusChange {
   nota: string | null;
 }
 
+export interface TableRef {
+  id: string;
+  codigo: string;
+}
+
+export interface RoomOrderItem {
+  nombre: string;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
+  notas: string | null;
+}
+
+/** GP-05 CA2: pedido con lo que el personal necesita para atenderlo. */
+export interface RoomOrder extends OrderStatusInfo {
+  mesa: TableRef | null;
+  estadoPago: string;
+  items: RoomOrderItem[];
+}
+
+/** GP-05: pedidos en curso de una mesa; `mesa` null agrupa los que no tienen mesa. */
+export interface TableOrders {
+  mesa: TableRef | null;
+  /** GP-05 CA3: lo que falta pagar en la mesa; null para el grupo sin mesa. */
+  totalPendiente: number | null;
+  pedidos: RoomOrder[];
+}
+
+/** GP-05: indicadores del día del panel de sala. */
+export interface LocationSummary {
+  ordenesHoy: number;
+  pendientes: number;
+  mesasOcupadas: number;
+  mesasTotales: number;
+  entregadasHoy: number;
+}
+
 interface ApiEnvelope<T> {
   success: boolean;
   data: T;
@@ -91,9 +128,12 @@ export const orderService = {
   getHistory: (orderId: string) =>
     apiFetch<ApiEnvelope<OrderStatusChange[]>>(`/pedidos/${orderId}/historial`),
 
-  /** Panel de sala: pedidos confirmados y aún no finalizados de una sede. */
-  listInProgressForLocation: (locationId: string) =>
-    apiFetch<ApiEnvelope<OrderStatusInfo[]>>(`/pedidos/sede/${locationId}`),
+  /** Panel de sala: pedidos en curso de una sede agrupados por mesa, con su detalle. */
+  getLocationSummary: (locationId: string) =>
+    apiFetch<ApiEnvelope<LocationSummary>>(`/pedidos/sede/${locationId}/resumen`),
+
+  listRoomByTable: (locationId: string) =>
+    apiFetch<ApiEnvelope<TableOrders[]>>(`/pedidos/sede/${locationId}/mesas`),
 
   updateStatus: (orderId: string, estado: OrderStatus, nota?: string) =>
     apiFetch<ApiEnvelope<OrderStatusInfo>>(`/pedidos/${orderId}/estado`, {
