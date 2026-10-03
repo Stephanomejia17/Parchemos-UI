@@ -1,41 +1,241 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AlertTriangle, Download, Loader2, Plus, Power, QrCode, Store } from "lucide-react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Loader2, Plus } from "lucide-react";
 import { apiFetch } from "@/shared/services/http/api-client";
 import type { Location, Restaurant } from "@/shared/types/restaurant";
-
-type Table = { id: string; code: string; status: "activa" | "inactiva"; qrImageUrl: string };
-const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api").replace(/\/$/, "");
+import type { Table } from "@/shared/types/table";
+import { tablesHref } from "@/shared/navigation";
+import { downloadQr } from "@/lib/qr-download";
+import { EmptyTables } from "./EmptyTables";
+import { LocationPicker } from "./LocationPicker";
+import { RestaurantPicker } from "./RestaurantPicker";
+import { StatusModal } from "./StatusModal";
+import { TableCard } from "./TableCard";
+import { useTables } from "./useTables";
 
 export function TableManagement() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [location, setLocation] = useState<Location | null>(null);
-  const [tables, setTables] = useState<Table[]>([]);
-  const [code, setCode] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loadingRestaurants, setLoadingRestaurants] = useState(true);
+  const [restaurantError, setRestaurantError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Table | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedRestaurantId = searchParams.get("restaurantId");
+  const requestedLocationId = searchParams.get("locationId");
+  const locationId = location?.id ?? null;
+  const {
+    tables,
+    loadingTables,
+    saving,
+    error: tablesError,
+    setError: setTablesError,
+    createTable,
+    changeStatus,
+  } = useTables(locationId);
 
-  useEffect(() => { void loadRestaurants(); }, []);
-  async function loadRestaurants() { try { const data = await apiFetch<Restaurant[]>("/restaurantes/mios"); setRestaurants(data); if (data.length === 1) selectRestaurant(data[0]); } catch { setError("No pudimos cargar tus restaurantes."); } finally { setLoading(false); } }
-  async function loadTables(id: string) { try { setTables(await apiFetch<Table[]>(`/mesas/sede/${id}`)); } catch { setError("No pudimos cargar las mesas de esta sede."); } }
-  function selectRestaurant(item: Restaurant) { setRestaurant(item); setLocation(item.locations.length === 1 ? item.locations[0] : null); setTables([]); if (item.locations.length === 1) void loadTables(item.locations[0].id); }
-  function selectLocation(item: Location) { setLocation(item); void loadTables(item.id); }
-  async function createTable(event: React.FormEvent) { event.preventDefault(); if (!location || !code.trim()) return; setSaving(true); setError(null); try { await apiFetch(`/mesas/sede/${location.id}`, { method: "POST", body: { code: code.trim() } }); setCode(""); await loadTables(location.id); } catch (cause) { setError(cause instanceof Error ? cause.message : "No pudimos crear la mesa."); } finally { setSaving(false); } }
-  async function changeStatus(table: Table) { if (!location) return; setSaving(true); try { await apiFetch(`/mesas/${table.id}`, { method: "PATCH", body: { status: table.status === "activa" ? "inactiva" : "activa" } }); setSelected(null); await loadTables(location.id); } catch { setError("No pudimos cambiar el estado de la mesa."); } finally { setSaving(false); } }
-  async function downloadQr(table: Table) { try { const response = await fetch(`${API_URL}${table.qrImageUrl.replace(/^\/api/, "")}`); if (!response.ok) throw new Error(); const blob = await response.blob(); const image = new Image(); image.src = URL.createObjectURL(blob); await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = reject; }); const canvas = document.createElement("canvas"); canvas.width = 720; canvas.height = 820; const context = canvas.getContext("2d"); if (!context) throw new Error(); context.fillStyle = "#fff"; context.fillRect(0, 0, 720, 820); context.drawImage(image, 40, 40, 640, 640); context.fillStyle = "#111827"; context.font = "bold 42px Arial"; context.textAlign = "center"; context.fillText(`Mesa ${table.code}`, 360, 755); URL.revokeObjectURL(image.src); const link = document.createElement("a"); link.href = canvas.toDataURL("image/png"); link.download = `mesa-${table.code}-qr.png`; link.click(); } catch { setError("No pudimos descargar el QR."); } }
-  if (loading) return <div className="flex min-h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" aria-label="Cargando" /></div>;
-  if (!restaurant) return <Picker restaurants={restaurants} onSelect={selectRestaurant} />;
-  if (!location) return <LocationPicker restaurant={restaurant} onSelect={selectLocation} />;
-  return <main className="min-h-full overflow-y-auto bg-background p-4 md:p-6"><div className="mx-auto max-w-5xl"><div className="mb-6 flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-wide text-primary">{restaurant.businessName}</p><h1 className="mt-1 text-2xl font-bold text-gray-900">Mesas de {location.name}</h1><p className="mt-1 text-sm text-muted-foreground">Crea mesas y administra su estado.</p></div><button type="button" onClick={() => setLocation(null)} className="rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-semibold">Cambiar sede</button></div>{error && <p className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}<form onSubmit={createTable} className="mb-6 flex flex-wrap items-end gap-3 rounded-2xl border border-orange-100 bg-orange-50 p-4"><label className="flex flex-col gap-1 text-xs font-semibold text-gray-700">Número de mesa<input required inputMode="numeric" pattern="[1-9][0-9]*" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))} className="w-40 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm" placeholder="Ej. 1" /></label><button disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"><Plus className="h-4 w-4" />Crear mesa</button></form>{tables.length === 0 ? <Empty /> : <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{tables.map((table) => <article key={table.id} className={`rounded-2xl border bg-white p-4 shadow-sm ${table.status === "inactiva" ? "opacity-70" : ""}`}><div className="flex items-start justify-between"><div><h2 className="font-bold text-gray-900">Mesa {table.code}</h2><p className="text-xs text-muted-foreground">Código QR único</p></div><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${table.status === "activa" ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"}`}>{table.status === "activa" ? "Activa" : "Inactiva"}</span></div>{table.status === "activa" ? <img src={`${API_URL}${table.qrImageUrl.replace(/^\/api/, "")}`} alt={`Código QR de la mesa ${table.code}`} className="mx-auto my-4 h-48 w-48 rounded-lg border border-gray-100" /> : <div className="my-4 flex h-48 items-center justify-center rounded-lg bg-gray-100 text-sm text-muted-foreground">QR no válido</div>}<p className="mb-4 text-center text-lg font-bold text-gray-900">Mesa {table.code}</p><div className="flex gap-2"><button type="button" disabled={table.status !== "activa"} onClick={() => void downloadQr(table)} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-orange-50 px-3 py-2.5 text-xs font-semibold text-primary disabled:opacity-40"><Download className="h-4 w-4" />Descargar PNG</button><button type="button" onClick={() => setSelected(table)} className="rounded-xl bg-gray-100 p-2.5 text-gray-700" aria-label="Cambiar estado"><Power className="h-4 w-4" /></button></div></article>)}</div>}</div>{selected && <StatusModal table={selected} saving={saving} onClose={() => setSelected(null)} onConfirm={() => void changeStatus(selected)} />}</main>;
+  const updateSelectionUrl = useCallback(
+    (nextRestaurant: Restaurant, nextLocation?: Location) => {
+      // La URL es la fuente de verdad de la selección; el layout la usa para
+      // pintar los breadcrumbs y esta pantalla para restaurar su estado.
+      router.replace(tablesHref(nextRestaurant.id, nextLocation?.id), { scroll: false });
+    },
+    [router],
+  );
+
+  const selectRestaurant = useCallback(
+    (item: Restaurant, requestedLocation?: string) => {
+      const nextLocation =
+        item.locations.find((itemLocation) => itemLocation.id === requestedLocation) ??
+        (item.locations.length === 1 ? item.locations[0] : null);
+      setRestaurant(item);
+      setLocation(nextLocation);
+      updateSelectionUrl(item, nextLocation ?? undefined);
+    },
+    [updateSelectionUrl],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadRestaurants = async () => {
+      setLoadingRestaurants(true);
+      setRestaurantError(null);
+      try {
+        const data = await apiFetch<Restaurant[]>("/restaurantes/mios");
+        if (cancelled) return;
+        setRestaurants(data);
+        const requestedRestaurant = data.find((item) => item.id === requestedRestaurantId);
+        if (requestedRestaurant)
+          selectRestaurant(requestedRestaurant, requestedLocationId ?? undefined);
+        else if (data.length === 1) selectRestaurant(data[0]);
+      } catch (cause) {
+        console.error("No se pudieron cargar los restaurantes.", cause);
+        if (!cancelled) setRestaurantError("No pudimos cargar tus restaurantes.");
+      } finally {
+        if (!cancelled) setLoadingRestaurants(false);
+      }
+    };
+    void loadRestaurants();
+    return () => {
+      cancelled = true;
+    };
+  }, [requestedLocationId, requestedRestaurantId, selectRestaurant]);
+
+  function selectLocation(item: Location) {
+    if (!restaurant) return;
+    setLocation(item);
+    updateSelectionUrl(restaurant, item);
+  }
+
+  async function submitTable(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const code = String(formData.get("tableCode") ?? "").trim();
+    if (!code) return;
+    setTablesError(null);
+    try {
+      await createTable(code);
+      form.reset();
+    } catch (cause) {
+      console.error("No se pudo crear la mesa.", cause);
+    }
+  }
+
+  async function confirmStatus(table: Table) {
+    try {
+      await changeStatus(table);
+      setSelected(null);
+    } catch (cause) {
+      console.error("No se pudo cambiar el estado de la mesa.", cause);
+    }
+  }
+
+  async function handleDownload(table: Table) {
+    setTablesError(null);
+    try {
+      await downloadQr(table);
+    } catch (cause) {
+      console.error("No se pudo descargar el QR.", cause);
+      setTablesError("No pudimos descargar el QR.");
+    }
+  }
+
+  if (loadingRestaurants)
+    return (
+      <div
+        className="flex min-h-64 items-center justify-center"
+        role="status"
+        aria-label="Cargando restaurantes"
+      >
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  if (!restaurant)
+    return (
+      <RestaurantPicker
+        restaurants={restaurants}
+        onSelect={selectRestaurant}
+        error={restaurantError}
+      />
+    );
+  if (!location)
+    return (
+      <LocationPicker restaurant={restaurant} onSelect={selectLocation} error={restaurantError} />
+    );
+
+  return (
+    <main className="min-h-full overflow-y-auto bg-background p-4 md:p-6">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+              {restaurant.businessName}
+            </p>
+            <h1 className="mt-1 text-2xl font-bold text-foreground">Mesas de {location.name}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Crea mesas y administra su estado.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setLocation(null);
+              updateSelectionUrl(restaurant);
+            }}
+            className="min-h-11 rounded-xl bg-muted px-4 py-2.5 text-sm font-semibold text-foreground"
+          >
+            Cambiar sede
+          </button>
+        </div>
+        {tablesError && (
+          <p
+            role="alert"
+            className="mb-4 rounded-xl bg-destructive/10 p-3 text-sm text-destructive"
+          >
+            {tablesError}
+          </p>
+        )}
+        <form
+          onSubmit={submitTable}
+          className="mb-6 flex flex-wrap items-end gap-3 rounded-2xl border border-primary/20 bg-primary-soft p-4"
+        >
+          <label className="flex flex-col gap-1 text-xs font-semibold text-foreground">
+            {"N\u00FAmero de mesa"}
+            <input
+              name="tableCode"
+              required
+              inputMode="numeric"
+              pattern="[1-9][0-9]*"
+              className="w-40 rounded-xl border border-border bg-surface px-3 py-2.5 text-sm"
+              placeholder="Ej. 1"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={saving}
+            className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-60"
+          >
+            <Plus className="h-4 w-4" />
+            Crear mesa
+          </button>
+        </form>
+        {loadingTables ? (
+          <div
+            className="flex min-h-64 items-center justify-center"
+            role="status"
+            aria-label="Cargando mesas"
+          >
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : tables.length === 0 ? (
+          <EmptyTables />
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {tables.map((table) => (
+              <TableCard
+                key={table.id}
+                table={table}
+                onDownload={(item) => void handleDownload(item)}
+                onStatus={setSelected}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+      {selected && (
+        <StatusModal
+          table={selected}
+          saving={saving}
+          error={tablesError}
+          onClose={() => {
+            setSelected(null);
+            setTablesError(null);
+          }}
+          onConfirm={() => void confirmStatus(selected)}
+        />
+      )}
+    </main>
+  );
 }
-
-function Picker({ restaurants, onSelect }: { restaurants: Restaurant[]; onSelect: (item: Restaurant) => void }) { return <main className="min-h-full bg-background p-4 md:p-6"><div className="mx-auto max-w-5xl"><h1 className="mb-6 text-2xl font-bold text-gray-900">Escoge un restaurante</h1><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{restaurants.map((item) => <button key={item.id} type="button" onClick={() => onSelect(item)} className="rounded-2xl border border-border bg-white p-5 text-left shadow-sm"><Store className="mb-4 h-8 w-8 text-primary" /><h2 className="font-bold text-gray-900">{item.businessName}</h2><p className="mt-1 text-sm text-muted-foreground">{item.locations.length} sedes</p></button>)}</div></div></main>; }
-function LocationPicker({ restaurant, onSelect }: { restaurant: Restaurant; onSelect: (item: Location) => void }) { return <main className="min-h-full bg-background p-4 md:p-6"><div className="mx-auto max-w-5xl"><p className="text-xs font-semibold uppercase tracking-wide text-primary">{restaurant.businessName}</p><h1 className="mt-1 mb-6 text-2xl font-bold text-gray-900">Escoge una sede</h1><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{restaurant.locations.map((item) => <button key={item.id} type="button" onClick={() => onSelect(item)} className="rounded-2xl border border-border bg-white p-5 text-left shadow-sm"><Store className="mb-4 h-8 w-8 text-primary" /><h2 className="font-bold text-gray-900">{item.name}</h2><p className="mt-1 text-sm text-muted-foreground">{item.address}</p></button>)}</div></div></main>; }
-function Empty() { return <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center"><QrCode className="mx-auto h-10 w-10 text-gray-300" /><p className="mt-3 text-sm text-muted-foreground">Todavía no hay mesas en esta sede.</p></div>; }
-function StatusModal({ table, saving, onClose, onConfirm }: { table: Table; saving: boolean; onClose: () => void; onConfirm: () => void }) { const activate = table.status === "inactiva"; return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true"><div className="w-full max-w-md rounded-3xl bg-white p-6 text-center shadow-xl"><div className={`mx-auto flex h-12 w-12 items-center justify-center rounded-full ${activate ? "bg-green-50 text-green-600" : "bg-amber-50 text-amber-600"}`}><AlertTriangle className="h-6 w-6" /></div><h2 className="mt-4 text-lg font-bold">¿{activate ? "Activar" : "Desactivar"} mesa {table.code}?</h2><p className="mt-2 text-sm text-gray-600">{activate ? "La mesa volverá a aceptar pedidos." : "La mesa dejará de aceptar nuevos pedidos."}</p><div className="mt-6 flex justify-center gap-2"><button type="button" onClick={onClose} disabled={saving} className="rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-semibold">Cancelar</button><button type="button" onClick={onConfirm} disabled={saving} className="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white">{saving ? "Guardando..." : activate ? "Activar" : "Desactivar"}</button></div></div></div>; }
-
-

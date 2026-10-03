@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Menu } from "@/modules/customer/menu/Menu";
+import { MenuScreen } from "@/modules/customer/menu/MenuScreen";
+import { mapMenuItem } from "@/lib/api/menu";
+import type { Dish } from "@/shared/types/menu";
 import { LocationProvider } from "@/shared/context/location-context";
 import { OrderProvider } from "@/shared/context/order-context";
 import { apiFetch } from "@/shared/services/http/api-client";
@@ -12,6 +14,7 @@ export default function PedidoPage() {
   const params = useSearchParams();
   const mesaId = params.get("mesa");
   const [table, setTable] = useState<PublicTable | null>(null);
+  const [dishes, setDishes] = useState<Dish[] | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
     if (!mesaId) {
@@ -29,6 +32,13 @@ export default function PedidoPage() {
     window.localStorage.setItem("parchemos:mesa", table.tableId);
     window.localStorage.setItem("parchemos:location", table.locationId);
   }, [table]);
+  useEffect(() => {
+    if (!table) return;
+    setDishes(null);
+    void apiFetch<{ data: { items: Array<Parameters<typeof mapMenuItem>[0]> } }>(`/publicos/${encodeURIComponent(table.locationId)}/menu`)
+      .then((response) => setDishes(response.data.items.filter((item) => item.status !== "inactivo").map(mapMenuItem)))
+      .catch(() => setError("No pudimos cargar el menú de esta sede."));
+  }, [table]);
   if (error)
     return (
       <main className="flex min-h-screen items-center justify-center bg-background p-6 text-center">
@@ -37,7 +47,7 @@ export default function PedidoPage() {
         </p>
       </main>
     );
-  if (!table)
+  if (!table || !dishes)
     return (
       <main className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
         Cargando menú...
@@ -50,10 +60,9 @@ export default function PedidoPage() {
       </div>
       <LocationProvider initialLocationId={table.locationId}>
         <OrderProvider>
-          <Menu mesaId={table.tableId} locationId={table.locationId} />
+          <MenuScreen dishes={dishes} />
         </OrderProvider>
       </LocationProvider>
     </main>
   );
 }
-

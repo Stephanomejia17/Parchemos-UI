@@ -35,7 +35,14 @@ export function NavigationHeader({
         <nav aria-label="Breadcrumb" className="min-w-0 truncate text-sm">
           {breadcrumbs.map((crumb, index) => (
             <span key={`${crumb.label}-${index}`} className={index === breadcrumbs.length - 1 ? "font-bold text-gray-900" : "text-gray-500"}>
-              {index > 0 ? " / " : ""}{crumb.label}
+              {index > 0 ? " / " : ""}
+              {index < breadcrumbs.length - 1 && crumb.href ? (
+                <Link href={crumb.href} className="hover:text-primary">
+                  {crumb.label}
+                </Link>
+              ) : (
+                crumb.label
+              )}
             </span>
           ))}
         </nav>
