@@ -25,12 +25,14 @@ export interface CreateStaffMemberInput {
   email: string;
   phone?: string;
   locationId: string;
+  subRole: "mesero" | "caja" | "cocinero";
   initialPassword: string;
 }
 
 export interface UpdateStaffMemberInput {
   fullName: string;
   phone: string;
+  subRole: "mesero" | "caja" | "cocinero";
 }
 
 export interface LocationReview {

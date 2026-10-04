@@ -26,6 +26,11 @@ import type {
 const errorMessage = (error: unknown, fallback: string) =>
   error instanceof ApiError ? error.message : fallback;
 const dateFormat = new Intl.DateTimeFormat("es-CO", { dateStyle: "medium" });
+const STAFF_SUB_ROLES = [
+  { value: "mesero", label: "Mesero" },
+  { value: "caja", label: "Caja" },
+  { value: "cocinero", label: "Cocinero" },
+] as const;
 
 export function Staff() {
   return (
@@ -84,6 +89,7 @@ function StaffManager() {
           fullName: String(form.get("fullName")).trim(),
           email: String(form.get("email")).trim(),
           phone: String(form.get("phone")).trim() || undefined,
+          subRole: String(form.get("subRole")),
           locationId: String(form.get("locationId")),
           initialPassword: String(form.get("initialPassword")),
         }),
@@ -140,6 +146,7 @@ function StaffManager() {
                   <th className="px-5 py-3">Personal</th>
                   <th className="px-5 py-3">Marca</th>
                   <th className="px-5 py-3">Sede</th>
+                  <th className="px-5 py-3">Cargo</th>
                   <th className="px-5 py-3">Estado</th>
                   <th className="px-5 py-3 text-right">Acciones</th>
                 </tr>
@@ -155,6 +162,7 @@ function StaffManager() {
                       {restaurantForLocation(member.location.id)?.businessName ?? "—"}
                     </td>
                     <td className="px-5 py-4">{member.location.name}</td>
+                    <td className="px-5 py-4">{STAFF_SUB_ROLES.find((role) => role.value === member.subRole)?.label ?? member.subRole}</td>
                     <td className="px-5 py-4">
                       <Status status={member.status} />
                     </td>
@@ -236,6 +244,7 @@ function CreateModal({
         <Input label="Nombre completo" name="fullName" minLength={2} required />
         <Input label="Correo electrónico" name="email" type="text" inputMode="email" required />
         <Input label="Teléfono (opcional)" name="phone" />
+        <SubRoleSelect />
         <label className="block text-sm font-medium">
           <span className="inline-flex items-center gap-1">
             Marca
@@ -333,6 +342,7 @@ function DetailModal({
         restaurantService.updateStaffMember(member.id, {
           fullName: String(form.get("fullName")).trim(),
           phone: String(form.get("phone")).trim(),
+          subRole: String(form.get("subRole")),
         }),
       "No pudimos editar la cuenta.",
     );
@@ -362,6 +372,7 @@ function DetailModal({
             defaultValue={member.fullName}
           />
           <Input label="Teléfono" name="phone" defaultValue={member.phone ?? ""} />
+          <SubRoleSelect defaultValue={member.subRole} />
           <PrimaryButton type="submit" disabled={busy}>
             Guardar cambios
           </PrimaryButton>
@@ -372,6 +383,10 @@ function DetailModal({
             <Row label="Nombre" value={member.fullName} />
             <Row label="Correo" value={member.email} />
             <Row label="Teléfono" value={member.phone ?? "No registrado"} />
+            <Row
+              label="Cargo"
+              value={STAFF_SUB_ROLES.find((role) => role.value === member.subRole)?.label ?? member.subRole}
+            />
             <Row label="Marca" value={memberRestaurant?.businessName ?? "—"} />
             <Row label="Sede asignada" value={member.location.name} />
             <Row label="Estado" value={<Status status={member.status} />} />
@@ -432,6 +447,24 @@ function DetailModal({
         </>
       )}
     </Modal>
+  );
+}
+
+function SubRoleSelect({ defaultValue = "caja" }: { defaultValue?: string }) {
+  return (
+    <label className="block text-sm font-medium">
+      Cargo
+      <select
+        name="subRole"
+        required
+        defaultValue={defaultValue}
+        className="mt-1 w-full rounded-xl border p-2.5 font-normal"
+      >
+        {STAFF_SUB_ROLES.map((role) => (
+          <option key={role.value} value={role.value}>{role.label}</option>
+        ))}
+      </select>
+    </label>
   );
 }
 

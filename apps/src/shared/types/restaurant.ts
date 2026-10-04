@@ -63,6 +63,7 @@ export interface StaffMember {
   fullName: string;
   email: string;
   phone: string | null;
+  subRole: "mesero" | "caja" | "cocinero";
   status: StaffAccountStatus;
   location: { id: string; name: string; restaurantId: string };
   createdAt: string;
