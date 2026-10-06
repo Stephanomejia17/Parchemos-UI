@@ -32,6 +32,12 @@ const STAFF_SUB_ROLES = [
   { value: "cocinero", label: "Cocinero" },
 ] as const;
 
+function parseStaffSubRole(value: FormDataEntryValue | null): StaffMember["subRole"] {
+  return STAFF_SUB_ROLES.some((role) => role.value === value)
+    ? (value as StaffMember["subRole"])
+    : "caja";
+}
+
 export function Staff() {
   return (
     <RequireAuth loginPath="/login" allowedRoles={["restaurante"]}>
@@ -89,7 +95,7 @@ function StaffManager() {
           fullName: String(form.get("fullName")).trim(),
           email: String(form.get("email")).trim(),
           phone: String(form.get("phone")).trim() || undefined,
-          subRole: String(form.get("subRole")),
+          subRole: parseStaffSubRole(form.get("subRole")),
           locationId: String(form.get("locationId")),
           initialPassword: String(form.get("initialPassword")),
         }),
@@ -342,7 +348,7 @@ function DetailModal({
         restaurantService.updateStaffMember(member.id, {
           fullName: String(form.get("fullName")).trim(),
           phone: String(form.get("phone")).trim(),
-          subRole: String(form.get("subRole")),
+          subRole: parseStaffSubRole(form.get("subRole")),
         }),
       "No pudimos editar la cuenta.",
     );
