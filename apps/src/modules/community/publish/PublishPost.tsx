@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ComponentType,
+  type DragEvent,
+} from "react";
 import { useRouter } from "next/navigation";
-import { ImagePlus, Loader2, MapPin, Search, X } from "lucide-react";
+import { Camera, ImagePlus, Images, Loader2, MapPin, Search, Video, X } from "lucide-react";
 import { FormAlert, PrimaryButton } from "@/shared/components";
 import { ApiError } from "@/shared/auth/types";
 import { postService, restaurantService } from "@/shared/services";
@@ -131,6 +138,37 @@ export function PublishPost({ feedHref }: { feedHref: string }) {
       </h2>
 
       <section className="flex flex-col gap-3">
+        {/* Móvil: abrir la cámara directamente o elegir de la galería. */}
+        <div className="grid grid-cols-3 gap-2 md:hidden">
+          <CaptureButton
+            icon={Camera}
+            label="Tomar foto"
+            accept="image/*"
+            capture="environment"
+            disabled={uploading}
+            onPick={onPick}
+          />
+          <CaptureButton
+            icon={Video}
+            label="Grabar video"
+            accept="video/*"
+            capture="environment"
+            disabled={uploading}
+            onPick={onPick}
+          />
+          <CaptureButton
+            icon={Images}
+            label="Galería"
+            accept={POST_MEDIA_ACCEPT}
+            multiple
+            disabled={uploading}
+            onPick={onPick}
+          />
+        </div>
+        <p className="text-center text-xs text-muted-foreground md:hidden">
+          {ALLOWED_FORMATS_LABEL} · máximo 50 MB por archivo
+        </p>
+
         <label
           onDragOver={(event) => {
             event.preventDefault();
@@ -138,7 +176,7 @@ export function PublishPost({ feedHref }: { feedHref: string }) {
           }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={onDrop}
-          className={`flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed bg-gray-50 px-4 py-8 text-center text-gray-500 transition-colors hover:border-orange-300 hover:bg-orange-50/40 ${
+          className={`hidden cursor-pointer md:flex flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed bg-gray-50 px-4 py-8 text-center text-gray-500 transition-colors hover:border-orange-300 hover:bg-orange-50/40 ${
             isDragging ? "border-orange-400 bg-orange-50" : "border-gray-200"
           }`}
         >
@@ -298,6 +336,45 @@ export function PublishPost({ feedHref }: { feedHref: string }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Botón que abre el selector del sistema; con `capture` abre la cámara en el móvil. */
+function CaptureButton({
+  icon: Icon,
+  label,
+  accept,
+  capture,
+  multiple,
+  disabled,
+  onPick,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  accept: string;
+  capture?: "user" | "environment";
+  multiple?: boolean;
+  disabled: boolean;
+  onPick: (event: ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <label
+      className={`flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl border border-gray-200 bg-gray-50 px-2 py-4 text-center text-xs font-semibold text-gray-700 active:scale-95 ${
+        disabled ? "pointer-events-none opacity-60" : ""
+      }`}
+    >
+      <Icon className="h-6 w-6 text-primary" />
+      {label}
+      <input
+        type="file"
+        accept={accept}
+        capture={capture}
+        multiple={multiple}
+        disabled={disabled}
+        onChange={onPick}
+        className="sr-only"
+      />
+    </label>
   );
 }
 

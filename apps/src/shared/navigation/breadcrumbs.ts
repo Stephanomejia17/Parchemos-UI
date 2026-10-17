@@ -1,3 +1,4 @@
+import { findActiveItem } from "./active-item";
 import type { BreadcrumbItem, NavigationItem } from "./types";
 
 /**
@@ -36,9 +37,7 @@ export function breadcrumbsForPath(
   items: NavigationItem[],
   searchParams?: { get(name: string): string | null },
 ): BreadcrumbItem[] {
-  const active = items.find(
-    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
-  );
+  const active = findActiveItem(pathname, items);
   const parts = pathname.split("/").filter(Boolean);
   const detail = parts.find((part) => DETAIL_LABELS[part]);
   const fallback = DETAIL_LABELS[parts[0] ?? ""];

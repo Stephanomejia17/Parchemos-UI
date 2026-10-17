@@ -7,6 +7,8 @@ import { ApiError, useAuth } from "@/shared/auth";
 import { profileService } from "@/shared/services";
 import { ComboBoxField, PrimaryButton } from "@/shared/components";
 import { COLOMBIA_CITY_OPTIONS } from "@/shared/constants";
+import { MyPosts } from "@/modules/community/profile/MyPosts";
+import { ProfileHero, type ProfileTab } from "./ProfileHero";
 
 const errorMessage = (error: unknown, fallback: string) =>
   error instanceof ApiError ? error.message : fallback;
@@ -22,6 +24,8 @@ export function Profile({ backHref }: { backHref?: string } = {}) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<ProfileTab>("posts");
+  const [postsTotal, setPostsTotal] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -32,22 +36,19 @@ export function Profile({ backHref }: { backHref?: string } = {}) {
   }, [user]);
 
   const selectPhoto = (file: File | undefined) => {
-      if (!file) return;
+    if (!file) return;
 
-      if (
-        !["image/jpeg", "image/png"].includes(file.type) ||
-        file.size > 5 * 1024 * 1024
-      ) {
-        setError("La foto debe ser JPG o PNG y no superar 5 MB.");
-        return;
-      }
+    if (!["image/jpeg", "image/png"].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      setError("La foto debe ser JPG o PNG y no superar 5 MB.");
+      return;
+    }
 
-      setPhotoFile(file);
+    setPhotoFile(file);
 
-      const reader = new FileReader();
-      reader.onload = () => setPhoto(String(reader.result));
-      reader.readAsDataURL(file);
-    };
+    const reader = new FileReader();
+    reader.onload = () => setPhoto(String(reader.result));
+    reader.readAsDataURL(file);
+  };
 
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -94,134 +95,159 @@ export function Profile({ backHref }: { backHref?: string } = {}) {
 
   if (!user) return null;
 
+  // Comensales y restaurantes publican: su perfil muestra sus publicaciones (estilo red social).
+  const canPost = user.role === "comensal" || user.role === "restaurante";
+  const showEdit = !canPost || tab === "edit";
+  const publishHref = user.role === "restaurante" ? "/publish" : "/feed/new";
+
   return (
     <main className="min-h-full overflow-y-auto bg-background px-4 py-6 md:px-8">
       <div className="mx-auto max-w-2xl">
-        <header className="mb-6 flex items-start gap-3">
-          {backHref && (
-            <Link
-              href={backHref}
-              aria-label="Volver"
-              className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-gray-100"
+        {canPost ? (
+          <ProfileHero
+            fullName={user.fullName}
+            city={user.city}
+            photoUrl={photo ?? user.profilePhotoUrl}
+            postsTotal={postsTotal}
+            tab={tab}
+            onTabChange={setTab}
+            publishHref={publishHref}
+            preferencesHref={user.role === "comensal" ? "/profile/preferences" : undefined}
+          />
+        ) : (
+          <header className="mb-6 flex items-start gap-3">
+            {backHref && (
+              <Link
+                href={backHref}
+                aria-label="Volver"
+                className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-gray-100"
+              >
+                <ChevronLeft className="h-5 w-5 text-gray-900" />
+              </Link>
+            )}
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Mi perfil</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Administra tus datos personales.</p>
+            </div>
+          </header>
+        )}
+        {canPost && tab === "posts" && (
+          <MyPosts publishHref={publishHref} onTotalChange={setPostsTotal} />
+        )}
+        {showEdit && (
+          <>
+            {error && (
+              <div
+                role="alert"
+                className="mb-4 flex gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+              >
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {error}
+              </div>
+            )}
+            {message && (
+              <div
+                role="status"
+                className="mb-4 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-700"
+              >
+                {message}
+              </div>
+            )}
+            <form
+              onSubmit={save}
+              className="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
             >
-              <ChevronLeft className="h-5 w-5 text-gray-900" />
-            </Link>
-          )}
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Mi perfil</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Administra tus datos personales.</p>
-          </div>
-        </header>
-        {error && (
-          <div
-            role="alert"
-            className="mb-4 flex gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"
-          >
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            {error}
-          </div>
-        )}
-        {message && (
-          <div
-            role="status"
-            className="mb-4 rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-700"
-          >
-            {message}
-          </div>
-        )}
-        <form
-          onSubmit={save}
-          className="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
-        >
-          <div className="flex items-center gap-4">
-            <div className="relative h-20 w-20 overflow-hidden rounded-2xl bg-gray-100">
-              {photo ? (
-                <img src={photo} alt="Foto de perfil" className="h-full w-full object-cover" />
-              ) : (
-                <Camera className="m-7 h-6 w-6 text-gray-400" />
-              )}
-              <label className="absolute bottom-0 right-0 cursor-pointer rounded-tl-lg bg-primary p-1.5">
-                <Camera className="h-3.5 w-3.5 text-white" />
+              <div className="flex items-center gap-4">
+                <div className="relative h-20 w-20 overflow-hidden rounded-2xl bg-gray-100">
+                  {photo ? (
+                    <img src={photo} alt="Foto de perfil" className="h-full w-full object-cover" />
+                  ) : (
+                    <Camera className="m-7 h-6 w-6 text-gray-400" />
+                  )}
+                  <label className="absolute bottom-0 right-0 cursor-pointer rounded-tl-lg bg-primary p-1.5">
+                    <Camera className="h-3.5 w-3.5 text-white" />
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png"
+                      className="hidden"
+                      onChange={(event) => selectPhoto(event.target.files?.[0])}
+                    />
+                  </label>
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">{user.email}</p>
+                  <p className="text-sm text-muted-foreground">{user.role}</p>
+                </div>
+              </div>
+              <label className="block text-sm font-medium text-gray-700">
+                Nombre completo
                 <input
-                  type="file"
-                  accept="image/jpeg,image/png"
-                  className="hidden"
-                  onChange={(event) => selectPhoto(event.target.files?.[0])}
+                  required
+                  minLength={2}
+                  maxLength={120}
+                  value={fullName}
+                  onChange={(event) => setFullName(event.target.value)}
+                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5"
                 />
               </label>
+              <label className="block text-sm font-medium text-gray-700">
+                Teléfono
+                <input
+                  required
+                  value={phone}
+                  onChange={(event) => setPhone(event.target.value)}
+                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5"
+                />
+              </label>
+              {/* Misma lista de ciudades que el registro, para que la columna city no se llene de variantes del mismo municipio. */}
+              <ComboBoxField
+                label="Ciudad"
+                icon={MapPin}
+                placeholder="Busca tu ciudad"
+                options={COLOMBIA_CITY_OPTIONS}
+                value={city}
+                onValueChange={setCity}
+                maxLength={120}
+                hint="¿No está en la lista? Escríbela y la guardamos igual."
+              />
+              <PrimaryButton type="submit" disabled={busy}>
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}Guardar cambios
+              </PrimaryButton>
+            </form>
+            {user.assignedLocation && (
+              <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <h2 className="font-semibold text-gray-900">Sede asignada</h2>
+                <p className="mt-2 text-sm text-gray-700">
+                  {user.assignedLocation.name} · {user.assignedLocation.restaurantName}
+                </p>
+                <p className="text-sm text-muted-foreground">{user.assignedLocation.address}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Solo lectura desde el perfil.</p>
+              </section>
+            )}
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => void logout()}
+                disabled={busy}
+                className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700"
+              >
+                <LogOut className="h-4 w-4" />
+                Cerrar sesión
+              </button>
+              <button
+                type="button"
+                onClick={() => void requestDeletion()}
+                disabled={busy || user.status === "pendiente_eliminacion"}
+                className="flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700"
+              >
+                <Trash2 className="h-4 w-4" />
+                {user.status === "pendiente_eliminacion"
+                  ? "Eliminación solicitada"
+                  : "Solicitar eliminación"}
+              </button>
             </div>
-            <div>
-              <p className="font-semibold text-gray-900">{user.email}</p>
-              <p className="text-sm text-muted-foreground">{user.role}</p>
-            </div>
-          </div>
-          <label className="block text-sm font-medium text-gray-700">
-            Nombre completo
-            <input
-              required
-              minLength={2}
-              maxLength={120}
-              value={fullName}
-              onChange={(event) => setFullName(event.target.value)}
-              className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5"
-            />
-          </label>
-          <label className="block text-sm font-medium text-gray-700">
-            Teléfono
-            <input
-              required
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-              className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5"
-            />
-          </label>
-          {/* Misma lista de ciudades que el registro, para que la columna city no se llene de variantes del mismo municipio. */}
-          <ComboBoxField
-            label="Ciudad"
-            icon={MapPin}
-            placeholder="Busca tu ciudad"
-            options={COLOMBIA_CITY_OPTIONS}
-            value={city}
-            onValueChange={setCity}
-            maxLength={120}
-            hint="¿No está en la lista? Escríbela y la guardamos igual."
-          />
-          <PrimaryButton type="submit" disabled={busy}>
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}Guardar cambios
-          </PrimaryButton>
-        </form>
-        {user.assignedLocation && (
-          <section className="mt-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h2 className="font-semibold text-gray-900">Sede asignada</h2>
-            <p className="mt-2 text-sm text-gray-700">
-              {user.assignedLocation.name} · {user.assignedLocation.restaurantName}
-            </p>
-            <p className="text-sm text-muted-foreground">{user.assignedLocation.address}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Solo lectura desde el perfil.</p>
-          </section>
+          </>
         )}
-        <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-          <button
-            type="button"
-            onClick={() => void logout()}
-            disabled={busy}
-            className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700"
-          >
-            <LogOut className="h-4 w-4" />
-            Cerrar sesión
-          </button>
-          <button
-            type="button"
-            onClick={() => void requestDeletion()}
-            disabled={busy || user.status === "pendiente_eliminacion"}
-            className="flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700"
-          >
-            <Trash2 className="h-4 w-4" />
-            {user.status === "pendiente_eliminacion"
-              ? "Eliminación solicitada"
-              : "Solicitar eliminación"}
-          </button>
-        </div>
       </div>
     </main>
   );

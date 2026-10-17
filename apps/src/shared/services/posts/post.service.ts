@@ -28,22 +28,41 @@ export interface FeedPage {
   nextCursor: string | null;
 }
 
+export interface MyPostsPage extends FeedPage {
+  /** Total de publicaciones del usuario; solo viene en la primera página. */
+  total: number | null;
+}
+
 export interface CreatePostInput {
   files: File[];
   caption?: string;
   locationId?: string | null;
 }
 
+interface PageParams {
+  cursor?: string | null;
+  limit?: number;
+  signal?: AbortSignal;
+}
+
+function pageQuery(params?: PageParams) {
+  const searchParams = new URLSearchParams();
+  if (params?.cursor) searchParams.set("cursor", params.cursor);
+  if (params?.limit) searchParams.set("limit", String(params.limit));
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
 export const postService = {
-  listFeed: (params?: { cursor?: string | null; limit?: number; signal?: AbortSignal }) => {
-    const searchParams = new URLSearchParams();
-    if (params?.cursor) searchParams.set("cursor", params.cursor);
-    if (params?.limit) searchParams.set("limit", String(params.limit));
-    const query = searchParams.toString();
-    return apiFetch<FeedPage>(`/feed${query ? `?${query}` : ""}`, {
-      signal: params?.signal,
-    });
-  },
+  listFeed: (params?: PageParams) =>
+    apiFetch<FeedPage>(`/feed${pageQuery(params)}`, { signal: params?.signal }),
+
+  /** Perfil: las publicaciones del usuario autenticado. */
+  listMine: (params?: PageParams) =>
+    apiFetch<MyPostsPage>(`/publicaciones/mias${pageQuery(params)}`, { signal: params?.signal }),
+
+  /** El autor retira una de sus publicaciones. */
+  remove: (postId: string) => apiFetch<void>(`/publicaciones/${postId}`, { method: "DELETE" }),
 
   create: (
     input: CreatePostInput,

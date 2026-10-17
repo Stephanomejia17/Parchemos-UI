@@ -9,8 +9,8 @@ import {
   Home,
   LayoutDashboard,
   Megaphone,
-  Newspaper,
-  PlusSquare,
+  Clapperboard,
+  Plus,
   Settings,
   Shield,
   ShoppingBag,
@@ -26,7 +26,8 @@ import type { NavigationItem } from "./types";
 const CUSTOMER_NAVIGATION: NavigationItem[] = [
   { id: "home", href: "/home", icon: Home, label: "Inicio" },
   { id: "discover", href: "/discover", icon: Compass, label: "Explorar" },
-  { id: "feed", href: "/feed", icon: Newspaper, label: "Comunidad" },
+  { id: "feed", href: "/feed", icon: Clapperboard, label: "Para ti" },
+  { id: "publish", href: "/feed/new", icon: Plus, label: "Publicar", featured: true },
   { id: "reservations", href: "/reservations", icon: CalendarCheck, label: "Reservas" },
   { id: "orders", href: "/orders", icon: ShoppingBag, label: "Pedidos" },
   { id: "profile", href: "/profile", icon: User, label: "Perfil" },
@@ -35,9 +36,9 @@ const CUSTOMER_NAVIGATION: NavigationItem[] = [
 const RESTAURANT_NAVIGATION: NavigationItem[] = [
   { id: "home", href: "/profile/dashboard", icon: Home, label: "Dashboard" },
   { id: "restaurants", href: "/restaurants", icon: Store, label: "Restaurantes" },
+  { id: "publish", href: "/publish", icon: Plus, label: "Publicar", featured: true },
   { id: "tables", href: "/tables", icon: QrCode, label: "Configuración mesas" },
   { id: "staff", href: "/staff", icon: UsersRound, label: "Personal" },
-  { id: "publish", href: "/publish", icon: PlusSquare, label: "Publicar" },
   { id: "profile", href: "/restaurant-profile", icon: User, label: "Mi perfil" },
 ];
 
