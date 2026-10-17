@@ -1,5 +1,18 @@
 export * from "./auth";
-export { apiFetch, apiUpload, tokenStore, tryRefresh } from "./http/api-client";
+export {
+  apiFetch,
+  apiUpload,
+  apiUploadWithProgress,
+  tokenStore,
+  tryRefresh,
+} from "./http/api-client";
+export { postService } from "./posts/post.service";
+export type { CreatePostInput, FeedPage, Post, PostMedia } from "./posts/post.service";
+export { recommendationService } from "./recommendations/recommendation.service";
+export type {
+  RecommendationList,
+  RecommendedLocation,
+} from "./recommendations/recommendation.service";
 export { menuService } from "./menu/menu.service";
 export type { Category, Product, ProductInput, Status } from "./menu/menu.service";
 export { profileService } from "./profile/profile.service";

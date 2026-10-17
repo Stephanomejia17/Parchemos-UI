@@ -9,6 +9,8 @@ import {
   Home,
   LayoutDashboard,
   Megaphone,
+  Newspaper,
+  PlusSquare,
   Settings,
   Shield,
   ShoppingBag,
@@ -24,6 +26,7 @@ import type { NavigationItem } from "./types";
 const CUSTOMER_NAVIGATION: NavigationItem[] = [
   { id: "home", href: "/home", icon: Home, label: "Inicio" },
   { id: "discover", href: "/discover", icon: Compass, label: "Explorar" },
+  { id: "feed", href: "/feed", icon: Newspaper, label: "Comunidad" },
   { id: "reservations", href: "/reservations", icon: CalendarCheck, label: "Reservas" },
   { id: "orders", href: "/orders", icon: ShoppingBag, label: "Pedidos" },
   { id: "profile", href: "/profile", icon: User, label: "Perfil" },
@@ -34,6 +37,7 @@ const RESTAURANT_NAVIGATION: NavigationItem[] = [
   { id: "restaurants", href: "/restaurants", icon: Store, label: "Restaurantes" },
   { id: "tables", href: "/tables", icon: QrCode, label: "Configuración mesas" },
   { id: "staff", href: "/staff", icon: UsersRound, label: "Personal" },
+  { id: "publish", href: "/publish", icon: PlusSquare, label: "Publicar" },
   { id: "profile", href: "/restaurant-profile", icon: User, label: "Mi perfil" },
 ];
 

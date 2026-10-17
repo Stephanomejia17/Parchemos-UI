@@ -11,7 +11,25 @@ export interface DeletionRequestResult {
   deletionEffectiveAt: string;
 }
 
+export interface TastePreferences {
+  cuisines: { id: string; slug: string; name: string }[];
+  selectedCuisineIds: string[];
+  priceRangeMin: number | null;
+  priceRangeMax: number | null;
+}
+
+export interface SaveTastePreferencesPayload {
+  cuisineIds: string[];
+  priceRangeMin: number | null;
+  priceRangeMax: number | null;
+}
+
 export const profileService = {
+  getPreferences: () => apiFetch<TastePreferences>("/preferencias"),
+
+  savePreferences: (payload: SaveTastePreferencesPayload) =>
+    apiFetch<void>("/preferencias", { method: "PUT", body: payload }),
+
   update: (payload: UpdateProfilePayload) =>
     apiFetch<void>("/auth/me", {
       method: "PATCH",

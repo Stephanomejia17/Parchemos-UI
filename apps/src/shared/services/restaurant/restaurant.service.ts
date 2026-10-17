@@ -63,6 +63,12 @@ export interface LocationReviewList {
   summary: LocationReviewSummary;
 }
 
+export interface LocationSearchResult {
+  id: string;
+  name: string;
+  address: string;
+}
+
 export const restaurantService = {
   listMyRestaurants: () => apiFetch<Restaurant[]>("/restaurantes/mios"),
 
@@ -96,6 +102,12 @@ export const restaurantService = {
       `/restaurantes/publicos${query ? `?${query}` : ""}`,
     );
   },
+
+  /** Autocompletado de sedes publicadas por nombre (DO-04, selector de restaurante). */
+  searchLocations: (query: string, signal?: AbortSignal) =>
+    apiFetch<LocationSearchResult[]>(`/restaurantes/buscar?q=${encodeURIComponent(query)}`, {
+      signal,
+    }),
 
   getPublicLocation: (locationId: string) =>
     apiFetch<PublicLocationProfile>(`/restaurantes/publicos/${locationId}`),

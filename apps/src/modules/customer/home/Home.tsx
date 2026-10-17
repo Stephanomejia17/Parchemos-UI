@@ -5,6 +5,7 @@ import { Loader2, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { CATEGORIES } from "@/mocks/customer/home";
 import { BrandLogo } from "@/shared/components";
+import { Recommendations } from "../recommendations/Recommendations";
 import { restaurantService } from "@/shared/services/restaurant/restaurant.service";
 import type { Location } from "@/shared/types/restaurant";
 import {
@@ -32,7 +33,7 @@ const PRICE_OPTIONS = [
   { label: "Muy alto", value: 4 },
 ];
 
-function toCardData(location: Location): RestaurantCardData {
+export function toCardData(location: Location): RestaurantCardData {
   const images = [location.coverUrl, ...location.images.map((image) => image.url)].filter(
     (image, index, all): image is string => Boolean(image) && all.indexOf(image) === index,
   );
@@ -196,6 +197,10 @@ export function Home() {
           <button type="button" onClick={applyFilters} className="shrink-0 rounded-2xl bg-primary px-4 py-1.5 text-xs font-semibold text-white">Aplicar filtros</button>
           <button type="button" onClick={clearFilters} className="shrink-0 rounded-2xl border border-border px-4 py-1.5 text-xs font-semibold text-gray-700">Limpiar filtros</button>
         </div>
+      </div>
+
+      <div className="md:px-6 md:pt-4">
+        <Recommendations />
       </div>
 
       <main className="px-0 md:px-6 md:py-4">

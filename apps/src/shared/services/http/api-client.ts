@@ -117,6 +117,45 @@ export async function apiUpload<T>(path: string, formData: FormData): Promise<T>
 }
 
 /**
+ * Igual que `apiUpload`, pero informa el avance de la subida (0-100).
+ *
+ * `fetch` no expone el progreso de envio, por eso este camino usa
+ * `XMLHttpRequest`. Reintenta una vez tras renovar la sesion, como `apiFetch`.
+ */
+export async function apiUploadWithProgress<T>(
+  path: string,
+  formData: FormData,
+  onProgress?: (percent: number) => void,
+  signal?: AbortSignal,
+): Promise<T> {
+  const send = () =>
+    new Promise<Response>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", buildApiUrl(path));
+      xhr.withCredentials = true;
+      if (accessToken) xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) onProgress?.(Math.round((event.loaded / event.total) * 100));
+      };
+      xhr.onload = () =>
+        resolve(new Response(xhr.status === 204 ? null : xhr.responseText, { status: xhr.status }));
+      xhr.onerror = () => reject(new TypeError("Network error"));
+      xhr.onabort = () => reject(new DOMException("Aborted", "AbortError"));
+      signal?.addEventListener("abort", () => xhr.abort(), { once: true });
+      xhr.send(formData);
+    });
+
+  let response = await send();
+  if (response.status === 401 && (await tryRefresh())) {
+    onProgress?.(0);
+    response = await send();
+  }
+  if (!response.ok) throw await toApiError(response);
+  if (response.status === 204) return undefined as T;
+  return (await response.json()) as T;
+}
+
+/**
  * Normaliza la respuesta de error de Nest, que puede llegar como string o como
  * objeto con `message`, `code` y `reason`.
  */
