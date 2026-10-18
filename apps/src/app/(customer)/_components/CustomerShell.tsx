@@ -12,6 +12,8 @@ import {
 import { NavigationHeader } from "@/shared/components/navigation/NavigationHeader";
 import { breadcrumbsForPath, backHrefForPath, navigationForRole } from "@/shared/navigation";
 import { OrderStatusNotifications } from "@/modules/customer/order-notifications/OrderStatusNotifications";
+import { TemporaryMessage } from "@/shared/components";
+import { FavoritesProvider, useFavorites } from "@/shared/context/favorites-context";
 import { LocationProvider } from "@/shared/context/location-context";
 import { OrderProvider } from "@/shared/context/order-context";
 
@@ -20,11 +22,21 @@ export function CustomerShell({ children }: { children: ReactNode }) {
     <LocationProvider>
       <OrderProvider>
         <RequireAuth loginPath="/login" allowedRoles={["comensal"]}>
-          <CustomerFrame>{children}</CustomerFrame>
+          <FavoritesProvider>
+            <CustomerFrame>{children}</CustomerFrame>
+            <FavoritesErrorNotice />
+          </FavoritesProvider>
         </RequireAuth>
       </OrderProvider>
     </LocationProvider>
   );
+}
+
+/** Avisa si no se pudo guardar un cambio de favoritos (el corazón ya volvió a su estado real). */
+function FavoritesErrorNotice() {
+  const { error, clearError } = useFavorites();
+  if (!error) return null;
+  return <TemporaryMessage type="error" message={error} onClose={clearError} />;
 }
 
 function CustomerFrame({ children }: { children: ReactNode }) {

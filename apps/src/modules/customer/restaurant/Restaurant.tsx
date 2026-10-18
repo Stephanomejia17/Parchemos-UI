@@ -7,6 +7,7 @@ import { RemoteImage } from "@/shared/components/media/RemoteImage";
 import { restaurantService } from "@/shared/services/restaurant/restaurant.service";
 import { useRestaurantContext } from "@/shared/context/location-context";
 import type { Dish } from "@/shared/types/menu";
+import { FavoriteButton } from "@/modules/customer/favorites/FavoriteButton";
 import { MenuScreen } from "@/modules/customer/menu/MenuScreen";
 import { Reviews } from "@/modules/customer/reviews/Reviews";
 
@@ -75,6 +76,11 @@ function RestaurantContent({ initialMenu, menuLoadError = false }: Readonly<Rest
         <button type="button" onClick={() => router.back()} aria-label="Volver" className="absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-2xl bg-surface/90 shadow-sm transition duration-200 hover:bg-surface focus-visible:outline-2 focus-visible:outline-primary">
           <ChevronLeft className="h-5 w-5 text-foreground" />
         </button>
+        {locationId && location && (
+          <div className="absolute right-4 top-4">
+            <FavoriteButton locationId={locationId} overlay />
+          </div>
+        )}
       </div>
 
       <div className="border-b border-border bg-surface px-4 pb-4 pt-4 md:px-6 md:pb-6">

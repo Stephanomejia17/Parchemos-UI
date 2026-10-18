@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Grid3x3, MapPin, Pencil, Plus, SlidersHorizontal, UserRound } from "lucide-react";
+import { Grid3x3, Heart, MapPin, Pencil, Plus, SlidersHorizontal, UserRound } from "lucide-react";
 
 export type ProfileTab = "posts" | "edit";
 
@@ -15,6 +15,7 @@ export function ProfileHero({
   onTabChange,
   publishHref,
   preferencesHref,
+  favoritesHref,
 }: {
   fullName: string;
   city: string | null;
@@ -25,6 +26,8 @@ export function ProfileHero({
   publishHref: string;
   /** Solo comensales: sus gustos alimentan las recomendaciones. */
   preferencesHref?: string;
+  /** Solo comensales: su lista de restaurantes favoritos. */
+  favoritesHref?: string;
 }) {
   const tabs: { id: ProfileTab; label: string; icon: typeof Grid3x3 }[] = [
     { id: "posts", label: "Publicaciones", icon: Grid3x3 },
@@ -63,6 +66,15 @@ export function ProfileHero({
           <Plus className="h-4 w-4" />
           Publicar
         </Link>
+        {favoritesHref && (
+          <Link
+            href={favoritesHref}
+            className="inline-flex items-center gap-1.5 rounded-2xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700"
+          >
+            <Heart className="h-4 w-4" />
+            Mis favoritos
+          </Link>
+        )}
         {preferencesHref && (
           <Link
             href={preferencesHref}

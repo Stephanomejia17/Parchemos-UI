@@ -7,7 +7,7 @@ import { Loader2, Sparkles } from "lucide-react";
 import { PrimaryButton } from "@/shared/components";
 import { recommendationService, type RecommendationList } from "@/shared/services";
 import { RestaurantLocationCard } from "../home/components/RestaurantLocationCard";
-import { toCardData } from "../home/Home";
+import { toCardData } from "../home/to-card-data";
 
 /** Sección "Recomendado para ti" (PU-03): personalizada o, sin datos, las mejor calificadas. */
 export function Recommendations() {

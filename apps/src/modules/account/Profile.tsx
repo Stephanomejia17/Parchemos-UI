@@ -113,6 +113,7 @@ export function Profile({ backHref }: { backHref?: string } = {}) {
             onTabChange={setTab}
             publishHref={publishHref}
             preferencesHref={user.role === "comensal" ? "/profile/preferences" : undefined}
+            favoritesHref={user.role === "comensal" ? "/profile/favorites" : undefined}
           />
         ) : (
           <header className="mb-6 flex items-start gap-3">

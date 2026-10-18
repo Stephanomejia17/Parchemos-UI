@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Clock3, Heart, MapPin, Store, Utensils } from "lucide-react";
+import { Clock3, MapPin, Star, Store, Utensils } from "lucide-react";
 import { BrandLogo, PrimaryButton, StarRating } from "@/shared/components";
 import { RemoteImage } from "@/shared/components/media/RemoteImage";
+import { FavoriteButton } from "@/modules/customer/favorites/FavoriteButton";
 import { LocationImageCarousel } from "./LocationImageCarousel";
 
 export type RestaurantCardData = {
@@ -19,6 +19,8 @@ export type RestaurantCardData = {
   images: string[];
   description: string;
   todaySchedule: { startsAt: string; endsAt: string } | null;
+  /** Calificación >= 4.5: se muestra la insignia de destacado (DO-02). */
+  featured?: boolean;
 };
 
 type RestaurantLocationCardProps = {
@@ -27,14 +29,21 @@ type RestaurantLocationCardProps = {
 };
 
 export function RestaurantLocationCard({ card, onDetails }: RestaurantLocationCardProps) {
-  const [isFavorite, setIsFavorite] = useState(false);
   const shortDescription = card.description.length > 30
     ? `${card.description.slice(0, 30).trimEnd()}...`
     : card.description;
 
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
-      <LocationImageCarousel images={card.images} alt={card.locationName} />
+      <div className="relative">
+        <LocationImageCarousel images={card.images} alt={card.locationName} />
+        {card.featured && (
+          <span className="pointer-events-none absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-amber-400 px-2.5 py-1 text-xs font-bold text-amber-950 shadow">
+            <Star className="h-3.5 w-3.5" fill="currentColor" />
+            Destacado
+          </span>
+        )}
+      </div>
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-orange-50">
@@ -51,15 +60,7 @@ export function RestaurantLocationCard({ card, onDetails }: RestaurantLocationCa
               {card.locationName}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setIsFavorite((current) => !current)}
-            aria-label={isFavorite ? "Quitar de favoritos" : "Añadir a favoritos"}
-            aria-pressed={isFavorite}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-gray-500 transition-colors hover:text-primary"
-          >
-            <Heart className={`h-5 w-5 ${isFavorite ? "fill-primary text-primary" : ""}`} />
-          </button>
+          <FavoriteButton locationId={card.locationId} />
         </div>
 
         <p className="mt-3 flex items-start gap-1.5 text-sm text-muted-foreground">
