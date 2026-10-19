@@ -14,6 +14,7 @@ import {
   Settings,
   Shield,
   ShoppingBag,
+  ChartNoAxesCombined,
   Store,
   User,
   Users,
@@ -35,6 +36,7 @@ const CUSTOMER_NAVIGATION: NavigationItem[] = [
 
 const RESTAURANT_NAVIGATION: NavigationItem[] = [
   { id: "home", href: "/profile/dashboard", icon: Home, label: "Dashboard" },
+  { id: "statistics", href: "/statistics", icon: ChartNoAxesCombined, label: "Ingresos y comisiones" },
   { id: "restaurants", href: "/restaurants", icon: Store, label: "Restaurantes" },
   { id: "publish", href: "/publish", icon: Plus, label: "Publicar", featured: true },
   { id: "tables", href: "/tables", icon: QrCode, label: "Configuración mesas" },
