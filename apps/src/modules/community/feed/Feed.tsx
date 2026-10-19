@@ -55,7 +55,7 @@ export function Feed({ publishHref }: { publishHref: string }) {
       <div className="h-full snap-y snap-mandatory overflow-y-auto overscroll-y-contain bg-black">
         {posts.map((post) => (
           <div key={post.id} className="h-full w-full snap-start snap-always">
-            <PostReel post={post} />
+            <PostReel post={post} trackView />
           </div>
         ))}
         {posts.length === 0 ? (
@@ -100,7 +100,7 @@ export function Feed({ publishHref }: { publishHref: string }) {
 
       {isEmpty && emptyState}
       {posts.map((post) => (
-        <PostCard key={post.id} post={post} />
+        <PostCard key={post.id} post={post} trackView />
       ))}
       {errorState}
       {sentinel}

@@ -64,6 +64,10 @@ export const postService = {
   /** El autor retira una de sus publicaciones. */
   remove: (postId: string) => apiFetch<void>(`/publicaciones/${postId}`, { method: "DELETE" }),
 
+  /** Registra una vista del feed; el backend limita a una por usuario/post/día. */
+  registerView: (postId: string) =>
+    apiFetch<void>(`/publicaciones/${postId}/vista`, { method: "POST" }),
+
   create: (
     input: CreatePostInput,
     options?: { onProgress?: (percent: number) => void; signal?: AbortSignal },

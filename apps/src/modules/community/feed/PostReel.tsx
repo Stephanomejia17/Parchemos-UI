@@ -5,6 +5,7 @@ import Link from "next/link";
 import { MapPin, Play, Volume2, VolumeX } from "lucide-react";
 import { InitialsAvatar } from "@/shared/components";
 import type { Post, PostMedia } from "@/shared/services";
+import { postService } from "@/shared/services/posts/post.service";
 import { MediaError } from "./PostVideo";
 
 function initialsOf(name: string) {
@@ -21,9 +22,10 @@ function initialsOf(name: string) {
  * Los videos se reproducen solos (siempre sin sonido) mientras ocupan la
  * pantalla y se pausan al salir; tocar el video lo pausa o reanuda.
  */
-export function PostReel({ post }: { post: Post }) {
+export function PostReel({ post, trackView = false }: { post: Post; trackView?: boolean }) {
   const reelRef = useRef<HTMLElement>(null);
   const [onScreen, setOnScreen] = useState(false);
+  const tracked = useRef(false);
 
   useEffect(() => {
     const node = reelRef.current;
@@ -35,6 +37,12 @@ export function PostReel({ post }: { post: Post }) {
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (!trackView || !onScreen || tracked.current) return;
+    tracked.current = true;
+    void postService.registerView(post.id).catch(() => undefined);
+  }, [onScreen, post.id, trackView]);
 
   return (
     <article ref={reelRef} className="relative h-full w-full snap-start snap-always bg-black">

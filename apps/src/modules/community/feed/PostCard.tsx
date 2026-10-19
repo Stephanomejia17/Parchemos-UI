@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, MapPin } from "lucide-react";
 import { InitialsAvatar } from "@/shared/components";
 import { RemoteImage } from "@/shared/components/media/RemoteImage";
 import type { Post } from "@/shared/services";
+import { postService } from "@/shared/services/posts/post.service";
 import { MediaError, PostVideo } from "./PostVideo";
 
 function initialsOf(name: string) {
@@ -31,13 +32,25 @@ function relativeDate(iso: string) {
   return "justo ahora";
 }
 
-export function PostCard({ post }: { post: Post }) {
+export function PostCard({ post, trackView = false }: { post: Post; trackView?: boolean }) {
+  const cardRef = useRef<HTMLElement>(null);
   const [index, setIndex] = useState(0);
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
   const media = post.media[index];
 
+  useEffect(() => {
+    if (!trackView || !cardRef.current || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting || entry.intersectionRatio < 0.6) return;
+      observer.disconnect();
+      void postService.registerView(post.id).catch(() => undefined);
+    }, { threshold: 0.6 });
+    observer.observe(cardRef.current);
+    return () => observer.disconnect();
+  }, [post.id, trackView]);
+
   return (
-    <article className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+    <article ref={cardRef} className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
       <header className="flex items-center gap-3 p-4">
         {post.author.photoUrl ? (
           <RemoteImage
