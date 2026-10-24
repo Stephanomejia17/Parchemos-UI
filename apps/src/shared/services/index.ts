@@ -35,4 +35,4 @@ export type {
   TableOrders,
   TableRef,
 } from "./orders/order.service";
-export type { LocationReview } from "./admin/admin.service";
+export type { AdminUser, LocationReview, ModerationReport, ModerationReportsResponse, ModerationStatistics } from "./admin/admin.service";

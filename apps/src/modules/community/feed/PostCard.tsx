@@ -8,6 +8,7 @@ import { RemoteImage } from "@/shared/components/media/RemoteImage";
 import type { Post } from "@/shared/services";
 import { postService } from "@/shared/services/posts/post.service";
 import { MediaError, PostVideo } from "./PostVideo";
+import { ReportPostButton } from "./ReportPostButton";
 
 function initialsOf(name: string) {
   return name
@@ -21,12 +22,11 @@ function initialsOf(name: string) {
 function relativeDate(iso: string) {
   const seconds = Math.round((new Date(iso).getTime() - Date.now()) / 1000);
   const formatter = new Intl.RelativeTimeFormat("es", { numeric: "auto" });
-  const steps: [Intl.RelativeTimeFormatUnit, number][] = [
+  for (const [unit, size] of [
     ["day", 86400],
     ["hour", 3600],
     ["minute", 60],
-  ];
-  for (const [unit, size] of steps) {
+  ] as [Intl.RelativeTimeFormatUnit, number][]) {
     if (Math.abs(seconds) >= size) return formatter.format(Math.round(seconds / size), unit);
   }
   return "justo ahora";
@@ -40,11 +40,14 @@ export function PostCard({ post, trackView = false }: { post: Post; trackView?: 
 
   useEffect(() => {
     if (!trackView || !cardRef.current || typeof IntersectionObserver === "undefined") return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting || entry.intersectionRatio < 0.6) return;
-      observer.disconnect();
-      void postService.registerView(post.id).catch(() => undefined);
-    }, { threshold: 0.6 });
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting || entry.intersectionRatio < 0.6) return;
+        observer.disconnect();
+        void postService.registerView(post.id).catch(() => undefined);
+      },
+      { threshold: 0.6 },
+    );
     observer.observe(cardRef.current);
     return () => observer.disconnect();
   }, [post.id, trackView]);
@@ -88,7 +91,6 @@ export function PostCard({ post, trackView = false }: { post: Post; trackView?: 
               {brokenImages.has(media.id) ? (
                 <MediaError message="No pudimos cargar esta imagen." />
               ) : (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   key={media.id}
                   src={media.url}
@@ -125,10 +127,16 @@ export function PostCard({ post, trackView = false }: { post: Post; trackView?: 
               </span>
             </>
           )}
+          <div className="absolute bottom-3 right-3 z-10 sm:hidden">
+            <ReportPostButton postId={post.id} variant="overlay" />
+          </div>
         </div>
       )}
 
       {post.caption && <p className="p-4 text-sm text-gray-800">{post.caption}</p>}
+      <div className="border-t border-gray-100 px-3 py-3">
+        <ReportPostButton postId={post.id} />
+      </div>
     </article>
   );
 }

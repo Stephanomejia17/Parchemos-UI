@@ -68,6 +68,9 @@ export const postService = {
   registerView: (postId: string) =>
     apiFetch<void>(`/publicaciones/${postId}/vista`, { method: "POST" }),
 
+  report: (postId: string, reason: "spam" | "contenido_falso" | "contenido_ofensivo" | "otro", details?: string) =>
+    apiFetch<void>(`/publicaciones/${postId}/reportes`, { method: "POST", body: { reason, details } }),
+
   create: (
     input: CreatePostInput,
     options?: { onProgress?: (percent: number) => void; signal?: AbortSignal },

@@ -1,18 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { useAuth } from "@/shared/auth";
 import { BrandLogo, SidebarUserFooter } from "@/shared/components";
 import { navigationForRole } from "@/shared/navigation";
+import { adminService } from "@/shared/services";
 
 export function AdminSidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const items = navigationForRole(user?.role);
   const [collapsed, setCollapsed] = useState(false);
+  const [pendingReports, setPendingReports] = useState(0);
+
+  useEffect(() => {
+    if (user?.role !== "administrador") return;
+    let mounted = true;
+    void adminService.moderationSummary().then((summary) => {
+      if (mounted) setPendingReports(summary.pendingReports);
+    }).catch(() => undefined);
+    return () => { mounted = false; };
+  }, [user?.role]);
 
   return (
     <aside
@@ -51,11 +62,11 @@ export function AdminSidebar() {
               {!collapsed && (
                 <>
                   <span className="flex-1 text-left">{item.label}</span>
-                  {item.badge && (
+                  {(item.id === "moderation" ? pendingReports > 0 : Boolean(item.badge)) && (
                     <span
                       className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${active ? "bg-[#FF6B35] text-white" : "bg-gray-100 text-gray-500"}`}
                     >
-                      {item.badge}
+                      {item.id === "moderation" ? pendingReports : item.badge}
                     </span>
                   )}
                 </>
