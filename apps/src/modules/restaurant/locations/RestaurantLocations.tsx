@@ -22,6 +22,11 @@ import type {
   Restaurant,
   Schedule,
 } from "@/shared/types/restaurant";
+import {
+  loadColombiaDivipola,
+  type ColombianDepartment,
+  type ColombianMunicipality,
+} from "@/shared/constants/colombia-divipola";
 
 const DAYS = [
   { label: "Lunes", value: 1 },
@@ -44,6 +49,200 @@ const statusStyle: Record<Status, string> = {
 };
 const errorMessage = (error: unknown, fallback: string) =>
   error instanceof ApiError ? error.message : fallback;
+
+type StructuredAddressProps = {
+  value: string;
+  onChange: (address: string) => void;
+  error?: string | null;
+};
+
+function StructuredAddress({ value, onChange, error }: StructuredAddressProps) {
+  const [departments, setDepartments] = useState<ColombianDepartment[]>([]);
+  const [municipalities, setMunicipalities] = useState<ColombianMunicipality[]>([]);
+  const [departmentCode, setDepartmentCode] = useState("");
+  const [municipalityCode, setMunicipalityCode] = useState("");
+  const [roadType, setRoadType] = useState("Carrera");
+  const [mainNumber, setMainNumber] = useState("");
+  const [letter, setLetter] = useState("");
+  const [secondNumber, setSecondNumber] = useState("");
+  const [finalNumber, setFinalNumber] = useState("");
+  const [complement, setComplement] = useState("");
+  const [neighborhood, setNeighborhood] = useState("");
+  const [rural, setRural] = useState(false);
+  const [ruralAddress, setRuralAddress] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    loadColombiaDivipola()
+      .then((catalog) => {
+        if (!active) return;
+        setDepartments(catalog.departments);
+        setMunicipalities(catalog.municipalities);
+      })
+      .catch(() => {
+        if (active) setDepartments([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const availableMunicipalities = municipalities.filter(
+    (item) => item.departmentCode === departmentCode,
+  );
+
+  const address = rural
+    ? [
+        ruralAddress.trim(),
+        neighborhood.trim() ? `Barrio ${neighborhood.trim()}` : "",
+        availableMunicipalities.find((item) => item.municipalityCode === municipalityCode)?.municipality,
+        departments.find((item) => item.code === departmentCode)?.name,
+        "Colombia",
+      ].filter(Boolean).join(", ")
+    : [
+        `${roadType} ${mainNumber.trim()}${letter.trim().toUpperCase()} # ${secondNumber.trim()} - ${finalNumber.trim()}`,
+        complement.trim(),
+        neighborhood.trim() ? `Barrio ${neighborhood.trim()}` : "",
+        availableMunicipalities.find((item) => item.municipalityCode === municipalityCode)?.municipality,
+        departments.find((item) => item.code === departmentCode)?.name,
+        "Colombia",
+      ].filter(Boolean).join(", ");
+
+  const addressIsValid = rural
+    ? ruralAddress.trim().length > 0 &&
+      Boolean(departmentCode && municipalityCode)
+    : Boolean(
+        departmentCode &&
+        municipalityCode &&
+        mainNumber.trim() &&
+        secondNumber.trim() &&
+        finalNumber.trim()
+      );
+
+  useEffect(() => {
+    onChange(addressIsValid ? address : "");
+  }, [address, addressIsValid]);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="block text-sm font-medium">
+          Departamento *
+          <select
+            className="mt-1 w-full rounded-xl border border-gray-300 p-3"
+            value={departmentCode}
+            onChange={(event) => {
+              setDepartmentCode(event.target.value);
+              setMunicipalityCode("");
+            }}
+          >
+            <option value="">Selecciona un departamento</option>
+            {departments.map((item) => (
+              <option key={item.code} value={item.code}>{item.name}</option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block text-sm font-medium">
+          Municipio *
+          <select
+            className="mt-1 w-full rounded-xl border border-gray-300 p-3"
+            value={municipalityCode}
+            onChange={(event) => setMunicipalityCode(event.target.value)}
+            disabled={!departmentCode}
+          >
+            <option value="">Selecciona un municipio</option>
+            {availableMunicipalities.map((item) => (
+              <option key={item.municipalityCode} value={item.municipalityCode}>
+                {item.municipality}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={rural}
+          onChange={(event) => setRural(event.target.checked)}
+        />
+        Dirección rural o especial
+      </label>
+
+      {rural ? (
+        <label className="block text-sm font-medium">
+          Vereda, finca o descripción de la ubicación *
+          <input
+            className="mt-1 w-full rounded-xl border border-gray-300 p-3"
+            value={ruralAddress}
+            onChange={(event) => setRuralAddress(event.target.value)}
+            maxLength={180}
+          />
+        </label>
+      ) : (
+        <>
+          <label className="block text-sm font-medium">
+            Tipo de vía *
+            <select
+              className="mt-1 w-full rounded-xl border border-gray-300 p-3"
+              value={roadType}
+              onChange={(event) => setRoadType(event.target.value)}
+            >
+              {["Calle", "Carrera", "Avenida", "Avenida Calle", "Avenida Carrera", "Circular", "Diagonal", "Transversal"].map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+          </label>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <label className="block text-sm font-medium">
+              Número principal *
+              <input className="mt-1 w-full rounded-xl border border-gray-300 p-3" value={mainNumber} onChange={(event) => setMainNumber(event.target.value.replace(/\D/g, ""))} maxLength={5} />
+            </label>
+            <label className="block text-sm font-medium">
+              Letra (opcional)
+              <input className="mt-1 w-full rounded-xl border border-gray-300 p-3 uppercase" value={letter} onChange={(event) => setLetter(event.target.value.replace(/[^a-z]/gi, "").slice(0, 1).toUpperCase())} maxLength={1} />
+            </label>
+            <label className="block text-sm font-medium">
+              Número después de #
+              <input className="mt-1 w-full rounded-xl border border-gray-300 p-3" value={secondNumber} onChange={(event) => setSecondNumber(event.target.value.replace(/\D/g, ""))} maxLength={5} />
+            </label>
+          </div>
+
+          <label className="block text-sm font-medium">
+            Número final *
+            <input className="mt-1 w-full rounded-xl border border-gray-300 p-3" value={finalNumber} onChange={(event) => setFinalNumber(event.target.value.replace(/\D/g, ""))} maxLength={5} />
+          </label>
+        </>
+      )}
+
+      <label className="block text-sm font-medium">
+        Complemento (opcional)
+        <input className="mt-1 w-full rounded-xl border border-gray-300 p-3" value={complement} onChange={(event) => setComplement(event.target.value)} maxLength={100} placeholder="Ej. local 201, piso 2" />
+      </label>
+
+      <label className="block text-sm font-medium">
+        Barrio (opcional)
+        <input className="mt-1 w-full rounded-xl border border-gray-300 p-3" value={neighborhood} onChange={(event) => setNeighborhood(event.target.value)} maxLength={100} />
+      </label>
+
+      <div className="rounded-xl bg-gray-50 p-3">
+        <p className="text-xs font-semibold text-gray-500">Dirección que se enviará</p>
+        <p className="mt-1 text-sm text-gray-800">{address || "Completa los campos para construir la dirección."}</p>
+      </div>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      {departments.length === 0 && (
+        <p className="text-sm text-amber-700">
+          No fue posible cargar el catálogo de departamentos. Revisa la conexión antes de guardar.
+        </p>
+      )}
+    </div>
+  );
+}
 
 const LOCATION_STEPS: FormStep[] = [
   { id: "info", label: "Información" },
@@ -355,15 +554,10 @@ function LocationWizard({
             error={infoErrors.name}
             onChange={(name) => update({ name })}
           />
-          <Field
-            label="Dirección"
-            name="address"
-            min={5}
-            max={250}
-            required
+          <StructuredAddress
             value={data.address}
-            error={infoErrors.address}
             onChange={(address) => update({ address })}
+            error={infoErrors.address}
           />
           <Area
             label="Descripción (opcional)"
