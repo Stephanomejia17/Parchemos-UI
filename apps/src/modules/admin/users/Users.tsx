@@ -1,142 +1,189 @@
 "use client";
-
-import { useState } from "react";
-import { Ban, Download, Edit3, Eye, MapPin, Plus, Search, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Ban, CheckCircle, Search } from "lucide-react";
 import {
-  IconButton as ActionBtn,
   InitialsAvatar as Avatar,
-  StatusBadge as Badge,
-  STATUS_LABELS,
   SurfaceCard as Card,
+  StatusBadge as Badge,
 } from "@/shared/components";
 import { SectionHeader } from "@/modules/admin/ui/SectionHeader";
-import { users } from "@/mocks/admin/users";
+import { adminService, type AdminUser } from "@/shared/services";
+import { ActionFeedbackDialog } from "../ui/ActionFeedbackDialog";
+import { SuspendUserDialog } from "./SuspendUserDialog";
+import { ActivateUserDialog } from "./ActivateUserDialog";
 
-const ACCENT = "#FF6B35";
-
-const STATUS_FILTERS = ["all", "active", "inactive", "suspended", "blocked"] as const;
+type StatusFilter = "all" | "activa" | "suspendida";
 
 export function Users() {
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState<(typeof STATUS_FILTERS)[number]>("all");
+  const [filter, setFilter] = useState<StatusFilter>("all");
+  const [busy, setBusy] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [suspending, setSuspending] = useState<AdminUser | null>(null);
+  const [activating, setActivating] = useState<AdminUser | null>(null);
+  const load = async () => {
+    try {
+      setUsers(await adminService.listUsers());
+    } catch (failure) {
+      setMessage(
+        failure instanceof Error ? failure.message : "No se pudieron cargar los usuarios.",
+      );
+    }
+  };
+  useEffect(() => {
+    void load();
+  }, []);
+  const confirmSuspend = async (reason: string) => {
+    if (!suspending) return;
+    setBusy(suspending.id);
+    setError(null);
+    try {
+      await adminService.suspendUser(suspending.id, reason);
+      setSuspending(null);
+      setMessage("Cuenta suspendida correctamente.");
+      await load();
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "No se pudo suspender la cuenta.");
+    } finally {
+      setBusy(null);
+    }
+  };
+  const confirmActivate = async () => {
+    if (!activating) return;
+    setBusy(activating.id);
+    setError(null);
+    try {
+      await adminService.activateUser(activating.id);
+      setActivating(null);
+      setMessage("Cuenta activada correctamente.");
+      await load();
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "No se pudo activar la cuenta.");
+    } finally {
+      setBusy(null);
+    }
+  };
   const filtered = users.filter(
-    (u) =>
-      (filterStatus === "all" || u.status === filterStatus) &&
-      (u.name.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase())),
+    (user) =>
+      (filter === "all" || user.status === filter) &&
+      `${user.fullName} ${user.email}`.toLowerCase().includes(search.toLowerCase()),
   );
-
   return (
     <div className="space-y-5">
       <SectionHeader
-        title="Gestión de usuarios"
+        title="Administración de cuentas"
         sub={`${users.length} usuarios registrados`}
-        action={
-          <div className="flex items-center gap-2">
-            <button className="flex items-center gap-1.5 px-3 py-2 text-[13px] text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-              <Download size={13} /> Exportar
-            </button>
-            <button
-              className="flex items-center gap-1.5 px-3 py-2 text-[13px] text-white rounded-xl transition-colors"
-              style={{ background: ACCENT }}
-            >
-              <Plus size={13} /> Nuevo usuario
-            </button>
-          </div>
-        }
       />
-
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(event) => setSearch(event.target.value)}
             placeholder="Buscar por nombre o correo..."
-            className="w-full pl-9 pr-4 py-2.5 text-[13px] bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#FF6B35]/20 focus:border-[#FF6B35]/50"
+            className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-9 pr-4 text-[13px]"
           />
         </div>
-        {STATUS_FILTERS.map((s) => (
-          <button
-            key={s}
-            onClick={() => setFilterStatus(s)}
-            className={`px-3 py-2 text-[12px] font-medium rounded-xl transition-colors border ${filterStatus === s ? "border-[#FF6B35]/30 bg-[#FFF1EB] text-[#FF6B35]" : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"}`}
-          >
-            {s === "all" ? "Todos" : STATUS_LABELS[s]}
-          </button>
-        ))}
+        <div className="flex rounded-xl bg-gray-100 p-1">
+          {(["all", "activa", "suspendida"] as StatusFilter[]).map((value) => (
+            <button
+              key={value}
+              onClick={() => setFilter(value)}
+              className={`rounded-lg px-3 py-2 text-xs font-medium ${filter === value ? "bg-white text-[#FF6B35] shadow-sm" : "text-gray-500"}`}
+            >
+              {value === "all" ? "Todos" : value === "activa" ? "Activos" : "Suspendidos"}
+            </button>
+          ))}
+        </div>
       </div>
-
       <Card>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-50">
-                <th className="text-left text-[11px] font-medium text-gray-400 uppercase tracking-wide px-5 py-3">
-                  Usuario
-                </th>
-                <th className="text-left text-[11px] font-medium text-gray-400 uppercase tracking-wide px-4 py-3">
-                  Ciudad
-                </th>
-                <th className="text-left text-[11px] font-medium text-gray-400 uppercase tracking-wide px-4 py-3">
-                  Rol
-                </th>
-                <th className="text-left text-[11px] font-medium text-gray-400 uppercase tracking-wide px-4 py-3">
-                  Estado
-                </th>
-                <th className="text-left text-[11px] font-medium text-gray-400 uppercase tracking-wide px-4 py-3">
-                  Pedidos
-                </th>
-                <th className="text-left text-[11px] font-medium text-gray-400 uppercase tracking-wide px-4 py-3">
-                  Registro
-                </th>
-                <th className="px-4 py-3" />
+              <tr className="border-b border-gray-50 text-left text-[11px] uppercase tracking-wide text-gray-400">
+                <th className="px-5 py-3">Usuario</th>
+                <th className="px-4 py-3">Rol</th>
+                <th className="px-4 py-3">Estado</th>
+                <th className="px-4 py-3">Acción</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filtered.map((u) => (
-                <tr key={u.id} className="hover:bg-gray-50/50 transition-colors group">
+              {filtered.map((user) => (
+                <tr key={user.id}>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
-                      <Avatar initials={u.avatar} />
+                      <Avatar initials={user.fullName.slice(0, 2).toUpperCase()} />
                       <div>
-                        <div className="text-[13px] font-medium text-gray-900">{u.name}</div>
-                        <div className="text-[11px] text-gray-400">{u.email}</div>
+                        <div className="text-[13px] font-medium text-gray-900">{user.fullName}</div>
+                        <div className="text-[11px] text-gray-400">{user.email}</div>
                       </div>
                     </div>
                   </td>
+                  <td className="px-4 py-3.5 text-xs text-gray-600">{user.role}</td>
                   <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-1.5 text-[13px] text-gray-600">
-                      <MapPin size={11} className="text-gray-400" />
-                      {u.city}
-                    </div>
+                    <Badge status={user.status === "suspendida" ? "suspended" : "active"} />
                   </td>
                   <td className="px-4 py-3.5">
-                    <span
-                      className={`text-[11px] font-medium px-2 py-0.5 rounded-md ${u.role === "Premium" ? "bg-[#FFF1EB] text-[#FF6B35]" : "bg-gray-100 text-gray-600"}`}
+                    <button
+                      disabled={busy === user.id}
+                      onClick={() =>
+                        user.status === "activa" ? setSuspending(user) : setActivating(user)
+                      }
+                      className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium disabled:opacity-50 ${user.status === "activa" ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}
                     >
-                      {u.role}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <Badge status={u.status} />
-                  </td>
-                  <td className="px-4 py-3.5 text-[13px] text-gray-600 font-medium">{u.orders}</td>
-                  <td className="px-4 py-3.5 text-[12px] text-gray-400">{u.joined}</td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <ActionBtn icon={Eye} label="Ver perfil" />
-                      <ActionBtn icon={Edit3} label="Editar" />
-                      <ActionBtn icon={Ban} label="Suspender" />
-                      <ActionBtn icon={Trash2} label="Eliminar" danger />
-                    </div>
+                      {user.status === "activa" ? <Ban size={13} /> : <CheckCircle size={13} />}
+                      {busy === user.id
+                        ? "Procesando..."
+                        : user.status === "activa"
+                          ? "Suspender"
+                          : "Activar"}
+                    </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {filtered.length === 0 && (
+            <p className="p-6 text-center text-sm text-gray-500">
+              No hay usuarios con este filtro.
+            </p>
+          )}
         </div>
       </Card>
+      {suspending && (
+        <SuspendUserDialog
+          user={suspending}
+          saving={busy === suspending.id}
+          error={error}
+          onClose={() => {
+            setSuspending(null);
+            setError(null);
+          }}
+          onConfirm={(reason) => void confirmSuspend(reason)}
+        />
+      )}
+      {activating && (
+        <ActivateUserDialog
+          user={activating}
+          saving={busy === activating.id}
+          error={error}
+          onClose={() => {
+            setActivating(null);
+            setError(null);
+          }}
+          onConfirm={() => void confirmActivate()}
+        />
+      )}
+      {message && (
+        <ActionFeedbackDialog
+          type="success"
+          title="Operación completada"
+          message={message}
+          onClose={() => setMessage(null)}
+        />
+      )}
     </div>
   );
 }

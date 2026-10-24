@@ -7,6 +7,7 @@ import { InitialsAvatar } from "@/shared/components";
 import type { Post, PostMedia } from "@/shared/services";
 import { postService } from "@/shared/services/posts/post.service";
 import { MediaError } from "./PostVideo";
+import { ReportPostButton } from "./ReportPostButton";
 
 function initialsOf(name: string) {
   return name
@@ -63,6 +64,10 @@ export function PostReel({ post, trackView = false }: { post: Post; trackView?: 
           1/{post.media.length} · desliza →
         </span>
       )}
+
+      <div className="absolute bottom-24 right-4 z-10">
+        <ReportPostButton postId={post.id} variant="overlay" />
+      </div>
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-4 pb-5 pt-16 text-white">
         <div className="flex items-center gap-2.5">
