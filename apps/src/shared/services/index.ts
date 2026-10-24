@@ -21,6 +21,18 @@ export { profileService } from "./profile/profile.service";
 export { restaurantService } from "./restaurant/restaurant.service";
 export { adminService } from "./admin/admin.service";
 export { orderService } from "./orders/order.service";
+export { surveyService } from "./surveys/survey.service";
+export type {
+  SurveyConfiguration,
+  SurveyConfigurationDraft,
+  SurveyOwnerOption,
+  SurveyQuestion,
+  SurveyQuestionDraft,
+  SurveyQuestionType,
+  SurveyOrderInvitation,
+  SurveyReport,
+  SurveyRestaurantOption,
+} from "./surveys/survey.service";
 export type { CreateOrderInput, CreatedOrder } from "./orders/order.service";
 export { subscribeToNewOrders, subscribeToOrderStatus } from "./orders/order-events";
 export type { NewOrderEvent, OrderStatusEvent } from "./orders/order-events";

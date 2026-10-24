@@ -62,6 +62,17 @@ export function breadcrumbsForPath(
     });
   }
   if (detail) result.push({ label: DETAIL_LABELS[detail] });
+  if (pathname === "/surveys") {
+    const surveyView = searchParams?.get("surveyView");
+    const surveyTitle = searchParams?.get("surveyTitle");
+    const surveyLabels: Record<string, string> = {
+      create: "Nueva encuesta",
+      edit: surveyTitle ?? "Editar encuesta",
+      results: surveyTitle ? `Resultados: ${surveyTitle}` : "Resultados",
+    };
+    const surveyLabel = surveyView ? surveyLabels[surveyView] : undefined;
+    if (surveyLabel) result.push({ label: surveyLabel });
+  }
   return result;
 }
 

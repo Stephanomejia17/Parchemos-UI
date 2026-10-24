@@ -10,6 +10,7 @@ export interface CreateOrderInput {
 
 export interface CreatedOrder {
   id: string;
+  locationId: string;
   orderNumber: string;
   status: string;
   paymentStatus: string;

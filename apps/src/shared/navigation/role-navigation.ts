@@ -20,6 +20,7 @@ import {
   Users,
   UsersRound,
   QrCode,
+  ClipboardList,
 } from "lucide-react";
 import type { UserRole } from "@/shared/auth";
 import type { NavigationItem } from "./types";
@@ -37,6 +38,7 @@ const CUSTOMER_NAVIGATION: NavigationItem[] = [
 const RESTAURANT_NAVIGATION: NavigationItem[] = [
   { id: "home", href: "/profile/dashboard", icon: Home, label: "Dashboard" },
   { id: "statistics", href: "/statistics", icon: ChartNoAxesCombined, label: "Ingresos y comisiones" },
+  { id: "surveys", href: "/surveys", icon: ClipboardList, label: "Encuestas" },
   { id: "restaurants", href: "/restaurants", icon: Store, label: "Restaurantes" },
   { id: "publish", href: "/publish", icon: Plus, label: "Publicar", featured: true },
   { id: "tables", href: "/tables", icon: QrCode, label: "Configuración mesas" },

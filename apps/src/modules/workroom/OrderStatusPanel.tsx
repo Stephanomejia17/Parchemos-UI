@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  Check,
   CheckCircle2,
   ChefHat,
   ChevronDown,
@@ -27,6 +28,9 @@ const POLL_INTERVAL_MS = 60_000;
 /** Cuánto tiempo se destaca un pedido recién llegado. */
 const NEW_ORDER_HIGHLIGHT_MS = 30_000;
 
+/** Orden fijo del flujo: de aquí salen la barra de progreso y la secuencia de botones. */
+const FLOW: OrderStatus[] = ["confirmado", "en_preparacion", "listo", "entregado"];
+
 const ACTIONS: { estado: OrderStatus; label: string; Icon: typeof ChefHat }[] = [
   { estado: "confirmado", label: "Confirmar", Icon: ClipboardCheck },
   { estado: "en_preparacion", label: "En preparación", Icon: ChefHat },
@@ -34,12 +38,21 @@ const ACTIONS: { estado: OrderStatus; label: string; Icon: typeof ChefHat }[] = 
   { estado: "entregado", label: "Marcar como Entregado", Icon: PackageCheck },
 ];
 
+/** Clases completas (no dinámicas) para que Tailwind las detecte. */
+const BADGE_STYLES: Partial<Record<OrderStatus, string>> = {
+  confirmado: "bg-blue-50 text-blue-700",
+  en_preparacion: "bg-amber-50 text-amber-700",
+  listo: "bg-emerald-50 text-emerald-700",
+  entregado: "bg-gray-100 text-gray-600",
+};
+const BADGE_FALLBACK = "bg-orange-50 text-primary";
+
 const TIME = new Intl.DateTimeFormat("es-CO", { hour: "numeric", minute: "2-digit" });
 
 /**
  * GP-05 / GP-08: panel de sala. Los pedidos en curso de la sede se muestran
- * por mesa, con lo que falta pagar en cada una (GP-05 CA3). Cada botón de
- * estado se habilita solo si la API permite esa transición.
+ * por mesa, con lo que falta pagar en cada una (GP-05 CA3). Cada pedido muestra
+ * su progreso y solo permite avanzar al siguiente estado si la API lo permite.
  */
 export function OrderStatusPanel({ locationId }: { locationId: string }) {
   const [tables, setTables] = useState<TableOrders[]>([]);
@@ -84,7 +97,16 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
       void load();
     });
     const unsubscribeStatus = subscribeToOrderStatus((event) => {
-      if (event.sedeId === locationId) void load();
+      if (event.sedeId !== locationId) return;
+      setTables((current) =>
+        current.map((table) => ({
+          ...table,
+          pedidos: table.pedidos.map((order) =>
+            order.id === event.id ? { ...order, estado: event.estado } : order,
+          ),
+        })),
+      );
+      void load();
     });
     return () => {
       unsubscribeNew();
@@ -97,6 +119,18 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
     try {
       const nota = notes[order.id]?.trim() || undefined;
       await orderService.updateStatus(order.id, estado, nota);
+
+      // Actualización inmediata: la barra avanza y los botones quedan bloqueados
+      // hasta que el load() de abajo traiga los nuevos siguientesEstados.
+      setTables((current) =>
+        current.map((table) => ({
+          ...table,
+          pedidos: table.pedidos.map((o) =>
+            o.id === order.id ? { ...o, estado, siguientesEstados: [] } : o,
+          ),
+        })),
+      );
+
       setNotes((current) => {
         const next = { ...current };
         delete next[order.id];
@@ -189,6 +223,50 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
   );
 }
 
+/** Barra de progreso del pedido: pasos completados en color primario, el actual con aro. */
+function OrderProgress({ estado }: { estado: OrderStatus }) {
+  const current = FLOW.indexOf(estado);
+
+  return (
+    <ol aria-label="Progreso del pedido" className="flex items-start">
+      {FLOW.map((step, i) => {
+        const done = i <= current;
+        const active = i === current;
+        const isLast = i === FLOW.length - 1;
+
+        return (
+          <li key={step} className={`flex items-start ${isLast ? "" : "flex-1"}`}>
+            <div className="flex w-16 flex-col items-center gap-1">
+              <span
+                aria-current={active ? "step" : undefined}
+                className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold transition-colors duration-500 ${
+                  done ? "bg-primary text-white" : "bg-gray-200 text-gray-500"
+                } ${active && !isLast ? "ring-4 ring-primary/20" : ""}`}
+              >
+                {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
+              </span>
+              <span
+                className={`text-center text-[10px] leading-tight ${
+                  done ? "font-semibold text-gray-900" : "text-gray-400"
+                }`}
+              >
+                {ORDER_STATUS_LABELS[step]}
+              </span>
+            </div>
+            {!isLast && (
+              <span
+                className={`mt-[10px] h-1 flex-1 rounded-full transition-colors duration-500 ${
+                  i < current ? "bg-primary" : "bg-gray-200"
+                }`}
+              />
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 function OrderRow({
   order,
   isNew,
@@ -208,18 +286,28 @@ function OrderRow({
   note: string;
   onNoteChange: (value: string) => void;
 }) {
+  const currentIndex = FLOW.indexOf(order.estado);
+  const nextEstado = FLOW[currentIndex + 1]; // undefined si ya está entregado
+  const isFinished = order.estado === "entregado";
+
   return (
     <li className={`space-y-3 px-5 py-4 ${isNew ? "bg-orange-50/60" : ""}`}>
       <div className="flex flex-col gap-3 md:flex-row md:items-center">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="font-medium text-gray-900">Pedido #{order.numero}</p>
-            {isNew && (
-              <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-white">
-                Nuevo
-              </span>
-            )}
-            <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-gray-900">Pedido #{order.numero}</p>
+              {isNew && (
+                <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-white">
+                  Nuevo
+                </span>
+              )}
+            </div>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                BADGE_STYLES[order.estado] ?? BADGE_FALLBACK
+              }`}
+            >
               {ORDER_STATUS_LABELS[order.estado]}
             </span>
           </div>
@@ -239,21 +327,52 @@ function OrderRow({
             />
           </button>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {ACTIONS.map(({ estado, label, Icon }) => (
-            <button
-              key={estado}
-              type="button"
-              disabled={!order.siguientesEstados.includes(estado) || busy}
-              onClick={() => onChangeStatus(estado)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 enabled:hover:border-primary enabled:hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {label}
-            </button>
-          ))}
+
+        <div className="space-y-3 md:w-[26rem]">
+          <OrderProgress estado={order.estado} />
+
+          {isFinished ? (
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-500">
+              <PackageCheck className="h-4 w-4" />
+              Pedido entregado · no hay más acciones
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {ACTIONS.map(({ estado, label, Icon }) => {
+                const index = FLOW.indexOf(estado);
+                const alreadyDone = index <= currentIndex;
+                // Solo se habilita el siguiente paso, y únicamente si la API lo permite.
+                const enabled =
+                  estado === nextEstado && order.siguientesEstados.includes(estado) && !busy;
+
+                return (
+                  <button
+                    key={estado}
+                    type="button"
+                    disabled={!enabled}
+                    onClick={() => onChangeStatus(estado)}
+                    className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed ${
+                      alreadyDone
+                        ? "border-transparent bg-gray-100 text-gray-400"
+                        : enabled
+                          ? "border-primary text-primary hover:bg-primary hover:text-white"
+                          : "border-gray-200 text-gray-700 opacity-40"
+                    }`}
+                  >
+                    {alreadyDone ? (
+                      <Check className="h-3.5 w-3.5" />
+                    ) : (
+                      <Icon className="h-3.5 w-3.5" />
+                    )}
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
+
       {expanded && (
         <>
           <RoomOrderDetail order={order} />

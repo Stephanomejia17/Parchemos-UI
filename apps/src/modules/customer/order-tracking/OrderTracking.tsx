@@ -18,6 +18,7 @@ import {
   timelineFor,
 } from "./order-status";
 import { OrderStatusHistory } from "./OrderStatusHistory";
+import { SurveyPrompt } from "@/modules/customer/orders/SurveyPrompt";
 
 /** Respaldo por si el canal en tiempo real no está disponible. */
 const POLL_INTERVAL_MS = 20_000;
@@ -97,7 +98,17 @@ export function OrderTracking({ orderId }: { orderId: string }) {
           </div>
         )}
 
-        {order && <OrderStatusCard order={order} />}
+        {order && (
+          <>
+            <OrderStatusCard order={order} />
+            <SurveyPrompt
+              orderId={order.id}
+              status={order.estado}
+              locationId={order.sedeId}
+              locationName={order.sedeNombre}
+            />
+          </>
+        )}
         {order && <OrderStatusHistory changes={history} />}
       </div>
     </div>

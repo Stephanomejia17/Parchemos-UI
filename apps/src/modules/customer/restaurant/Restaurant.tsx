@@ -32,7 +32,14 @@ function RestaurantContent({ initialMenu, menuLoadError = false }: Readonly<Rest
   const [locationError, setLocationError] = useState<string | null>(null);
 
   const urlLocationId = searchParams.get("locationId") ?? searchParams.get("restaurantId");
+  const requestedTab = searchParams.get("tab");
   const locationId = urlLocationId ?? contextLocationId;
+
+  useEffect(() => {
+    if (TABS.some(({ key }) => key === requestedTab)) {
+      setTab(requestedTab!);
+    }
+  }, [requestedTab]);
 
   useEffect(() => {
     if (urlLocationId && urlLocationId !== contextLocationId) {
