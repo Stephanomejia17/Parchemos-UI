@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Building2, Loader2, MapPin, Plus, Send, Store, Trash2, X } from "lucide-react";
 import { ApiError, RequireAuth } from "@/shared/auth";
@@ -70,6 +70,15 @@ function StructuredAddress({ value, onChange, error }: StructuredAddressProps) {
   const [neighborhood, setNeighborhood] = useState("");
   const [rural, setRural] = useState(false);
   const [ruralAddress, setRuralAddress] = useState("");
+  const initialized = useRef(false);
+  const onChangeRef = useRef(onChange);
+  const [addressReady, setAddressReady] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const [legacyAddress, setLegacyAddress] = useState("");
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   useEffect(() => {
     let active = true;
@@ -88,6 +97,98 @@ function StructuredAddress({ value, onChange, error }: StructuredAddressProps) {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (
+      initialized.current ||
+      departments.length === 0 ||
+      municipalities.length === 0
+    ) {
+      return;
+    }
+
+    initialized.current = true;
+    setLegacyAddress(value);
+
+    if (!value.trim()) {
+      setAddressReady(true);
+      return;
+    }
+
+    const normalize = (text: string) =>
+      text
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim()
+        .toLowerCase();
+
+    const parts = value
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    if (normalize(parts[parts.length - 1] ?? "") === "colombia") {
+      parts.pop();
+    }
+
+    const departmentName = parts.pop();
+    const department = departments.find(
+      (item) => normalize(item.name) === normalize(departmentName ?? ""),
+    );
+
+    if (!department) {
+      setAddressReady(true);
+      return;
+    }
+
+    const municipalityName = parts.pop();
+    const municipality = municipalities.find(
+      (item) =>
+        item.departmentCode === department.code &&
+        normalize(item.municipality) === normalize(municipalityName ?? ""),
+    );
+
+    if (!municipality || parts.length === 0) {
+      setAddressReady(true);
+      return;
+    }
+
+    const road = parts[0];
+    const match = road.match(
+      /^(.+?)\s+(\d+)([A-Za-z]?)\s*#\s*(\d+)\s*-\s*(\d+)$/,
+    );
+
+    // Si no reconoce la nomenclatura, conserva la dirección original.
+    if (!match) {
+      setAddressReady(true);
+      return;
+    }
+
+    setDepartmentCode(department.code);
+    setMunicipalityCode(municipality.municipalityCode);
+    setRoadType(match[1].trim());
+    setMainNumber(match[2]);
+    setLetter(match[3].toUpperCase());
+    setSecondNumber(match[4]);
+    setFinalNumber(match[5]);
+    setRural(false);
+
+    const extraParts = parts.slice(1);
+    const neighborhoodPart = extraParts.find((part) =>
+      /^barrio\s+/i.test(part),
+    );
+
+    setNeighborhood(
+      neighborhoodPart?.replace(/^barrio\s+/i, "") ?? "",
+    );
+
+    setComplement(
+      extraParts
+        .filter((part) => !/^barrio\s+/i.test(part))
+        .join(", "),
+    );
+    setAddressReady(true);
+  }, [value, departments, municipalities]);
 
   const availableMunicipalities = municipalities.filter(
     (item) => item.departmentCode === departmentCode,
@@ -122,11 +223,19 @@ function StructuredAddress({ value, onChange, error }: StructuredAddressProps) {
       );
 
   useEffect(() => {
-    onChange(addressIsValid ? address : "");
-  }, [address, addressIsValid]);
+    if (!addressReady || !hasInteracted) return;
+
+    const nextAddress = addressIsValid ? address : "";
+    if (nextAddress !== value) {
+      onChangeRef.current(nextAddress);
+    }
+  }, [address, addressIsValid, addressReady, hasInteracted, value]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4"
+    onChangeCapture={() => {
+      if (addressReady) setHasInteracted(true);
+    }}>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="block text-sm font-medium">
           Departamento *
@@ -228,6 +337,19 @@ function StructuredAddress({ value, onChange, error }: StructuredAddressProps) {
         Barrio (opcional)
         <input className="mt-1 w-full rounded-xl border border-gray-300 p-3" value={neighborhood} onChange={(event) => setNeighborhood(event.target.value)} maxLength={100} />
       </label>
+
+      {legacyAddress && (!hasInteracted || !addressIsValid) && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <p className="text-xs font-semibold text-amber-800">
+            Dirección guardada actualmente
+          </p>
+          <p className="mt-1 text-sm text-amber-900">{legacyAddress}</p>
+          <p className="mt-1 text-xs text-amber-800">
+            Si los campos no se completaron automáticamente, verifica la dirección
+            y completa los datos antes de guardarla.
+          </p>
+        </div>
+      )}
 
       <div className="rounded-xl bg-gray-50 p-3">
         <p className="text-xs font-semibold text-gray-500">Dirección que se enviará</p>
@@ -929,15 +1051,10 @@ function Profile({
             error={infoErrors.name}
             onChange={(name) => update({ name })}
           />
-          <Field
-            label="Dirección"
-            name="address"
-            min={5}
-            max={250}
-            required
+          <StructuredAddress
             value={draft.address}
-            error={infoErrors.address}
             onChange={(address) => update({ address })}
+            error={infoErrors.address}
           />
           <Area
             label="Descripción (opcional)"

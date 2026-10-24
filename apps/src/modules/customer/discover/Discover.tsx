@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Filter, MapPin, Navigation, Search } from "lucide-react";
 import { CustomerBadge as Badge, PrimaryButton, StarRating } from "@/shared/components";
@@ -8,8 +9,32 @@ import { RemoteImage } from "@/shared/components/media/RemoteImage";
 import { restaurantService } from "@/shared/services/restaurant/restaurant.service";
 import type { Location } from "@/shared/types/restaurant";
 
+const DiscoverMap = dynamic(() => import("./DiscoverMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full min-h-64 items-center justify-center bg-gray-100 text-sm text-muted-foreground">
+      Cargando mapa…
+    </div>
+  ),
+});
+
 function getActualLocationImage(url: string | null) {
   return url && !url.includes("placehold.co") ? url : null;
+}
+
+function hasValidCoordinates(
+  location: Location,
+): location is Location & { latitude: number; longitude: number } {
+  return (
+    typeof location.latitude === "number" &&
+    Number.isFinite(location.latitude) &&
+    location.latitude >= -90 &&
+    location.latitude <= 90 &&
+    typeof location.longitude === "number" &&
+    Number.isFinite(location.longitude) &&
+    location.longitude >= -180 &&
+    location.longitude <= 180
+  );
 }
 
 const FILTERS = [
@@ -28,6 +53,10 @@ export function Discover() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState<Location | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const mappableLocations = useMemo(
+    () => locations.filter(hasValidCoordinates),
+    [locations],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -146,24 +175,12 @@ export function Discover() {
 
       {/* Map — full height on desktop */}
       <div className="relative flex-1 min-h-64 bg-gray-100 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background/20" />
-        {locations.map((r, index) => (
-          <button
-            key={r.id}
-            onClick={() => setSelectedRestaurant(r)}
-            className="absolute transform -translate-x-1/2 -translate-y-1/2 transition-all"
-            style={{
-              top: `${r.latitude === null ? 18 + ((index * 17) % 70) : Math.min(90, Math.max(10, 50 + (r.latitude - 4.65) * 180))}%`,
-              left: `${r.longitude === null ? 18 + ((index * 23) % 70) : Math.min(90, Math.max(10, 50 + (r.longitude + 74.08) * 180))}%`,
-            }}
-          >
-            <div
-              className={`px-2.5 py-1.5 rounded-2xl shadow-lg text-xs font-bold flex items-center gap-1 ${selectedRestaurant?.id === r.id ? "bg-primary text-white scale-110" : "bg-white text-gray-900"}`}
-            >
-              <span>{r.priceRange ? "$".repeat(r.priceRange) : "Menú"}</span>
-            </div>
-          </button>
-        ))}
+        <DiscoverMap
+          locations={mappableLocations}
+          selectedLocationId={selectedRestaurant?.id ?? null}
+          onSelect={setSelectedRestaurant}
+          onOpenLocation={goRestaurant}
+        />
         <div className="absolute bottom-4 right-4">
           <button className="w-10 h-10 bg-white rounded-2xl shadow-lg flex items-center justify-center">
             <Navigation className="w-5 h-5 text-primary" />
@@ -187,6 +204,9 @@ export function Discover() {
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-gray-900 text-sm truncate">
                   {selectedRestaurant.name}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {selectedRestaurant.address}
                 </p>
                 <StarRating
                   rating={selectedRestaurant.avgRating}
