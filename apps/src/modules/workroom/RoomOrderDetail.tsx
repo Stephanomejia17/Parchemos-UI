@@ -33,6 +33,12 @@ export function RoomOrderDetail({ order }: { order: RoomOrder }) {
             {PAYMENT_LABELS[order.estadoPago] ?? order.estadoPago}
           </dd>
         </div>
+        {order.responsablePago && (
+          <div className="col-span-3">
+            <dt className="text-gray-500">Responsable del pago completo</dt>
+            <dd className="font-medium text-gray-900">{order.responsablePago}</dd>
+          </div>
+        )}
       </dl>
       <ul className="space-y-1.5">
         {order.items.map((item, i) => (
@@ -42,6 +48,9 @@ export function RoomOrderDetail({ order }: { order: RoomOrder }) {
                 <span className="font-semibold">{item.cantidad} ×</span> {item.nombre}
               </p>
               {item.notas && <p className="text-xs text-amber-700">Nota: {item.notas}</p>}
+              {item.agregadoPor && (
+                <p className="text-xs text-gray-500">Agregado por {item.agregadoPor}</p>
+              )}
             </div>
             <span className="shrink-0 text-gray-700">{formatCop(item.subtotal)}</span>
           </li>

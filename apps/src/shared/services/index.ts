@@ -21,8 +21,25 @@ export { profileService } from "./profile/profile.service";
 export { restaurantService } from "./restaurant/restaurant.service";
 export { adminService } from "./admin/admin.service";
 export { orderService } from "./orders/order.service";
+export { tableSessionService } from "./orders/table-session.service";
+export { surveyService } from "./surveys/survey.service";
+export type {
+  SurveyConfiguration,
+  SurveyConfigurationDraft,
+  SurveyOwnerOption,
+  SurveyQuestion,
+  SurveyQuestionDraft,
+  SurveyQuestionType,
+  SurveyOrderInvitation,
+  SurveyReport,
+  SurveyRestaurantOption,
+} from "./surveys/survey.service";
 export type { CreateOrderInput, CreatedOrder } from "./orders/order.service";
-export { subscribeToNewOrders, subscribeToOrderStatus } from "./orders/order-events";
+export {
+  subscribeToNewOrders,
+  subscribeToOrderStatus,
+  subscribeToTableUpdates,
+} from "./orders/order-events";
 export type { NewOrderEvent, OrderStatusEvent } from "./orders/order-events";
 export type {
   OrderFulfillment,
@@ -35,4 +52,10 @@ export type {
   TableOrders,
   TableRef,
 } from "./orders/order.service";
-export type { AdminUser, LocationReview, ModerationReport, ModerationReportsResponse, ModerationStatistics } from "./admin/admin.service";
+export type {
+  AdminUser,
+  LocationReview,
+  ModerationReport,
+  ModerationReportsResponse,
+  ModerationStatistics,
+} from "./admin/admin.service";

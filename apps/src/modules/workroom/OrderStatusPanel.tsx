@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  Check,
   CheckCircle2,
   ChefHat,
   ChevronDown,
@@ -9,13 +10,16 @@ import {
   PackageCheck,
   RefreshCw,
 } from "lucide-react";
-import { SurfaceCard } from "@/shared/components";
+import { ConfirmDialog, SurfaceCard } from "@/shared/components";
 import { ORDER_STATUS_LABELS } from "@/shared/constants";
 import {
   orderService,
   subscribeToNewOrders,
   subscribeToOrderStatus,
+  subscribeToTableUpdates,
+  type NewOrderEvent,
   type OrderStatus,
+  type OrderStatusEvent,
   type RoomOrder,
   type TableOrders,
 } from "@/shared/services";
@@ -26,6 +30,10 @@ import { RoomOrderDetail } from "./RoomOrderDetail";
 const POLL_INTERVAL_MS = 60_000;
 /** Cuánto tiempo se destaca un pedido recién llegado. */
 const NEW_ORDER_HIGHLIGHT_MS = 30_000;
+const NO_NEW_ORDERS: ReadonlySet<string> = new Set();
+
+/** Orden fijo del flujo: de aquí salen la barra de progreso y la secuencia de botones. */
+const FLOW: OrderStatus[] = ["confirmado", "en_preparacion", "listo", "entregado"];
 
 const ACTIONS: { estado: OrderStatus; label: string; Icon: typeof ChefHat }[] = [
   { estado: "confirmado", label: "Confirmar", Icon: ClipboardCheck },
@@ -34,22 +42,69 @@ const ACTIONS: { estado: OrderStatus; label: string; Icon: typeof ChefHat }[] = 
   { estado: "entregado", label: "Marcar como Entregado", Icon: PackageCheck },
 ];
 
+/** Clases completas (no dinámicas) para que Tailwind las detecte. */
+const BADGE_STYLES: Partial<Record<OrderStatus, string>> = {
+  confirmado: "bg-blue-50 text-blue-700",
+  en_preparacion: "bg-amber-50 text-amber-700",
+  listo: "bg-emerald-50 text-emerald-700",
+  entregado: "bg-gray-100 text-gray-600",
+};
+const BADGE_FALLBACK = "bg-orange-50 text-primary";
+
 const TIME = new Intl.DateTimeFormat("es-CO", { hour: "numeric", minute: "2-digit" });
+
+function updateOrderStatus(
+  tables: TableOrders[],
+  orderId: string,
+  estado: OrderStatus,
+  clearNextStates = false,
+): TableOrders[] {
+  return tables.map((table) => ({
+    ...table,
+    pedidos: table.pedidos.map((order) =>
+      order.id === orderId
+        ? {
+            ...order,
+            estado,
+            ...(clearNextStates ? { siguientesEstados: [] } : {}),
+          }
+        : order,
+    ),
+  }));
+}
+
+function addNewOrderId(current: ReadonlySet<string>, orderId: string): ReadonlySet<string> {
+  return new Set(current).add(orderId);
+}
+
+function removeNewOrderId(current: ReadonlySet<string>, orderId: string): ReadonlySet<string> {
+  const next = new Set(current);
+  next.delete(orderId);
+  return next;
+}
 
 /**
  * GP-05 / GP-08: panel de sala. Los pedidos en curso de la sede se muestran
- * por mesa, con lo que falta pagar en cada una (GP-05 CA3). Cada botón de
- * estado se habilita solo si la API permite esa transición.
+ * por mesa, con lo que falta pagar en cada una (GP-05 CA3). Cada pedido muestra
+ * su progreso y solo permite avanzar al siguiente estado si la API lo permite.
  */
-export function OrderStatusPanel({ locationId }: { locationId: string }) {
+export function OrderStatusPanel({
+  locationId,
+}: {
+ readonly locationId: string;
+}): import("react/jsx-runtime").JSX.Element {
+  const [activeTab, setActiveTab] = useState<"tables" | "history">("tables");
   const [tables, setTables] = useState<TableOrders[]>([]);
+  const [deliveredOrders, setDeliveredOrders] = useState<RoomOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [closingTableId, setClosingTableId] = useState<string | null>(null);
+  const [tableToClose, setTableToClose] = useState<TableOrders | null>(null);
   const [newOrderIds, setNewOrderIds] = useState<ReadonlySet<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  // Nota opcional por pedido: se envía con el próximo cambio de estado y queda en el historial.
-  const [notes, setNotes] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     try {
@@ -63,45 +118,86 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
     }
   }, [locationId]);
 
+  const loadDelivered = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const response = await orderService.listDeliveredToday(locationId);
+      setDeliveredOrders(response.data);
+      setHistoryError(null);
+    } catch (err) {
+      setHistoryError(
+        err instanceof Error ? err.message : "No pudimos consultar los pedidos entregados.",
+      );
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [locationId]);
+
+  const handleNewOrder = useCallback(
+    (event: NewOrderEvent) => {
+      if (event.sedeId !== locationId) return;
+      setNewOrderIds((current) => addNewOrderId(current, event.id));
+      window.setTimeout(
+        () => setNewOrderIds((current) => removeNewOrderId(current, event.id)),
+        NEW_ORDER_HIGHLIGHT_MS,
+      );
+      void load();
+    },
+    [load, locationId],
+  );
+
+  const handleOrderStatus = useCallback(
+    (event: OrderStatusEvent) => {
+      if (event.sedeId !== locationId) return;
+      setTables((current) => updateOrderStatus(current, event.id, event.estado));
+      void load();
+      if (activeTab === "history" && event.estado === "entregado") {
+        void loadDelivered();
+      }
+    },
+    [activeTab, load, loadDelivered, locationId],
+  );
+
+  const handleTableUpdate = useCallback(
+    (event: { sedeId: string; mesaId: string }) => {
+      if (event.sedeId === locationId) void load();
+    },
+    [load, locationId],
+  );
+
   useEffect(() => {
     void load();
     const timer = window.setInterval(() => void load(), POLL_INTERVAL_MS);
     return () => window.clearInterval(timer);
   }, [load]);
 
+  useEffect(() => {
+    if (activeTab !== "history") return;
+    void loadDelivered();
+    const timer = window.setInterval(() => void loadDelivered(), POLL_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [activeTab, loadDelivered]);
+
   // GP-05 CA1: los pedidos nuevos y los cambios de otros compañeros llegan por socket.
   useEffect(() => {
-    const unsubscribeNew = subscribeToNewOrders((event) => {
-      if (event.sedeId !== locationId) return;
-      setNewOrderIds((current) => new Set(current).add(event.id));
-      window.setTimeout(() => {
-        setNewOrderIds((current) => {
-          const next = new Set(current);
-          next.delete(event.id);
-          return next;
-        });
-      }, NEW_ORDER_HIGHLIGHT_MS);
-      void load();
-    });
-    const unsubscribeStatus = subscribeToOrderStatus((event) => {
-      if (event.sedeId === locationId) void load();
-    });
+    const unsubscribeNew = subscribeToNewOrders(handleNewOrder);
+    const unsubscribeStatus = subscribeToOrderStatus(handleOrderStatus);
+    const unsubscribeTables = subscribeToTableUpdates(handleTableUpdate);
     return () => {
       unsubscribeNew();
       unsubscribeStatus();
+      unsubscribeTables();
     };
-  }, [locationId, load]);
+  }, [handleNewOrder, handleOrderStatus, handleTableUpdate]);
 
   const changeStatus = async (order: RoomOrder, estado: OrderStatus) => {
     setUpdatingId(order.id);
     try {
-      const nota = notes[order.id]?.trim() || undefined;
-      await orderService.updateStatus(order.id, estado, nota);
-      setNotes((current) => {
-        const next = { ...current };
-        delete next[order.id];
-        return next;
-      });
+      await orderService.updateStatus(order.id, estado);
+
+      // Actualización inmediata: la barra avanza y los botones quedan bloqueados
+      // hasta que el load() de abajo traiga los nuevos siguientesEstados.
+      setTables((current) => updateOrderStatus(current, order.id, estado, true));
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No pudimos actualizar el pedido.");
@@ -113,79 +209,281 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
     }
   };
 
-  const hasContent = tables.length > 0;
+  const closeOccupancy = async (table: TableOrders) => {
+    const tableId = table.mesa?.id;
+    if (!tableId) return;
+
+    setClosingTableId(tableId);
+    setError(null);
+    try {
+      await orderService.closeTableOccupancy(tableId);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No pudimos cerrar la ocupación.");
+    } finally {
+      setClosingTableId(null);
+      setTableToClose(null);
+      void load();
+    }
+  };
+
+  const toggleExpandedOrder = useCallback((orderId: string) => {
+    setExpandedId((current) => (current === orderId ? null : orderId));
+  }, []);
+
+  const activeTablesCount = tables.filter((table) => table.ocupacion === "ocupada").length;
 
   return (
     <SurfaceCard className="overflow-hidden">
-      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-        <div>
-          <h2 className="font-semibold text-gray-900">Pedidos en curso</h2>
-          <p className="text-xs text-gray-500">
-            Los pedidos nuevos aparecen solos; actualiza el estado para avisarle al comensal
-          </p>
+      <div className="border-b border-gray-100 px-5 py-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="font-semibold text-gray-900">
+              {activeTab === "tables" ? "Mesas activas" : "Historial de Pedidos Entregados"}
+            </h2>
+            <p className="text-xs text-gray-500">
+              {activeTab === "tables"
+                ? "Consulta pedidos, saldos pendientes y ocupación de cada mesa."
+                : "Pedidos entregados en tu sede durante la jornada de hoy."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void (activeTab === "tables" ? load() : loadDelivered())}
+            aria-label={activeTab === "tables" ? "Actualizar mesas" : "Actualizar historial"}
+            className="rounded-xl p-2 text-gray-500 hover:bg-gray-100"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          aria-label="Actualizar pedidos"
-          className="rounded-xl p-2 text-gray-500 hover:bg-gray-100"
-        >
-          <RefreshCw className="h-4 w-4" />
-        </button>
+        <div className="mt-4 flex gap-2" role="tablist" aria-label="Pedidos de sala">
+          <button
+            type="button"
+            id="workroom-tables-tab"
+            role="tab"
+            aria-selected={activeTab === "tables"}
+            aria-controls="workroom-tables-panel"
+            onClick={() => setActiveTab("tables")}
+            className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+              activeTab === "tables"
+                ? "bg-primary text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            Mesas activas <span className="ml-1 opacity-80">({activeTablesCount})</span>
+          </button>
+          <button
+            type="button"
+            id="workroom-history-tab"
+            role="tab"
+            aria-selected={activeTab === "history"}
+            aria-controls="workroom-history-panel"
+            onClick={() => setActiveTab("history")}
+            className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+              activeTab === "history"
+                ? "bg-primary text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            Entregados hoy <span className="ml-1 opacity-80">({deliveredOrders.length})</span>
+          </button>
+        </div>
       </div>
 
-      {error && (
-        <p
-          role="alert"
-          className="border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700"
-        >
-          {error}
-        </p>
-      )}
-      {loading && <p className="px-5 py-4 text-sm text-gray-500">Cargando pedidos…</p>}
-      {!loading && !hasContent && (
-        <p className="px-5 py-4 text-sm text-gray-500">No hay pedidos pendientes en tu sede.</p>
-      )}
-
-      {tables.map((table) => (
-        <section key={table.mesa?.id ?? "sin-mesa"} className="border-b border-gray-100">
-          <header className="flex items-center justify-between gap-3 bg-gray-50 px-5 py-2.5">
-            <h3 className="text-sm font-semibold text-gray-900">
-              {table.mesa?.codigo ?? "Sin mesa (para llevar)"}
-            </h3>
-            {table.totalPendiente !== null && (
-              <p className="text-sm">
-                <span className="text-gray-500">Pendiente de pago: </span>
-                <span className="font-bold text-gray-900">{formatCop(table.totalPendiente)}</span>
-              </p>
-            )}
-          </header>
-          {table.pedidos.length === 0 ? (
-            <p className="px-5 py-3 text-xs text-gray-500">
-              Sin pedidos en curso: queda por cobrar lo ya entregado.
+      {activeTab === "tables" ? (
+        <div id="workroom-tables-panel" role="tabpanel" aria-labelledby="workroom-tables-tab">
+          {error && (
+            <p
+              role="alert"
+              className="border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700"
+            >
+              {error}
             </p>
-          ) : (
-            <ul className="divide-y divide-gray-100">
-              {table.pedidos.map((order) => (
-                <OrderRow
-                  key={order.id}
-                  order={order}
-                  isNew={newOrderIds.has(order.id)}
-                  expanded={expandedId === order.id}
-                  onToggle={() => setExpandedId(expandedId === order.id ? null : order.id)}
-                  busy={updatingId === order.id}
-                  onChangeStatus={(estado) => void changeStatus(order, estado)}
-                  note={notes[order.id] ?? ""}
-                  onNoteChange={(value) =>
-                    setNotes((current) => ({ ...current, [order.id]: value }))
-                  }
-                />
-              ))}
-            </ul>
           )}
-        </section>
-      ))}
+          {loading && <p className="px-5 py-4 text-sm text-gray-500">Cargando mesas…</p>}
+          {!loading && tables.length === 0 && (
+            <p className="px-5 py-4 text-sm text-gray-500">No hay mesas registradas en tu sede.</p>
+          )}
+          {tables.map((table) => (
+            <section key={table.mesa?.id ?? "sin-mesa"} className="border-b border-gray-100">
+              <header className="flex items-center justify-between gap-3 bg-gray-50 px-5 py-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-sm font-semibold text-gray-900">
+                    {table.mesa?.codigo ?? "Sin mesa (para llevar)"}
+                  </h3>
+                  {table.mesa && (
+                    <>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                          table.ocupacion === "ocupada"
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-emerald-100 text-emerald-800"
+                        }`}
+                      >
+                        {table.ocupacion === "ocupada" ? "Ocupada" : "Disponible"}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {table.participantesConectados}{" "}
+                        {table.participantesConectados === 1 ? "persona" : "personas"} conectadas
+                      </span>
+                    </>
+                  )}
+                </div>
+                {table.totalPendiente !== null && (
+                  <p className="text-sm">
+                    <span className="text-gray-500">Pendiente de pago: </span>
+                    <span className="font-bold text-gray-900">
+                      {formatCop(table.totalPendiente)}
+                    </span>
+                  </p>
+                )}
+                {table.mesa && table.ocupacion === "ocupada" && (
+                  <button
+                    type="button"
+                    onClick={() => setTableToClose(table)}
+                    disabled={closingTableId !== null || table.pedidos.length > 0}
+                    className="rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                    title={
+                      table.pedidos.length > 0
+                        ? "Finaliza todos los pedidos de esta mesa antes de liberarla."
+                        : undefined
+                    }
+                  >
+                    Confirmar pago y liberar mesa
+                  </button>
+                )}
+              </header>
+              {table.pedidos.length === 0 ? (
+                <p className="px-5 py-3 text-xs text-gray-500">
+                  {table.ocupacion === "ocupada"
+                    ? "Personas vinculadas a la mesa. Aún no hay pedidos en curso."
+                    : "Mesa disponible: aún no hay personas ni pedidos."}
+                </p>
+              ) : (
+                <OrderList
+                  orders={table.pedidos}
+                  newOrderIds={newOrderIds}
+                  expandedId={expandedId}
+                  updatingId={updatingId}
+                  onToggle={toggleExpandedOrder}
+                  onChangeStatus={changeStatus}
+                />
+              )}
+            </section>
+          ))}
+        </div>
+      ) : (
+        <div id="workroom-history-panel" role="tabpanel" aria-labelledby="workroom-history-tab">
+          {historyError && (
+            <p
+              role="alert"
+              className="border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700"
+            >
+              {historyError}
+            </p>
+          )}
+          {historyLoading && <p className="px-5 py-4 text-sm text-gray-500">Cargando historial…</p>}
+          {!historyLoading && deliveredOrders.length === 0 && !historyError && (
+            <p className="px-5 py-4 text-sm text-gray-500">Aún no hay pedidos entregados hoy.</p>
+          )}
+          {deliveredOrders.length > 0 && (
+            <OrderList
+              orders={deliveredOrders}
+              newOrderIds={NO_NEW_ORDERS}
+              expandedId={expandedId}
+              updatingId={null}
+              onToggle={toggleExpandedOrder}
+              onChangeStatus={changeStatus}
+            />
+          )}
+        </div>
+      )}
+      {tableToClose && (
+        <ConfirmDialog
+          title={`Confirmar pago y liberar ${tableToClose.mesa?.codigo ?? "mesa"}?`}
+          description="Confirma que recibiste presencialmente el pago pendiente. Se cerrará esta ocupación y se conservará el historial de pedidos."
+          confirmLabel="Confirmar pago y liberar mesa"
+          busy={closingTableId !== null}
+          onCancel={() => setTableToClose(null)}
+          onConfirm={() => void closeOccupancy(tableToClose)}
+        />
+      )}
     </SurfaceCard>
+  );
+}
+
+/** Barra de progreso del pedido: pasos completados en color primario, el actual con aro. */
+function OrderProgress({ estado }: {readonly estado: OrderStatus }) {
+  const current = FLOW.indexOf(estado);
+
+  return (
+    <ol aria-label="Progreso del pedido" className="flex items-start">
+      {FLOW.map((step, i) => {
+        const done = i <= current;
+        const active = i === current;
+        const isLast = i === FLOW.length - 1;
+
+        return (
+          <li key={step} className={`flex items-start ${isLast ? "" : "flex-1"}`}>
+            <div className="flex w-16 flex-col items-center gap-1">
+              <span
+                aria-current={active ? "step" : undefined}
+                className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold transition-colors duration-500 ${
+                  done ? "bg-primary text-white" : "bg-gray-200 text-gray-500"
+                } ${active && !isLast ? "ring-4 ring-primary/20" : ""}`}
+              >
+                {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
+              </span>
+              <span
+                className={`text-center text-[10px] leading-tight ${
+                  done ? "font-semibold text-gray-900" : "text-gray-400"
+                }`}
+              >
+                {ORDER_STATUS_LABELS[step]}
+              </span>
+            </div>
+            {!isLast && (
+              <span
+                className={`mt-[10px] h-1 flex-1 rounded-full transition-colors duration-500 ${
+                  i < current ? "bg-primary" : "bg-gray-200"
+                }`}
+              />
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function OrderList({
+  orders,
+  newOrderIds,
+  expandedId,
+  updatingId,
+  onToggle,
+  onChangeStatus,
+}: {
+  readonly orders: RoomOrder[];
+  readonly newOrderIds: ReadonlySet<string>;
+  readonly expandedId: string | null;
+  readonly updatingId: string | null;
+  readonly onToggle: (orderId: string) => void;
+  readonly onChangeStatus: (order: RoomOrder, estado: OrderStatus) => void;
+}) {
+  return (
+    <ul className="divide-y divide-gray-100">
+      {orders.map((order) => (
+        <OrderRow
+          key={order.id}
+          order={order}
+          isNew={newOrderIds.has(order.id)}
+          expanded={expandedId === order.id}
+          onToggle={onToggle}
+          busy={updatingId === order.id}
+          onChangeStatus={onChangeStatus}
+        />
+      ))}
+    </ul>
   );
 }
 
@@ -196,40 +494,50 @@ function OrderRow({
   onToggle,
   busy,
   onChangeStatus,
-  note,
-  onNoteChange,
 }: {
-  order: RoomOrder;
-  isNew: boolean;
-  expanded: boolean;
-  onToggle: () => void;
-  busy: boolean;
-  onChangeStatus: (estado: OrderStatus) => void;
-  note: string;
-  onNoteChange: (value: string) => void;
+  readonly order: RoomOrder;
+  readonly isNew: boolean;
+  readonly expanded: boolean;
+  readonly onToggle: (orderId: string) => void;
+  readonly busy: boolean;
+  readonly onChangeStatus: (order: RoomOrder, estado: OrderStatus) => void;
 }) {
+  const currentIndex = FLOW.indexOf(order.estado);
+  const nextEstado = FLOW[currentIndex + 1]; // undefined si ya está entregado
+  const isFinished = order.estado === "entregado";
+
   return (
     <li className={`space-y-3 px-5 py-4 ${isNew ? "bg-orange-50/60" : ""}`}>
       <div className="flex flex-col gap-3 md:flex-row md:items-center">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="font-medium text-gray-900">Pedido #{order.numero}</p>
-            {isNew && (
-              <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-white">
-                Nuevo
-              </span>
-            )}
-            <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-gray-900">Pedido #{order.numero}</p>
+              {isNew && (
+                <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-white">
+                  Nuevo
+                </span>
+              )}
+            </div>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                BADGE_STYLES[order.estado] ?? BADGE_FALLBACK
+              }`}
+            >
               {ORDER_STATUS_LABELS[order.estado]}
             </span>
           </div>
           <p className="text-xs text-gray-500">
-            {order.confirmadoEn ? `Recibido ${TIME.format(new Date(order.confirmadoEn))} · ` : ""}
+            {isFinished && order.entregadoEn
+              ? `Entregado ${TIME.format(new Date(order.entregadoEn))} · `
+              : order.confirmadoEn
+                ? `Recibido ${TIME.format(new Date(order.confirmadoEn))} · `
+                : ""}
             {formatCop(order.total)}
           </p>
           <button
             type="button"
-            onClick={onToggle}
+            onClick={() => onToggle(order.id)}
             aria-expanded={expanded}
             className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-primary"
           >
@@ -239,37 +547,53 @@ function OrderRow({
             />
           </button>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {ACTIONS.map(({ estado, label, Icon }) => (
-            <button
-              key={estado}
-              type="button"
-              disabled={!order.siguientesEstados.includes(estado) || busy}
-              onClick={() => onChangeStatus(estado)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 enabled:hover:border-primary enabled:hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {label}
-            </button>
-          ))}
+
+        <div className="space-y-3 md:w-[26rem]">
+          <OrderProgress estado={order.estado} />
+
+          {isFinished ? (
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-500">
+              <PackageCheck className="h-4 w-4" />
+              Pedido entregado · no hay más acciones
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {ACTIONS.map(({ estado, label, Icon }) => {
+                const index = FLOW.indexOf(estado);
+                const alreadyDone = index <= currentIndex;
+                // Solo se habilita el siguiente paso, y únicamente si la API lo permite.
+                const enabled =
+                  estado === nextEstado && order.siguientesEstados.includes(estado) && !busy;
+                let statusClassName = "border-gray-200 text-gray-700 opacity-40";
+                if (alreadyDone) {
+                  statusClassName = "border-transparent bg-gray-100 text-gray-400";
+                } else if (enabled) {
+                  statusClassName = "border-primary text-primary hover:bg-primary hover:text-white";
+                }
+
+                return (
+                  <button
+                    key={estado}
+                    type="button"
+                    disabled={!enabled}
+                    onClick={() => onChangeStatus(order, estado)}
+                    className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed ${statusClassName}`}
+                  >
+                    {alreadyDone ? (
+                      <Check className="h-3.5 w-3.5" />
+                    ) : (
+                      <Icon className="h-3.5 w-3.5" />
+                    )}
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
-      {expanded && (
-        <>
-          <RoomOrderDetail order={order} />
-          <label className="block text-xs text-gray-600">
-            Nota para el próximo cambio (opcional)
-            <input
-              type="text"
-              maxLength={300}
-              value={note}
-              onChange={(e) => onNoteChange(e.target.value)}
-              placeholder="Ej.: sale por la ventanilla 2"
-              className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900"
-            />
-          </label>
-        </>
-      )}
+
+      {expanded && <RoomOrderDetail order={order} />}
     </li>
   );
 }

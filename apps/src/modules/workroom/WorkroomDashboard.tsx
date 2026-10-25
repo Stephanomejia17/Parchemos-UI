@@ -1,7 +1,8 @@
 "use client";
 
-import { LogOut, MapPin } from "lucide-react";
+import { HelpCircle, LogOut, MapPin } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { useAuth } from "@/shared/auth";
 import { PrimaryButton, SurfaceCard } from "@/shared/components";
 import { OrderStatusPanel } from "./OrderStatusPanel";
@@ -10,6 +11,9 @@ import { WorkroomKpis } from "./WorkroomKpis";
 export function WorkroomDashboard() {
   const { user, logout } = useAuth();
   const location = user?.assignedLocation;
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpHovered, setHelpHovered] = useState(false);
+  const helpVisible = helpOpen || helpHovered;
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-6 md:px-8">
@@ -26,13 +30,56 @@ export function WorkroomDashboard() {
               Este es tu panel de trabajo para la atención en sala.
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <Link
               href="/staff_profile"
               className="inline-flex items-center rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700"
             >
               Mi perfil
             </Link>
+            <div
+              className="relative"
+              onMouseEnter={() => setHelpHovered(true)}
+              onMouseLeave={() => setHelpHovered(false)}
+            >
+              <button
+                type="button"
+                aria-label="Ayuda para usar el panel"
+                aria-expanded={helpVisible}
+                aria-describedby={helpVisible ? "workroom-help" : undefined}
+                onClick={() => setHelpOpen((open) => !open)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") setHelpOpen(false);
+                }}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <HelpCircle className="h-5 w-5" />
+              </button>
+              {helpVisible && (
+                <div
+                  id="workroom-help"
+                  role="tooltip"
+                  className="absolute right-0 top-12 z-20 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-xl"
+                >
+                  <h2 className="font-semibold text-gray-900">Cómo usar el panel</h2>
+                  <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-sm leading-5 text-gray-600">
+                    <li>Los pedidos nuevos de tu sede aparecen solos, marcados como “Nuevo”.</li>
+                    <li>Abre “Ver detalle” para ver productos, cantidades, modalidad y mesa.</li>
+                    <li>
+                      Avanza el estado con los botones; el comensal recibe el aviso al instante.
+                    </li>
+                    <li>
+                      Cada mesa muestra lo que falta por pagar, incluidos los pedidos ya entregados.
+                    </li>
+                  </ol>
+                  <p className="mt-3 rounded-xl bg-orange-50 p-3 text-xs leading-5 text-orange-900">
+                    Usa “Confirmar pago y liberar mesa” solo después de recibir el pago
+                    presencialmente y finalizar todos sus pedidos. La ocupación se cierra, pero el
+                    historial se conserva.
+                  </p>
+                </div>
+              )}
+            </div>
             <PrimaryButton type="button" onClick={() => void logout()}>
               <LogOut className="h-4 w-4" />
               Cerrar sesión
@@ -60,7 +107,7 @@ export function WorkroomDashboard() {
 
         {location && <WorkroomKpis locationId={location.id} />}
 
-        <section className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <section>
           {location ? (
             <OrderStatusPanel locationId={location.id} />
           ) : (
@@ -68,18 +115,6 @@ export function WorkroomDashboard() {
               Cuando te asignen una sede verás aquí sus pedidos en curso.
             </SurfaceCard>
           )}
-
-          <SurfaceCard className="p-5">
-            <h2 className="font-semibold text-gray-900">Cómo usar el panel</h2>
-            <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-sm leading-6 text-gray-500">
-              <li>Los pedidos nuevos de tu sede aparecen solos, marcados como “Nuevo”.</li>
-              <li>Abre “Ver detalle” para ver productos, cantidades, modalidad y mesa.</li>
-              <li>Avanza el estado con los botones; el comensal recibe el aviso al instante.</li>
-            </ol>
-            <div className="mt-4 rounded-xl bg-orange-50 p-3 text-xs text-orange-800">
-              Cada mesa muestra lo que falta por pagar, incluidos los pedidos ya entregados.
-            </div>
-          </SurfaceCard>
         </section>
       </div>
     </main>

@@ -8,6 +8,7 @@ export { IconButton } from "./IconButton";
 export { Header } from "./Header";
 export { DesktopHeader } from "./DesktopHeader";
 export { TemporaryMessage } from "./TemporaryMessage";
+export { ConfirmDialog } from "./ConfirmDialog";
 export type { HeaderProps } from "./Header";
 export type { DesktopHeaderProps, DesktopBreadcrumb } from "./DesktopHeader";
 export type { TemporaryMessageType } from "./TemporaryMessage";

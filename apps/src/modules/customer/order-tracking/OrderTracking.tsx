@@ -18,11 +18,12 @@ import {
   timelineFor,
 } from "./order-status";
 import { OrderStatusHistory } from "./OrderStatusHistory";
+import { SurveyPrompt } from "@/modules/customer/orders/SurveyPrompt";
 
 /** Respaldo por si el canal en tiempo real no está disponible. */
 const POLL_INTERVAL_MS = 20_000;
 
-export function OrderTracking({ orderId }: { orderId: string }) {
+export function OrderTracking({ orderId }: Readonly<{ orderId: string }>) {
   const router = useRouter();
   const [order, setOrder] = useState<OrderStatusInfo | null>(null);
   const [history, setHistory] = useState<OrderStatusChange[]>([]);
@@ -97,18 +98,33 @@ export function OrderTracking({ orderId }: { orderId: string }) {
           </div>
         )}
 
-        {order && <OrderStatusCard order={order} />}
+        {order && (
+          <>
+            <OrderStatusCard order={order} />
+            <SurveyPrompt
+              orderId={order.id}
+              status={order.estado}
+              locationId={order.sedeId}
+              locationName={order.sedeNombre}
+            />
+          </>
+        )}
         {order && <OrderStatusHistory changes={history} />}
       </div>
     </div>
   );
 }
 
-function OrderStatusCard({ order }: { order: OrderStatusInfo }) {
+function OrderStatusCard({ order }: Readonly<{ order: OrderStatusInfo }>) {
   const steps = timelineFor(order.modalidad);
   const current = currentStepIndex(order.modalidad, order.estado);
   const cancelled = order.estado === "cancelado";
-  const StatusIcon = cancelled ? CircleX : order.estado === "entregado" ? PackageCheck : ChefHat;
+  let StatusIcon = ChefHat;
+  if (cancelled) {
+    StatusIcon = CircleX;
+  } else if (order.estado === "entregado") {
+    StatusIcon = PackageCheck;
+  }
 
   return (
     <div className="bg-white rounded-2xl p-4 border border-border shadow-sm">

@@ -1,44 +1,72 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { MenuScreen } from "@/modules/customer/menu/MenuScreen";
 import { mapMenuItem } from "@/lib/api/menu";
 import type { Dish } from "@/shared/types/menu";
 import { LocationProvider } from "@/shared/context/location-context";
-import { OrderProvider } from "@/shared/context/order-context";
+import { OrderProvider,useOrder  } from "@/shared/context/order-context";
 import { apiFetch } from "@/shared/services/http/api-client";
-import type { PublicTable } from "@/modules/customer/tables/TableAssociation";
+import { formatCop } from "@/shared/utils/currency";
+import { TableLinkDialog } from "@/modules/customer/tables/TableLinkDialog";
 
 function PedidoContent() {
   const params = useSearchParams();
   const mesaId = params.get("mesa");
-  const [table, setTable] = useState<PublicTable | null>(null);
+  const requestedLocationId = params.get("locationId");
+  const [locationId, setLocationId] = useState<string | null>(requestedLocationId);
   const [dishes, setDishes] = useState<Dish[] | null>(null);
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
+  const [startWithNumberEntry, setStartWithNumberEntry] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
+    if (requestedLocationId) {
+      setLocationId(requestedLocationId);
+      return;
+    }
     if (!mesaId) {
-      setError("El enlace no contiene una mesa válida.");
+      setError("El enlace no contiene una sede válida.");
       return;
     }
     void apiFetch<PublicTable>(`/mesas/${mesaId}/public`)
-      .then(setTable)
-      .catch(() => setError("Esta mesa está inactiva o el QR ya no es válido."));
-  }, [mesaId]);
+      .then((publicTable) => {
+        setLocationId(publicTable.locationId);
+      })
+      .catch(() => setError("No pudimos identificar la sede de este código QR."));
+  }, [mesaId, requestedLocationId]);
   useEffect(() => {
-    if (!table) return;
-    // Corrección QR: conservar ambos identificadores para que el pedido llegue
-    // al backend con su sede y mesa, incluso al navegar entre pantallas.
-    window.localStorage.setItem("parchemos:mesa", table.tableId);
-    window.localStorage.setItem("parchemos:location", table.locationId);
-  }, [table]);
+    if (!locationId) return;
+    window.localStorage.setItem("parchemos:location", locationId);
+    window.localStorage.setItem("parchemos:activeLocation", locationId);
+  }, [locationId]);
   useEffect(() => {
-    if (!table) return;
+    if (!locationId) return;
     setDishes(null);
-    void apiFetch<{ data: { items: Array<Parameters<typeof mapMenuItem>[0]> } }>(`/publicos/${encodeURIComponent(table.locationId)}/menu`)
-      .then((response) => setDishes(response.data.items.filter((item) => item.status !== "inactivo").map(mapMenuItem)))
+    void apiFetch<{ data: { items: Array<Parameters<typeof mapMenuItem>[0]> } }>(
+      `/publicos/${encodeURIComponent(locationId)}/menu`,
+    )
+      .then((response) =>
+        setDishes(
+          response.data.items.filter((item) => item.status !== "inactivo").map(mapMenuItem),
+        ),
+      )
       .catch(() => setError("No pudimos cargar el menú de esta sede."));
-  }, [table]);
+  }, [locationId]);
+  useEffect(() => {
+    if (!locationId || !dishes) return;
+    const choiceKey = `parchemos:qr-menu-choice:${locationId}`;
+    const requestedLink = params.get("vincularMesa") === "1";
+    if (requestedLink) {
+      setShowLinkDialog(true);
+      setStartWithNumberEntry(true);
+      return;
+    }
+    if (!requestedLink && window.sessionStorage.getItem(choiceKey) !== "seen") {
+      setShowLinkDialog(true);
+      setStartWithNumberEntry(false);
+    }
+  }, [dishes, locationId, params]);
   if (error)
     return (
       <main className="flex min-h-screen items-center justify-center bg-background p-6 text-center">
@@ -47,7 +75,7 @@ function PedidoContent() {
         </p>
       </main>
     );
-  if (!table || !dishes)
+  if (!locationId || !dishes)
     return (
       <main className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
         Cargando menú...
@@ -55,17 +83,81 @@ function PedidoContent() {
     );
   return (
     <main className="h-screen">
-      <div className="sr-only">
-        {table.restaurantName} · Mesa {table.tableCode}
-      </div>
-      <LocationProvider initialLocationId={table.locationId}>
+      <LocationProvider initialLocationId={locationId}>
         <OrderProvider>
-          <MenuScreen dishes={dishes} />
+          <QrMenu
+            dishes={dishes}
+            locationId={locationId}
+            showLinkDialog={showLinkDialog}
+            startWithNumberEntry={startWithNumberEntry}
+            onCloseLinkDialog={() => {
+              window.sessionStorage.setItem(`parchemos:qr-menu-choice:${locationId}`, "seen");
+              setShowLinkDialog(false);
+            }}
+            onLinked={() => {
+              window.sessionStorage.setItem(`parchemos:qr-menu-choice:${locationId}`, "seen");
+              setShowLinkDialog(false);
+            }}
+          />
         </OrderProvider>
       </LocationProvider>
     </main>
   );
 }
+
+function QrMenu({
+  dishes,
+  locationId,
+  showLinkDialog,
+  startWithNumberEntry,
+  onCloseLinkDialog,
+  onLinked,
+}: {
+  readonly dishes: Dish[];
+  readonly locationId: string;
+  readonly showLinkDialog: boolean;
+  readonly startWithNumberEntry: boolean;
+  readonly onCloseLinkDialog: () => void;
+  readonly onLinked: () => void;
+}) {
+  const router = useRouter();
+  const { totalItems, subtotal } = useOrder();
+  const total = subtotal + Math.round(subtotal * 0.1);
+  const loginReturnTo = `/pedido?locationId=${encodeURIComponent(locationId)}&vincularMesa=1`;
+
+  return (
+    <>
+      <MenuScreen dishes={dishes} />
+      <TableLinkDialog
+        open={showLinkDialog}
+        locationId={locationId}
+        mode="choose"
+        startWithNumberEntry={startWithNumberEntry}
+        loginReturnTo={loginReturnTo}
+        onDismiss={onCloseLinkDialog}
+        onLinked={onLinked}
+      />
+      {totalItems > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-white/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-lg backdrop-blur">
+          <button
+            type="button"
+            onClick={() =>
+              router.push(`/order-summary?locationId=${encodeURIComponent(locationId)}`)
+            }
+            className="mx-auto flex w-full max-w-xl items-center justify-between rounded-xl bg-primary px-4 py-3 font-semibold text-white"
+          >
+            <span>
+              Ver pedido · {totalItems} {totalItems === 1 ? "producto" : "productos"}
+            </span>
+            <span>{formatCop(total)}</span>
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
+type PublicTable = { locationId: string };
 
 export default function PedidoPage() {
   // useSearchParams (la mesa del QR) necesita una frontera de Suspense.

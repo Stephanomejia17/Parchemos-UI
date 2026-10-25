@@ -17,6 +17,7 @@ import { mapProductToMenuItem } from "@/shared/services/menu/menu-mapper";
 export interface OrderLine {
   item: MenuItem;
   quantity: number;
+  notes?: string;
 }
 
 interface AddResult {
@@ -35,6 +36,7 @@ interface OrderContextValue {
   removeItem: (itemId: string) => void;
   incrementQuantity: (itemId: string) => void;
   decrementQuantity: (itemId: string) => void;
+  updateNotes: (itemId: string, notes: string) => void;
   quantityOf: (itemId: string) => number;
   clearOrder: () => void;
 }
@@ -52,7 +54,9 @@ function isOrderLine(value: unknown): value is OrderLine {
     typeof item.price === "number" &&
     typeof line.quantity === "number" &&
     Number.isInteger(line.quantity) &&
-    line.quantity > 0,
+    line.quantity > 0 &&
+    (line.notes === undefined ||
+      (typeof line.notes === "string" && line.notes.length <= 300)),
   );
 }
 
@@ -163,6 +167,14 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const updateNotes = (itemId: string, notes: string) => {
+    setLines((prev) =>
+      prev.map((line) =>
+        line.item.id === itemId ? { ...line, notes: notes.slice(0, 300) } : line,
+      ),
+    );
+  };
+
   const quantityOf = (itemId: string) => lines.find((l) => l.item.id === itemId)?.quantity ?? 0;
 
   const clearOrder = () => setLines([]);
@@ -214,6 +226,7 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     removeItem,
     incrementQuantity,
     decrementQuantity,
+    updateNotes,
     quantityOf,
     clearOrder,
   };
