@@ -10,12 +10,13 @@ import {
   PackageCheck,
   RefreshCw,
 } from "lucide-react";
-import { SurfaceCard } from "@/shared/components";
+import { ConfirmDialog, SurfaceCard } from "@/shared/components";
 import { ORDER_STATUS_LABELS } from "@/shared/constants";
 import {
   orderService,
   subscribeToNewOrders,
   subscribeToOrderStatus,
+  subscribeToTableUpdates,
   type OrderStatus,
   type RoomOrder,
   type TableOrders,
@@ -55,10 +56,16 @@ const TIME = new Intl.DateTimeFormat("es-CO", { hour: "numeric", minute: "2-digi
  * su progreso y solo permite avanzar al siguiente estado si la API lo permite.
  */
 export function OrderStatusPanel({ locationId }: { locationId: string }) {
+  const [activeTab, setActiveTab] = useState<"tables" | "history">("tables");
   const [tables, setTables] = useState<TableOrders[]>([]);
+  const [deliveredOrders, setDeliveredOrders] = useState<RoomOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [closingTableId, setClosingTableId] = useState<string | null>(null);
+  const [tableToClose, setTableToClose] = useState<TableOrders | null>(null);
   const [newOrderIds, setNewOrderIds] = useState<ReadonlySet<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
   // Nota opcional por pedido: se envía con el próximo cambio de estado y queda en el historial.
@@ -76,11 +83,33 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
     }
   }, [locationId]);
 
+  const loadDelivered = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const response = await orderService.listDeliveredToday(locationId);
+      setDeliveredOrders(response.data);
+      setHistoryError(null);
+    } catch (err) {
+      setHistoryError(
+        err instanceof Error ? err.message : "No pudimos consultar los pedidos entregados.",
+      );
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [locationId]);
+
   useEffect(() => {
     void load();
     const timer = window.setInterval(() => void load(), POLL_INTERVAL_MS);
     return () => window.clearInterval(timer);
   }, [load]);
+
+  useEffect(() => {
+    if (activeTab !== "history") return;
+    void loadDelivered();
+    const timer = window.setInterval(() => void loadDelivered(), POLL_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [activeTab, loadDelivered]);
 
   // GP-05 CA1: los pedidos nuevos y los cambios de otros compañeros llegan por socket.
   useEffect(() => {
@@ -107,12 +136,19 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
         })),
       );
       void load();
+      if (activeTab === "history" && event.estado === "entregado") {
+        void loadDelivered();
+      }
+    });
+    const unsubscribeTables = subscribeToTableUpdates((event) => {
+      if (event.sedeId === locationId) void load();
     });
     return () => {
       unsubscribeNew();
       unsubscribeStatus();
+      unsubscribeTables();
     };
-  }, [locationId, load]);
+  }, [activeTab, load, loadDelivered, locationId]);
 
   const changeStatus = async (order: RoomOrder, estado: OrderStatus) => {
     setUpdatingId(order.id);
@@ -147,78 +183,216 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
     }
   };
 
-  const hasContent = tables.length > 0;
+  const closeOccupancy = async (table: TableOrders) => {
+    const tableId = table.mesa?.id;
+    if (!tableId) return;
+
+    setClosingTableId(tableId);
+    setError(null);
+    try {
+      await orderService.closeTableOccupancy(tableId);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No pudimos cerrar la ocupación.");
+    } finally {
+      setClosingTableId(null);
+      setTableToClose(null);
+      void load();
+    }
+  };
+
+  const activeTablesCount = tables.filter((table) => table.ocupacion === "ocupada").length;
 
   return (
     <SurfaceCard className="overflow-hidden">
-      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-        <div>
-          <h2 className="font-semibold text-gray-900">Pedidos en curso</h2>
-          <p className="text-xs text-gray-500">
-            Los pedidos nuevos aparecen solos; actualiza el estado para avisarle al comensal
-          </p>
+      <div className="border-b border-gray-100 px-5 py-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="font-semibold text-gray-900">
+              {activeTab === "tables" ? "Mesas activas" : "Historial de Pedidos Entregados"}
+            </h2>
+            <p className="text-xs text-gray-500">
+              {activeTab === "tables"
+                ? "Consulta pedidos, saldos pendientes y ocupación de cada mesa."
+                : "Pedidos entregados en tu sede durante la jornada de hoy."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void (activeTab === "tables" ? load() : loadDelivered())}
+            aria-label={activeTab === "tables" ? "Actualizar mesas" : "Actualizar historial"}
+            className="rounded-xl p-2 text-gray-500 hover:bg-gray-100"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          aria-label="Actualizar pedidos"
-          className="rounded-xl p-2 text-gray-500 hover:bg-gray-100"
-        >
-          <RefreshCw className="h-4 w-4" />
-        </button>
+        <div className="mt-4 flex gap-2" role="tablist" aria-label="Pedidos de sala">
+          <button
+            type="button"
+            id="workroom-tables-tab"
+            role="tab"
+            aria-selected={activeTab === "tables"}
+            aria-controls="workroom-tables-panel"
+            onClick={() => setActiveTab("tables")}
+            className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+              activeTab === "tables"
+                ? "bg-primary text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            Mesas activas <span className="ml-1 opacity-80">({activeTablesCount})</span>
+          </button>
+          <button
+            type="button"
+            id="workroom-history-tab"
+            role="tab"
+            aria-selected={activeTab === "history"}
+            aria-controls="workroom-history-panel"
+            onClick={() => setActiveTab("history")}
+            className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+              activeTab === "history"
+                ? "bg-primary text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            Entregados hoy <span className="ml-1 opacity-80">({deliveredOrders.length})</span>
+          </button>
+        </div>
       </div>
 
-      {error && (
-        <p
-          role="alert"
-          className="border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700"
-        >
-          {error}
-        </p>
-      )}
-      {loading && <p className="px-5 py-4 text-sm text-gray-500">Cargando pedidos…</p>}
-      {!loading && !hasContent && (
-        <p className="px-5 py-4 text-sm text-gray-500">No hay pedidos pendientes en tu sede.</p>
-      )}
-
-      {tables.map((table) => (
-        <section key={table.mesa?.id ?? "sin-mesa"} className="border-b border-gray-100">
-          <header className="flex items-center justify-between gap-3 bg-gray-50 px-5 py-2.5">
-            <h3 className="text-sm font-semibold text-gray-900">
-              {table.mesa?.codigo ?? "Sin mesa (para llevar)"}
-            </h3>
-            {table.totalPendiente !== null && (
-              <p className="text-sm">
-                <span className="text-gray-500">Pendiente de pago: </span>
-                <span className="font-bold text-gray-900">{formatCop(table.totalPendiente)}</span>
-              </p>
-            )}
-          </header>
-          {table.pedidos.length === 0 ? (
-            <p className="px-5 py-3 text-xs text-gray-500">
-              Sin pedidos en curso: queda por cobrar lo ya entregado.
+      {activeTab === "tables" ? (
+        <div id="workroom-tables-panel" role="tabpanel" aria-labelledby="workroom-tables-tab">
+          {error && (
+            <p
+              role="alert"
+              className="border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700"
+            >
+              {error}
             </p>
-          ) : (
+          )}
+          {loading && <p className="px-5 py-4 text-sm text-gray-500">Cargando mesas…</p>}
+          {!loading && tables.length === 0 && (
+            <p className="px-5 py-4 text-sm text-gray-500">No hay mesas registradas en tu sede.</p>
+          )}
+          {tables.map((table) => (
+            <section key={table.mesa?.id ?? "sin-mesa"} className="border-b border-gray-100">
+              <header className="flex items-center justify-between gap-3 bg-gray-50 px-5 py-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-sm font-semibold text-gray-900">
+                    {table.mesa?.codigo ?? "Sin mesa (para llevar)"}
+                  </h3>
+                  {table.mesa && (
+                    <>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                          table.ocupacion === "ocupada"
+                            ? "bg-amber-100 text-amber-800"
+                            : "bg-emerald-100 text-emerald-800"
+                        }`}
+                      >
+                        {table.ocupacion === "ocupada" ? "Ocupada" : "Disponible"}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {table.participantesConectados}{" "}
+                        {table.participantesConectados === 1 ? "persona" : "personas"} conectadas
+                      </span>
+                    </>
+                  )}
+                </div>
+                {table.totalPendiente !== null && (
+                  <p className="text-sm">
+                    <span className="text-gray-500">Pendiente de pago: </span>
+                    <span className="font-bold text-gray-900">
+                      {formatCop(table.totalPendiente)}
+                    </span>
+                  </p>
+                )}
+                {table.mesa && table.ocupacion === "ocupada" && (
+                  <button
+                    type="button"
+                    onClick={() => setTableToClose(table)}
+                    disabled={closingTableId !== null || table.pedidos.length > 0}
+                    className="rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                    title={
+                      table.pedidos.length > 0
+                        ? "Finaliza todos los pedidos de esta mesa antes de liberarla."
+                        : undefined
+                    }
+                  >
+                    Confirmar pago y liberar mesa
+                  </button>
+                )}
+              </header>
+              {table.pedidos.length === 0 ? (
+                <p className="px-5 py-3 text-xs text-gray-500">
+                  {table.ocupacion === "ocupada"
+                    ? "Personas vinculadas a la mesa. Aún no hay pedidos en curso."
+                    : "Mesa disponible: aún no hay personas ni pedidos."}
+                </p>
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {table.pedidos.map((order) => (
+                    <OrderRow
+                      key={order.id}
+                      order={order}
+                      isNew={newOrderIds.has(order.id)}
+                      expanded={expandedId === order.id}
+                      onToggle={() => setExpandedId(expandedId === order.id ? null : order.id)}
+                      busy={updatingId === order.id}
+                      onChangeStatus={(estado) => void changeStatus(order, estado)}
+                      note={notes[order.id] ?? ""}
+                      onNoteChange={(value) =>
+                        setNotes((current) => ({ ...current, [order.id]: value }))
+                      }
+                    />
+                  ))}
+                </ul>
+              )}
+            </section>
+          ))}
+        </div>
+      ) : (
+        <div id="workroom-history-panel" role="tabpanel" aria-labelledby="workroom-history-tab">
+          {historyError && (
+            <p
+              role="alert"
+              className="border-b border-red-100 bg-red-50 px-5 py-3 text-sm text-red-700"
+            >
+              {historyError}
+            </p>
+          )}
+          {historyLoading && <p className="px-5 py-4 text-sm text-gray-500">Cargando historial…</p>}
+          {!historyLoading && deliveredOrders.length === 0 && !historyError && (
+            <p className="px-5 py-4 text-sm text-gray-500">Aún no hay pedidos entregados hoy.</p>
+          )}
+          {deliveredOrders.length > 0 && (
             <ul className="divide-y divide-gray-100">
-              {table.pedidos.map((order) => (
+              {deliveredOrders.map((order) => (
                 <OrderRow
                   key={order.id}
                   order={order}
-                  isNew={newOrderIds.has(order.id)}
+                  isNew={false}
                   expanded={expandedId === order.id}
                   onToggle={() => setExpandedId(expandedId === order.id ? null : order.id)}
-                  busy={updatingId === order.id}
-                  onChangeStatus={(estado) => void changeStatus(order, estado)}
-                  note={notes[order.id] ?? ""}
-                  onNoteChange={(value) =>
-                    setNotes((current) => ({ ...current, [order.id]: value }))
-                  }
+                  busy={false}
+                  onChangeStatus={() => undefined}
+                  note=""
+                  onNoteChange={() => undefined}
                 />
               ))}
             </ul>
           )}
-        </section>
-      ))}
+        </div>
+      )}
+      {tableToClose && (
+        <ConfirmDialog
+          title={`Confirmar pago y liberar ${tableToClose.mesa?.codigo ?? "mesa"}?`}
+          description="Confirma que recibiste presencialmente el pago pendiente. Se cerrará esta ocupación y se conservará el historial de pedidos."
+          confirmLabel="Confirmar pago y liberar mesa"
+          busy={closingTableId !== null}
+          onCancel={() => setTableToClose(null)}
+          onConfirm={() => void closeOccupancy(tableToClose)}
+        />
+      )}
     </SurfaceCard>
   );
 }
@@ -312,7 +486,11 @@ function OrderRow({
             </span>
           </div>
           <p className="text-xs text-gray-500">
-            {order.confirmadoEn ? `Recibido ${TIME.format(new Date(order.confirmadoEn))} · ` : ""}
+            {isFinished && order.entregadoEn
+              ? `Entregado ${TIME.format(new Date(order.entregadoEn))} · `
+              : order.confirmadoEn
+                ? `Recibido ${TIME.format(new Date(order.confirmadoEn))} · `
+                : ""}
             {formatCop(order.total)}
           </p>
           <button
@@ -376,17 +554,6 @@ function OrderRow({
       {expanded && (
         <>
           <RoomOrderDetail order={order} />
-          <label className="block text-xs text-gray-600">
-            Nota para el próximo cambio (opcional)
-            <input
-              type="text"
-              maxLength={300}
-              value={note}
-              onChange={(e) => onNoteChange(e.target.value)}
-              placeholder="Ej.: sale por la ventanilla 2"
-              className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900"
-            />
-          </label>
         </>
       )}
     </li>

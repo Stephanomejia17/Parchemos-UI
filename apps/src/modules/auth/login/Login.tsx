@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 import { BrandLogo, PrimaryButton } from "@/shared/components";
 import { ApiError, roleHomePath, useAuth } from "@/shared/auth";
 import { RemoteImage } from "@/shared/components/media/RemoteImage";
@@ -20,8 +20,6 @@ export function Login() {
   const params = useSearchParams();
   const { login } = useAuth();
 
-  // Aviso tras un registro correcto (GU-01 Esc. 1 y 2).
-  const justRegistered = params.get("registrado") === "1";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,7 +36,14 @@ export function Login() {
     try {
       const user = await login({ email: email.trim(), password });
       // GU-02 Esc. 1: cada rol entra a su propio panel.
-      router.replace(roleHomePath(user.role));
+      const returnTo = params.get("returnTo");
+      const safeReturnTo =
+        returnTo?.startsWith("/") &&
+        !returnTo.startsWith("//") &&
+        !returnTo.includes("\\")
+          ? returnTo
+          : roleHomePath(user.role);
+      router.replace(safeReturnTo);
     } catch (err) {
       setError(toLoginError(err));
       setPassword("");

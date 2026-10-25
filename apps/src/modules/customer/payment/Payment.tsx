@@ -7,28 +7,73 @@ import { PrimaryButton } from "@/shared/components";
 import { useOrder } from "@/shared/context/order-context";
 import { useRestaurantContext } from "@/shared/context/location-context";
 import { orderService, type CreatedOrder } from "@/shared/services/orders/order.service";
+import { sharedTableOrderService } from "@/shared/services";
+import { TableLinkDialog } from "@/modules/customer/tables/TableLinkDialog";
+import type { PublicTable } from "@/modules/customer/tables/TableAssociation";
+import { useAuth } from "@/shared/auth";
+import { ApiError } from "@/shared/auth/types";
 
 export function Payment() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { restaurantId: contextLocationId } = useRestaurantContext();
-  const locationId = searchParams.get("locationId") ?? contextLocationId ?? (typeof window !== "undefined" ? window.localStorage.getItem("parchemos:location") : null);
+  const locationId =
+    searchParams.get("locationId") ??
+    contextLocationId ??
+    (typeof window !== "undefined" ? window.localStorage.getItem("parchemos:location") : null);
   const [tableId, setTableId] = useState<string | null>(null);
+  const [showAssociation, setShowAssociation] = useState(false);
   const { lines, subtotal, availabilityStatus, unavailableLines, refreshAvailability, clearOrder } =
     useOrder();
+  const { user, status: authStatus } = useAuth();
   const [submittedOrder, setSubmittedOrder] = useState<CreatedOrder | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   useEffect(() => {
     const storedLocation = window.localStorage.getItem("parchemos:location");
     const storedTable = window.localStorage.getItem("parchemos:mesa");
-    setTableId(searchParams.get("mesa") ?? (storedLocation === locationId ? storedTable : null));
+    const candidate =
+      searchParams.get("mesa") ?? (storedLocation === locationId ? storedTable : null);
+    const requestedLink = searchParams.get("vincularMesa") === "1";
+    let active = true;
+    setTableId(candidate);
+    if (!candidate) {
+      setShowAssociation(requestedLink);
+      return;
+    }
+    if (requestedLink) setShowAssociation(true);
+
+    void sharedTableOrderService
+      .get(candidate)
+      .then((session) => {
+        if (!active) return;
+        if (session.table.locationId !== locationId) {
+          setTableId(null);
+          setShowAssociation(true);
+          setSubmitError("La mesa seleccionada no pertenece a esta sede. Elige otra mesa.");
+          return;
+        }
+        setShowAssociation(false);
+      })
+      .catch((reason: unknown) => {
+        if (active) {
+          if (reason instanceof ApiError && [400, 401, 403, 404].includes(reason.status)) {
+            setTableId(null);
+            setShowAssociation(true);
+          } else {
+            setTableId(null);
+            setSubmitError("No pudimos verificar la mesa. Revisa tu conexión antes de continuar.");
+          }
+        }
+      });
+    return () => {
+      active = false;
+    };
   }, [locationId, searchParams]);
   const total = subtotal + Math.round(subtotal * 0.1);
   const canSubmit =
     lines.length > 0 &&
     Boolean(locationId) &&
-    Boolean(tableId) &&
     availabilityStatus === "checked" &&
     unavailableLines.length === 0 &&
     !submitting;
@@ -36,6 +81,18 @@ export function Payment() {
   const submitOrder = async () => {
     if (!canSubmit || !locationId) return;
     setSubmitError(null);
+    if (!tableId) {
+      setShowAssociation(true);
+      return;
+    }
+    if (authStatus !== "authenticated" || user?.role !== "comensal") {
+      setSubmitError(
+        authStatus === "anonymous"
+          ? "Inicia sesión con una cuenta de comensal para enviar tu pedido."
+          : "Solo una cuenta de comensal puede enviar este pedido.",
+      );
+      return;
+    }
     setSubmitting(true);
     try {
       if (!(await refreshAvailability())) {
@@ -44,10 +101,32 @@ export function Payment() {
         );
         return;
       }
+      let session: Awaited<ReturnType<typeof sharedTableOrderService.get>>;
+      try {
+        session = await sharedTableOrderService.get(tableId);
+      } catch (error) {
+        if (error instanceof ApiError && [400, 401, 403, 404].includes(error.status)) {
+          setTableId(null);
+          setShowAssociation(true);
+          setSubmitError("La vinculación ya no está activa. Vincúlate de nuevo para continuar.");
+          return;
+        }
+        throw error;
+      }
+      if (session.table.locationId !== locationId) {
+        setTableId(null);
+        setShowAssociation(true);
+        setSubmitError("La mesa seleccionada no pertenece a esta sede. Elige otra mesa.");
+        return;
+      }
       const order = await orderService.create({
         locationId,
-        ...(tableId ? { tableId } : {}),
-        items: lines.map(({ item, quantity }) => ({ productId: item.id, quantity })),
+        tableId,
+        items: lines.map(({ item, quantity, notes }) => ({
+          productId: item.id,
+          quantity,
+          ...(notes?.trim() ? { notes: notes.trim() } : {}),
+        })),
       });
       setSubmittedOrder(order);
       clearOrder();
@@ -130,9 +209,23 @@ export function Payment() {
             </button>
           </div>
         )}
+        {locationId && tableId && !showAssociation && (
+          <div className="flex items-center justify-between rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+            <span>Mesa seleccionada</span>
+            <button
+              type="button"
+              onClick={() => setShowAssociation(true)}
+              className="font-bold underline"
+            >
+              Cambiar
+            </button>
+          </div>
+        )}
         <section className="flex flex-col gap-4">
           <div className="rounded-2xl bg-gradient-to-r from-primary to-orange-400 p-5 text-white">
-            <p className="text-sm font-medium opacity-80">Total del pedido</p>
+            <p className="text-sm font-medium opacity-80">
+              {tableId ? "Mi selección" : "Total del pedido"}
+            </p>
             <p className="mt-1 text-4xl font-extrabold">${total.toLocaleString()}</p>
             <p className="mt-3 text-sm opacity-80">Subtotal + tarifa de servicio</p>
           </div>
@@ -146,7 +239,11 @@ export function Payment() {
             disabled={!canSubmit}
             className="w-full rounded-2xl bg-accent py-4 text-base font-bold text-white shadow-lg shadow-green-200 transition-all hover:bg-green-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {submitting ? "Registrando pedido…" : `Confirmar pedido · $${total.toLocaleString()}`}
+            {submitting
+              ? "Registrando pedido…"
+              : tableId
+                ? `Enviar pedido · $${total.toLocaleString()}`
+                : "Seleccionar mesa para continuar"}
           </button>
           {lines.length === 0 && (
             <p className="text-center text-sm text-muted-foreground">
@@ -154,10 +251,24 @@ export function Payment() {
             </p>
           )}
           <p className="text-center text-xs text-muted-foreground">
-            El pago no se procesa en esta versión y quedará pendiente en el pedido.
+            El pago se realiza presencialmente en el restaurante.
           </p>
         </section>
       </div>
+      {locationId && (
+        <TableLinkDialog
+          open={showAssociation}
+          locationId={locationId}
+          mode="required"
+          loginReturnTo={`/payment?locationId=${encodeURIComponent(locationId)}&vincularMesa=1`}
+          onDismiss={() => setShowAssociation(false)}
+          onLinked={(table: PublicTable) => {
+            setTableId(table.tableId);
+            setShowAssociation(false);
+            setSubmitError(null);
+          }}
+        />
+      )}
     </div>
   );
 }

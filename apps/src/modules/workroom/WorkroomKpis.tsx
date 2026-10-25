@@ -7,6 +7,7 @@ import {
   orderService,
   subscribeToNewOrders,
   subscribeToOrderStatus,
+  subscribeToTableUpdates,
   type LocationSummary,
 } from "@/shared/services";
 
@@ -36,10 +37,14 @@ export function WorkroomKpis({ locationId }: { locationId: string }) {
     const unsubscribeStatus = subscribeToOrderStatus((event) => {
       if (event.sedeId === locationId) void load();
     });
+    const unsubscribeTables = subscribeToTableUpdates((event) => {
+      if (event.sedeId === locationId) void load();
+    });
     return () => {
       window.clearInterval(timer);
       unsubscribeNew();
       unsubscribeStatus();
+      unsubscribeTables();
     };
   }, [locationId, load]);
 

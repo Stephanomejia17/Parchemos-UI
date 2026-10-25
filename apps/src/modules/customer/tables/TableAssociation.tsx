@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, Check, Loader2, X } from "lucide-react";
 import { apiFetch } from "@/shared/services/http/api-client";
 
@@ -15,6 +15,7 @@ export type PublicTable = {
 type Props = {
   locationId: string;
   onAssociated: (table: PublicTable) => void;
+  manualOnly?: boolean;
 };
 
 type Detector = {
@@ -32,7 +33,11 @@ function qrTableId(value: string): string | null {
   }
 }
 
-export function TableAssociation({ locationId, onAssociated }: Props) {
+export function TableAssociation({
+  locationId,
+  onAssociated,
+  manualOnly = false,
+}: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -40,7 +45,13 @@ export function TableAssociation({ locationId, onAssociated }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const associate = async (tableId: string) => {
+  const stopCamera = useCallback(() => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    setCameraOpen(false);
+  }, []);
+
+  const associate = useCallback(async (tableId: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -55,7 +66,12 @@ export function TableAssociation({ locationId, onAssociated }: Props) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [locationId, onAssociated, stopCamera]);
+  const associateRef = useRef(associate);
+
+  useEffect(() => {
+    associateRef.current = associate;
+  }, [associate]);
 
   const submitManual = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -103,12 +119,6 @@ export function TableAssociation({ locationId, onAssociated }: Props) {
     }
   };
 
-  const stopCamera = () => {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    setCameraOpen(false);
-  };
-
   useEffect(() => {
     if (!cameraOpen || !videoRef.current) return;
     const DetectorClass = (window as Window & {
@@ -125,7 +135,7 @@ export function TableAssociation({ locationId, onAssociated }: Props) {
         const rawValue = detected[0]?.rawValue;
         const tableId = rawValue ? qrTableId(rawValue) : null;
         if (tableId) {
-          await associate(tableId);
+          await associateRef.current(tableId);
           return;
         }
       } catch {
@@ -147,17 +157,19 @@ export function TableAssociation({ locationId, onAssociated }: Props) {
     }
   }, [cameraOpen]);
 
-  useEffect(() => () => stopCamera(), []);
+  useEffect(() => () => stopCamera(), [stopCamera]);
 
   return (
     <section className="rounded-2xl border border-orange-200 bg-orange-50 p-4">
       <div className="mb-3">
         <p className="font-semibold text-gray-900">Asocia tu mesa</p>
         <p className="mt-1 text-sm text-gray-600">
-          Escanea el QR de la mesa o escribe su número antes de confirmar el pedido.
+          {manualOnly
+            ? "Ingresa el número que aparece en la mesa para vincularte al pedido grupal."
+            : "Escanea el QR de la mesa o escribe su número antes de confirmar el pedido."}
         </p>
       </div>
-      {cameraOpen && (
+      {!manualOnly && cameraOpen && (
         <div className="mb-3 overflow-hidden rounded-xl bg-black">
           <video ref={videoRef} className="aspect-video w-full object-cover" muted playsInline />
           <button type="button" onClick={stopCamera} className="w-full bg-gray-900 px-3 py-2 text-sm text-white">
@@ -165,7 +177,7 @@ export function TableAssociation({ locationId, onAssociated }: Props) {
           </button>
         </div>
       )}
-      {!cameraOpen && (
+      {!manualOnly && !cameraOpen && (
         <button
           type="button"
           onClick={() => void startCamera()}
@@ -194,7 +206,4 @@ export function TableAssociation({ locationId, onAssociated }: Props) {
     </section>
   );
 }
-
-
-
 

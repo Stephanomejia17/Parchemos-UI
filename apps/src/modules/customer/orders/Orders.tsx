@@ -103,6 +103,11 @@ export function Orders() {
                 <li key={item.id} className="flex justify-between gap-4 text-sm">
                   <span>
                     {item.quantity} × {item.productName}
+                    {item.contributorName && (
+                      <span className="block text-xs text-muted-foreground">
+                        Agregado por {item.contributorName}
+                      </span>
+                    )}
                   </span>
                   <span className="shrink-0 font-medium">${item.lineTotal.toLocaleString()}</span>
                 </li>

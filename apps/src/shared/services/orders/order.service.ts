@@ -5,7 +5,7 @@ export interface CreateOrderInput {
   locationId: string;
   /** Mesa activa cuando el pedido se origina desde un QR. */
   tableId?: string;
-  items: Array<{ productId: string; quantity: number }>;
+  items: Array<{ productId: string; quantity: number; notes?: string }>;
 }
 
 export interface CreatedOrder {
@@ -26,6 +26,7 @@ export interface CreatedOrder {
     unitPrice: number;
     quantity: number;
     lineTotal: number;
+    contributorName?: string | null;
   }>;
 }
 
@@ -85,18 +86,22 @@ export interface RoomOrderItem {
   precioUnitario: number;
   subtotal: number;
   notas: string | null;
+  agregadoPor: string | null;
 }
 
 /** GP-05 CA2: pedido con lo que el personal necesita para atenderlo. */
 export interface RoomOrder extends OrderStatusInfo {
   mesa: TableRef | null;
   estadoPago: string;
+  responsablePago: string | null;
   items: RoomOrderItem[];
 }
 
 /** GP-05: pedidos en curso de una mesa; `mesa` null agrupa los que no tienen mesa. */
 export interface TableOrders {
   mesa: TableRef | null;
+  participantesConectados: number;
+  ocupacion: "ocupada" | "disponible";
   /** GP-05 CA3: lo que falta pagar en la mesa; null para el grupo sin mesa. */
   totalPendiente: number | null;
   pedidos: RoomOrder[];
@@ -135,6 +140,15 @@ export const orderService = {
 
   listRoomByTable: (locationId: string) =>
     apiFetch<ApiEnvelope<TableOrders[]>>(`/pedidos/sede/${locationId}/mesas`),
+
+  listDeliveredToday: (locationId: string) =>
+    apiFetch<ApiEnvelope<RoomOrder[]>>(`/pedidos/sede/${locationId}/entregados-hoy`),
+
+  closeTableOccupancy: (tableId: string) =>
+    apiFetch<ApiEnvelope<{ tableId: string; status: "cerrado" }>>(
+      `/pedidos/mesas/${encodeURIComponent(tableId)}/cerrar-ocupacion`,
+      { method: "POST" },
+    ),
 
   updateStatus: (orderId: string, estado: OrderStatus, nota?: string) =>
     apiFetch<ApiEnvelope<OrderStatusInfo>>(`/pedidos/${orderId}/estado`, {

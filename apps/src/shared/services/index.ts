@@ -21,6 +21,8 @@ export { profileService } from "./profile/profile.service";
 export { restaurantService } from "./restaurant/restaurant.service";
 export { adminService } from "./admin/admin.service";
 export { orderService } from "./orders/order.service";
+export { sharedTableOrderService } from "./orders/shared-table-order.service";
+export type { SharedTableOrder } from "./orders/shared-table-order.service";
 export { surveyService } from "./surveys/survey.service";
 export type {
   SurveyConfiguration,
@@ -34,7 +36,11 @@ export type {
   SurveyRestaurantOption,
 } from "./surveys/survey.service";
 export type { CreateOrderInput, CreatedOrder } from "./orders/order.service";
-export { subscribeToNewOrders, subscribeToOrderStatus } from "./orders/order-events";
+export {
+  subscribeToNewOrders,
+  subscribeToOrderStatus,
+  subscribeToTableUpdates,
+} from "./orders/order-events";
 export type { NewOrderEvent, OrderStatusEvent } from "./orders/order-events";
 export type {
   OrderFulfillment,

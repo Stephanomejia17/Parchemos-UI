@@ -11,15 +11,21 @@ export interface OrderStatusEvent extends OrderStatusInfo {
 
 /** GP-05: evento `pedido.nuevo` que recibe el personal cuando un comensal confirma un pedido. */
 export type NewOrderEvent = OrderStatusInfo;
+export interface TableUpdateEvent {
+  sedeId: string;
+  mesaId: string;
+}
 
 const ORDER_STATUS_EVENT = "pedido.estado";
 const NEW_ORDER_EVENT = "pedido.nuevo";
+const TABLE_UPDATE_EVENT = "mesa.compartida.actualizada";
 /** Reintentos seguidos tras un rechazo del servidor (token vencido). */
 const MAX_AUTH_RETRIES = 2;
 
 const listeners = {
   [ORDER_STATUS_EVENT]: new Set<(event: OrderStatusEvent) => void>(),
   [NEW_ORDER_EVENT]: new Set<(event: NewOrderEvent) => void>(),
+  [TABLE_UPDATE_EVENT]: new Set<(event: TableUpdateEvent) => void>(),
 };
 let socket: Socket | null = null;
 let authRetries = 0;
@@ -41,6 +47,10 @@ function connect(): Socket {
 
   client.on(NEW_ORDER_EVENT, (event: NewOrderEvent) => {
     listeners[NEW_ORDER_EVENT].forEach((listener) => listener(event));
+  });
+
+  client.on(TABLE_UPDATE_EVENT, (event: TableUpdateEvent) => {
+    listeners[TABLE_UPDATE_EVENT].forEach((listener) => listener(event));
   });
 
   // La API desconecta el socket si el token no es valido: se renueva la
@@ -66,7 +76,10 @@ function subscribe<T>(set: Set<(event: T) => void>, listener: (event: T) => void
 
   return () => {
     set.delete(listener);
-    const quedan = listeners[ORDER_STATUS_EVENT].size + listeners[NEW_ORDER_EVENT].size;
+    const quedan =
+      listeners[ORDER_STATUS_EVENT].size +
+      listeners[NEW_ORDER_EVENT].size +
+      listeners[TABLE_UPDATE_EVENT].size;
     if (quedan === 0 && socket) {
       socket.disconnect();
       socket = null;
@@ -82,4 +95,10 @@ export function subscribeToOrderStatus(listener: (event: OrderStatusEvent) => vo
 /** GP-05 CA1: pedidos nuevos de las sedes que gestiona el usuario. */
 export function subscribeToNewOrders(listener: (event: NewOrderEvent) => void): () => void {
   return subscribe(listeners[NEW_ORDER_EVENT], listener);
+}
+
+export function subscribeToTableUpdates(
+  listener: (event: TableUpdateEvent) => void,
+): () => void {
+  return subscribe(listeners[TABLE_UPDATE_EVENT], listener);
 }
