@@ -17,7 +17,9 @@ import {
   subscribeToNewOrders,
   subscribeToOrderStatus,
   subscribeToTableUpdates,
+  type NewOrderEvent,
   type OrderStatus,
+  type OrderStatusEvent,
   type RoomOrder,
   type TableOrders,
 } from "@/shared/services";
@@ -28,6 +30,7 @@ import { RoomOrderDetail } from "./RoomOrderDetail";
 const POLL_INTERVAL_MS = 60_000;
 /** Cuánto tiempo se destaca un pedido recién llegado. */
 const NEW_ORDER_HIGHLIGHT_MS = 30_000;
+const NO_NEW_ORDERS: ReadonlySet<string> = new Set();
 
 /** Orden fijo del flujo: de aquí salen la barra de progreso y la secuencia de botones. */
 const FLOW: OrderStatus[] = ["confirmado", "en_preparacion", "listo", "entregado"];
@@ -50,12 +53,46 @@ const BADGE_FALLBACK = "bg-orange-50 text-primary";
 
 const TIME = new Intl.DateTimeFormat("es-CO", { hour: "numeric", minute: "2-digit" });
 
+function updateOrderStatus(
+  tables: TableOrders[],
+  orderId: string,
+  estado: OrderStatus,
+  clearNextStates = false,
+): TableOrders[] {
+  return tables.map((table) => ({
+    ...table,
+    pedidos: table.pedidos.map((order) =>
+      order.id === orderId
+        ? {
+            ...order,
+            estado,
+            ...(clearNextStates ? { siguientesEstados: [] } : {}),
+          }
+        : order,
+    ),
+  }));
+}
+
+function addNewOrderId(current: ReadonlySet<string>, orderId: string): ReadonlySet<string> {
+  return new Set(current).add(orderId);
+}
+
+function removeNewOrderId(current: ReadonlySet<string>, orderId: string): ReadonlySet<string> {
+  const next = new Set(current);
+  next.delete(orderId);
+  return next;
+}
+
 /**
  * GP-05 / GP-08: panel de sala. Los pedidos en curso de la sede se muestran
  * por mesa, con lo que falta pagar en cada una (GP-05 CA3). Cada pedido muestra
  * su progreso y solo permite avanzar al siguiente estado si la API lo permite.
  */
-export function OrderStatusPanel({ locationId }: { locationId: string }) {
+export function OrderStatusPanel({
+  locationId,
+}: {
+ readonly locationId: string;
+}): import("react/jsx-runtime").JSX.Element {
   const [activeTab, setActiveTab] = useState<"tables" | "history">("tables");
   const [tables, setTables] = useState<TableOrders[]>([]);
   const [deliveredOrders, setDeliveredOrders] = useState<RoomOrder[]>([]);
@@ -68,8 +105,6 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
   const [tableToClose, setTableToClose] = useState<TableOrders | null>(null);
   const [newOrderIds, setNewOrderIds] = useState<ReadonlySet<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  // Nota opcional por pedido: se envía con el próximo cambio de estado y queda en el historial.
-  const [notes, setNotes] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     try {
@@ -98,6 +133,38 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
     }
   }, [locationId]);
 
+  const handleNewOrder = useCallback(
+    (event: NewOrderEvent) => {
+      if (event.sedeId !== locationId) return;
+      setNewOrderIds((current) => addNewOrderId(current, event.id));
+      window.setTimeout(
+        () => setNewOrderIds((current) => removeNewOrderId(current, event.id)),
+        NEW_ORDER_HIGHLIGHT_MS,
+      );
+      void load();
+    },
+    [load, locationId],
+  );
+
+  const handleOrderStatus = useCallback(
+    (event: OrderStatusEvent) => {
+      if (event.sedeId !== locationId) return;
+      setTables((current) => updateOrderStatus(current, event.id, event.estado));
+      void load();
+      if (activeTab === "history" && event.estado === "entregado") {
+        void loadDelivered();
+      }
+    },
+    [activeTab, load, loadDelivered, locationId],
+  );
+
+  const handleTableUpdate = useCallback(
+    (event: { sedeId: string; mesaId: string }) => {
+      if (event.sedeId === locationId) void load();
+    },
+    [load, locationId],
+  );
+
   useEffect(() => {
     void load();
     const timer = window.setInterval(() => void load(), POLL_INTERVAL_MS);
@@ -113,65 +180,24 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
 
   // GP-05 CA1: los pedidos nuevos y los cambios de otros compañeros llegan por socket.
   useEffect(() => {
-    const unsubscribeNew = subscribeToNewOrders((event) => {
-      if (event.sedeId !== locationId) return;
-      setNewOrderIds((current) => new Set(current).add(event.id));
-      window.setTimeout(() => {
-        setNewOrderIds((current) => {
-          const next = new Set(current);
-          next.delete(event.id);
-          return next;
-        });
-      }, NEW_ORDER_HIGHLIGHT_MS);
-      void load();
-    });
-    const unsubscribeStatus = subscribeToOrderStatus((event) => {
-      if (event.sedeId !== locationId) return;
-      setTables((current) =>
-        current.map((table) => ({
-          ...table,
-          pedidos: table.pedidos.map((order) =>
-            order.id === event.id ? { ...order, estado: event.estado } : order,
-          ),
-        })),
-      );
-      void load();
-      if (activeTab === "history" && event.estado === "entregado") {
-        void loadDelivered();
-      }
-    });
-    const unsubscribeTables = subscribeToTableUpdates((event) => {
-      if (event.sedeId === locationId) void load();
-    });
+    const unsubscribeNew = subscribeToNewOrders(handleNewOrder);
+    const unsubscribeStatus = subscribeToOrderStatus(handleOrderStatus);
+    const unsubscribeTables = subscribeToTableUpdates(handleTableUpdate);
     return () => {
       unsubscribeNew();
       unsubscribeStatus();
       unsubscribeTables();
     };
-  }, [activeTab, load, loadDelivered, locationId]);
+  }, [handleNewOrder, handleOrderStatus, handleTableUpdate]);
 
   const changeStatus = async (order: RoomOrder, estado: OrderStatus) => {
     setUpdatingId(order.id);
     try {
-      const nota = notes[order.id]?.trim() || undefined;
-      await orderService.updateStatus(order.id, estado, nota);
+      await orderService.updateStatus(order.id, estado);
 
       // Actualización inmediata: la barra avanza y los botones quedan bloqueados
       // hasta que el load() de abajo traiga los nuevos siguientesEstados.
-      setTables((current) =>
-        current.map((table) => ({
-          ...table,
-          pedidos: table.pedidos.map((o) =>
-            o.id === order.id ? { ...o, estado, siguientesEstados: [] } : o,
-          ),
-        })),
-      );
-
-      setNotes((current) => {
-        const next = { ...current };
-        delete next[order.id];
-        return next;
-      });
+      setTables((current) => updateOrderStatus(current, order.id, estado, true));
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No pudimos actualizar el pedido.");
@@ -199,6 +225,10 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
       void load();
     }
   };
+
+  const toggleExpandedOrder = useCallback((orderId: string) => {
+    setExpandedId((current) => (current === orderId ? null : orderId));
+  }, []);
 
   const activeTablesCount = tables.filter((table) => table.ocupacion === "ocupada").length;
 
@@ -329,23 +359,14 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
                     : "Mesa disponible: aún no hay personas ni pedidos."}
                 </p>
               ) : (
-                <ul className="divide-y divide-gray-100">
-                  {table.pedidos.map((order) => (
-                    <OrderRow
-                      key={order.id}
-                      order={order}
-                      isNew={newOrderIds.has(order.id)}
-                      expanded={expandedId === order.id}
-                      onToggle={() => setExpandedId(expandedId === order.id ? null : order.id)}
-                      busy={updatingId === order.id}
-                      onChangeStatus={(estado) => void changeStatus(order, estado)}
-                      note={notes[order.id] ?? ""}
-                      onNoteChange={(value) =>
-                        setNotes((current) => ({ ...current, [order.id]: value }))
-                      }
-                    />
-                  ))}
-                </ul>
+                <OrderList
+                  orders={table.pedidos}
+                  newOrderIds={newOrderIds}
+                  expandedId={expandedId}
+                  updatingId={updatingId}
+                  onToggle={toggleExpandedOrder}
+                  onChangeStatus={changeStatus}
+                />
               )}
             </section>
           ))}
@@ -365,21 +386,14 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
             <p className="px-5 py-4 text-sm text-gray-500">Aún no hay pedidos entregados hoy.</p>
           )}
           {deliveredOrders.length > 0 && (
-            <ul className="divide-y divide-gray-100">
-              {deliveredOrders.map((order) => (
-                <OrderRow
-                  key={order.id}
-                  order={order}
-                  isNew={false}
-                  expanded={expandedId === order.id}
-                  onToggle={() => setExpandedId(expandedId === order.id ? null : order.id)}
-                  busy={false}
-                  onChangeStatus={() => undefined}
-                  note=""
-                  onNoteChange={() => undefined}
-                />
-              ))}
-            </ul>
+            <OrderList
+              orders={deliveredOrders}
+              newOrderIds={NO_NEW_ORDERS}
+              expandedId={expandedId}
+              updatingId={null}
+              onToggle={toggleExpandedOrder}
+              onChangeStatus={changeStatus}
+            />
           )}
         </div>
       )}
@@ -398,7 +412,7 @@ export function OrderStatusPanel({ locationId }: { locationId: string }) {
 }
 
 /** Barra de progreso del pedido: pasos completados en color primario, el actual con aro. */
-function OrderProgress({ estado }: { estado: OrderStatus }) {
+function OrderProgress({ estado }: {readonly estado: OrderStatus }) {
   const current = FLOW.indexOf(estado);
 
   return (
@@ -441,6 +455,38 @@ function OrderProgress({ estado }: { estado: OrderStatus }) {
   );
 }
 
+function OrderList({
+  orders,
+  newOrderIds,
+  expandedId,
+  updatingId,
+  onToggle,
+  onChangeStatus,
+}: {
+  readonly orders: RoomOrder[];
+  readonly newOrderIds: ReadonlySet<string>;
+  readonly expandedId: string | null;
+  readonly updatingId: string | null;
+  readonly onToggle: (orderId: string) => void;
+  readonly onChangeStatus: (order: RoomOrder, estado: OrderStatus) => void;
+}) {
+  return (
+    <ul className="divide-y divide-gray-100">
+      {orders.map((order) => (
+        <OrderRow
+          key={order.id}
+          order={order}
+          isNew={newOrderIds.has(order.id)}
+          expanded={expandedId === order.id}
+          onToggle={onToggle}
+          busy={updatingId === order.id}
+          onChangeStatus={onChangeStatus}
+        />
+      ))}
+    </ul>
+  );
+}
+
 function OrderRow({
   order,
   isNew,
@@ -448,17 +494,13 @@ function OrderRow({
   onToggle,
   busy,
   onChangeStatus,
-  note,
-  onNoteChange,
 }: {
-  order: RoomOrder;
-  isNew: boolean;
-  expanded: boolean;
-  onToggle: () => void;
-  busy: boolean;
-  onChangeStatus: (estado: OrderStatus) => void;
-  note: string;
-  onNoteChange: (value: string) => void;
+  readonly order: RoomOrder;
+  readonly isNew: boolean;
+  readonly expanded: boolean;
+  readonly onToggle: (orderId: string) => void;
+  readonly busy: boolean;
+  readonly onChangeStatus: (order: RoomOrder, estado: OrderStatus) => void;
 }) {
   const currentIndex = FLOW.indexOf(order.estado);
   const nextEstado = FLOW[currentIndex + 1]; // undefined si ya está entregado
@@ -495,7 +537,7 @@ function OrderRow({
           </p>
           <button
             type="button"
-            onClick={onToggle}
+            onClick={() => onToggle(order.id)}
             aria-expanded={expanded}
             className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-primary"
           >
@@ -522,20 +564,20 @@ function OrderRow({
                 // Solo se habilita el siguiente paso, y únicamente si la API lo permite.
                 const enabled =
                   estado === nextEstado && order.siguientesEstados.includes(estado) && !busy;
+                let statusClassName = "border-gray-200 text-gray-700 opacity-40";
+                if (alreadyDone) {
+                  statusClassName = "border-transparent bg-gray-100 text-gray-400";
+                } else if (enabled) {
+                  statusClassName = "border-primary text-primary hover:bg-primary hover:text-white";
+                }
 
                 return (
                   <button
                     key={estado}
                     type="button"
                     disabled={!enabled}
-                    onClick={() => onChangeStatus(estado)}
-                    className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed ${
-                      alreadyDone
-                        ? "border-transparent bg-gray-100 text-gray-400"
-                        : enabled
-                          ? "border-primary text-primary hover:bg-primary hover:text-white"
-                          : "border-gray-200 text-gray-700 opacity-40"
-                    }`}
+                    onClick={() => onChangeStatus(order, estado)}
+                    className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed ${statusClassName}`}
                   >
                     {alreadyDone ? (
                       <Check className="h-3.5 w-3.5" />
@@ -551,11 +593,7 @@ function OrderRow({
         </div>
       </div>
 
-      {expanded && (
-        <>
-          <RoomOrderDetail order={order} />
-        </>
-      )}
+      {expanded && <RoomOrderDetail order={order} />}
     </li>
   );
 }

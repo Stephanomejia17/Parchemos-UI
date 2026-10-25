@@ -55,9 +55,9 @@ export function Orders() {
 
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 md:p-6">
         {loading && (
-          <p role="status" className="text-sm text-muted-foreground">
+          <output className="text-sm text-muted-foreground">
             Cargando tus pedidos…
-          </p>
+          </output>
         )}
         {error && (
           <div

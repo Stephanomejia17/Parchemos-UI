@@ -11,7 +11,7 @@ const AUTHOR_LABELS: Record<UserRole, string> = {
 };
 
 /** GP-08 CA6: trazabilidad de los cambios de estado, del más reciente al más antiguo. */
-export function OrderStatusHistory({ changes }: { changes: OrderStatusChange[] }) {
+export function OrderStatusHistory({ changes }: Readonly<{ changes: OrderStatusChange[] }>) {
   // El paso a "borrador" es la creación del carrito: no aporta al comensal.
   const visible = changes.filter((change) => change.hacia !== "borrador").reverse();
   if (visible.length === 0) return null;

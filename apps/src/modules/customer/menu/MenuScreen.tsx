@@ -51,9 +51,9 @@ export function MenuScreen({
   loadError = false,
   loading = false,
 }: {
-  dishes: Dish[];
-  loadError?: boolean;
-  loading?: boolean;
+  readonly dishes: Dish[];
+  readonly loadError?: boolean;
+  readonly loading?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -78,7 +78,8 @@ export function MenuScreen({
     const params = new URLSearchParams(searchParams.toString());
     if (category) params.set("category", category);
     else params.delete("category");
-    router.replace(`${pathname}${params.toString() ? `?${params}` : ""}`, { scroll: false });
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   };
 
   const handleAdd = (dish: Dish) => {

@@ -6,10 +6,8 @@ import { MenuScreen } from "@/modules/customer/menu/MenuScreen";
 import { mapMenuItem } from "@/lib/api/menu";
 import type { Dish } from "@/shared/types/menu";
 import { LocationProvider } from "@/shared/context/location-context";
-import { OrderProvider } from "@/shared/context/order-context";
+import { OrderProvider,useOrder  } from "@/shared/context/order-context";
 import { apiFetch } from "@/shared/services/http/api-client";
-import type { PublicTable } from "@/modules/customer/tables/TableAssociation";
-import { useOrder } from "@/shared/context/order-context";
 import { formatCop } from "@/shared/utils/currency";
 import { TableLinkDialog } from "@/modules/customer/tables/TableLinkDialog";
 
@@ -18,7 +16,6 @@ function PedidoContent() {
   const mesaId = params.get("mesa");
   const requestedLocationId = params.get("locationId");
   const [locationId, setLocationId] = useState<string | null>(requestedLocationId);
-  const [table, setTable] = useState<PublicTable | null>(null);
   const [dishes, setDishes] = useState<Dish[] | null>(null);
   const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [startWithNumberEntry, setStartWithNumberEntry] = useState(false);
@@ -34,7 +31,6 @@ function PedidoContent() {
     }
     void apiFetch<PublicTable>(`/mesas/${mesaId}/public`)
       .then((publicTable) => {
-        setTable(publicTable);
         setLocationId(publicTable.locationId);
       })
       .catch(() => setError("No pudimos identificar la sede de este código QR."));
@@ -60,10 +56,8 @@ function PedidoContent() {
   useEffect(() => {
     if (!locationId || !dishes) return;
     const choiceKey = `parchemos:qr-menu-choice:${locationId}`;
-    const forcedPromptKey = `parchemos:qr-menu-link-prompt:${locationId}`;
     const requestedLink = params.get("vincularMesa") === "1";
-    if (requestedLink && window.sessionStorage.getItem(forcedPromptKey) !== "seen") {
-      window.sessionStorage.setItem(forcedPromptKey, "seen");
+    if (requestedLink) {
       setShowLinkDialog(true);
       setStartWithNumberEntry(true);
       return;
@@ -89,11 +83,6 @@ function PedidoContent() {
     );
   return (
     <main className="h-screen">
-      {table && (
-        <div className="sr-only">
-          {table.restaurantName} · Sede {table.locationId}
-        </div>
-      )}
       <LocationProvider initialLocationId={locationId}>
         <OrderProvider>
           <QrMenu
@@ -124,12 +113,12 @@ function QrMenu({
   onCloseLinkDialog,
   onLinked,
 }: {
-  dishes: Dish[];
-  locationId: string;
-  showLinkDialog: boolean;
-  startWithNumberEntry: boolean;
-  onCloseLinkDialog: () => void;
-  onLinked: (table: PublicTable) => void;
+  readonly dishes: Dish[];
+  readonly locationId: string;
+  readonly showLinkDialog: boolean;
+  readonly startWithNumberEntry: boolean;
+  readonly onCloseLinkDialog: () => void;
+  readonly onLinked: () => void;
 }) {
   const router = useRouter();
   const { totalItems, subtotal } = useOrder();
@@ -167,6 +156,8 @@ function QrMenu({
     </>
   );
 }
+
+type PublicTable = { locationId: string };
 
 export default function PedidoPage() {
   // useSearchParams (la mesa del QR) necesita una frontera de Suspense.

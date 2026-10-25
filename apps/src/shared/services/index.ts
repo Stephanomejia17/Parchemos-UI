@@ -21,8 +21,7 @@ export { profileService } from "./profile/profile.service";
 export { restaurantService } from "./restaurant/restaurant.service";
 export { adminService } from "./admin/admin.service";
 export { orderService } from "./orders/order.service";
-export { sharedTableOrderService } from "./orders/shared-table-order.service";
-export type { SharedTableOrder } from "./orders/shared-table-order.service";
+export { tableSessionService } from "./orders/table-session.service";
 export { surveyService } from "./surveys/survey.service";
 export type {
   SurveyConfiguration,
@@ -53,4 +52,10 @@ export type {
   TableOrders,
   TableRef,
 } from "./orders/order.service";
-export type { AdminUser, LocationReview, ModerationReport, ModerationReportsResponse, ModerationStatistics } from "./admin/admin.service";
+export type {
+  AdminUser,
+  LocationReview,
+  ModerationReport,
+  ModerationReportsResponse,
+  ModerationStatistics,
+} from "./admin/admin.service";

@@ -9,7 +9,7 @@ import { RemoteImage } from "@/shared/components/media/RemoteImage";
 import { useOrder } from "@/shared/context/order-context";
 import { useRestaurantContext } from "@/shared/context/location-context";
 import { TableAssociation, type PublicTable } from "@/modules/customer/tables/TableAssociation";
-import { sharedTableOrderService } from "@/shared/services";
+import { tableSessionService } from "@/shared/services";
 import { useAuth } from "@/shared/auth";
 import { ApiError } from "@/shared/auth/types";
 
@@ -55,7 +55,7 @@ function OrderSummaryContent() {
       return;
     }
 
-    void sharedTableOrderService
+    void tableSessionService
       .get(candidate)
       .then((session) => {
         if (!active) return;
@@ -98,7 +98,7 @@ function OrderSummaryContent() {
     setLinkingTable(true);
     setAssociationError("");
     try {
-      await sharedTableOrderService.join(table.tableId);
+      await tableSessionService.join(table.tableId);
       window.localStorage.setItem("parchemos:mesa", table.tableId);
       window.localStorage.setItem("parchemos:location", table.locationId);
       window.localStorage.setItem("parchemos:activeLocation", table.locationId);
@@ -146,7 +146,7 @@ function OrderSummaryContent() {
     }
     if (mesaId) {
       try {
-        const session = await sharedTableOrderService.get(mesaId);
+        const session = await tableSessionService.get(mesaId);
         if (session.table.locationId === restaurantId) {
           goToPayment(mesaId);
           return;
@@ -169,6 +169,14 @@ function OrderSummaryContent() {
   const total = subtotal + service;
   const canContinue =
     lines.length > 0 && availabilityStatus === "checked" && unavailableLines.length === 0;
+  let continueButtonLabel = `Continuar con el pedido · $${total.toLocaleString()}`;
+  if (checkingTable) {
+    continueButtonLabel = "Verificando mesa...";
+  } else if (availabilityStatus === "loading" && lines.length > 0) {
+    continueButtonLabel = "Verificando disponibilidad...";
+  } else if (!mesaId) {
+    continueButtonLabel = "Vincula una mesa para continuar";
+  }
   const goMenu = () =>
     router.push(restaurantId ? `/menu?locationId=${encodeURIComponent(restaurantId)}` : "/menu");
 
@@ -188,13 +196,13 @@ function OrderSummaryContent() {
 
       <div className="mx-auto w-full max-w-2xl p-4 md:p-6">
         {availabilityStatus === "loading" && lines.length > 0 && (
-          <p role="status" className="mb-4 rounded-xl bg-blue-50 p-3 text-sm text-blue-800">
+          <output className="mb-4 rounded-xl bg-blue-50 p-3 text-sm text-blue-800">
             Verificando disponibilidad de los productos...
-          </p>
+          </output>
         )}
         {availabilityStatus === "error" && lines.length > 0 && (
           <div role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">
-            No pudimos confirmar la disponibilidad del pedido. Vuelve al menú e inténtalo de nuevo.
+            No pudimos confirmar la disponibilidad del pedido. Vuelve al menú e inténtalo de nuevo.{" "}
             <button type="button" onClick={goMenu} className="ml-2 font-bold underline">
               Ir al menú
             </button>
@@ -345,7 +353,7 @@ function OrderSummaryContent() {
                     Inicia sesión con una cuenta de comensal para vincularte a la mesa.
                   </p>
                   <Link
-                    href={`/login?returnTo=${encodeURIComponent(`/order-summary?locationId=${restaurantId}`)}`}
+                    href={`/login?returnTo=${encodeURIComponent("/order-summary?locationId=" + restaurantId)}`}
                     className="mt-2 inline-block font-bold text-primary underline"
                   >
                     Iniciar sesión
@@ -355,13 +363,12 @@ function OrderSummaryContent() {
                 <div className="mt-4">
                   <TableAssociation
                     locationId={restaurantId}
-                    manualOnly
                     onAssociated={(table) => void linkTable(table)}
                   />
                   {linkingTable && (
-                    <p role="status" className="mt-3 text-sm text-gray-600">
+                    <output className="mt-3 text-sm text-gray-600">
                       Vinculándote a la mesa…
-                    </p>
+                    </output>
                   )}
                 </div>
               )}
@@ -378,13 +385,7 @@ function OrderSummaryContent() {
             className="w-full sm:w-auto sm:self-center"
             disabled={!canContinue || !mesaId || checkingTable || linkingTable}
           >
-            {checkingTable
-              ? "Verificando mesa..."
-              : availabilityStatus === "loading" && lines.length > 0
-                ? "Verificando disponibilidad..."
-                : mesaId
-                  ? `Continuar con el pedido · $${total.toLocaleString()}`
-                  : "Vincula una mesa para continuar"}
+            {continueButtonLabel}
           </PrimaryButton>
         </div>
       </div>

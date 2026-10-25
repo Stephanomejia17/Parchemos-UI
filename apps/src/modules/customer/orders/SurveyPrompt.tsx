@@ -18,10 +18,10 @@ export function SurveyPrompt({
   locationId,
   locationName,
 }: {
-  orderId: string;
-  status: string;
-  locationId: string;
-  locationName: string;
+  readonly orderId: string;
+  readonly status: string;
+  readonly locationId: string;
+  readonly locationName: string;
 }) {
   const router = useRouter();
   const [invitation, setInvitation] = useState<SurveyOrderInvitation | null>(null);
@@ -131,9 +131,9 @@ export function SurveyPrompt({
       </section>
 
       {dialogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="presentation">
-          <section
-            role="dialog"
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <dialog
+            open
             aria-modal="true"
             aria-labelledby="order-survey-title"
             className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl"
@@ -146,14 +146,15 @@ export function SurveyPrompt({
             >
               <X className="h-5 w-5" />
             </button>
-            {sent ? (
+            {sent && (
               <div className="py-6 text-center">
                 <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-600" />
                 <h2 id="order-survey-title" className="mt-4 text-xl font-bold text-gray-900">¡Gracias por tu opinión!</h2>
                 <p className="mt-2 text-sm text-gray-600">Tu respuesta nos ayuda a mejorar.</p>
                 <button type="button" onClick={closeDialog} className="mt-6 rounded-xl bg-[#FF6B35] px-5 py-2.5 text-sm font-semibold text-white">Cerrar</button>
               </div>
-            ) : selectedSurvey ? (
+            )}
+            {!sent && selectedSurvey && (
               <>
                 <button type="button" onClick={() => { setSelectedSurvey(null); setError(""); }} className="mb-4 text-sm font-medium text-gray-500 hover:text-gray-900">
                   ← Volver a encuestas
@@ -178,7 +179,8 @@ export function SurveyPrompt({
                   <button type="button" onClick={() => { setSelectedSurvey(null); setError(""); }} className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700">Ahora no</button>
                 </div>
               </>
-            ) : (
+            )}
+            {!sent && !selectedSurvey && (
               <>
                 <h2 id="order-survey-title" className="pr-8 text-xl font-bold text-gray-900">Encuestas disponibles</h2>
                 <p className="mt-2 text-sm text-gray-600">Elige una encuesta para compartir tu experiencia. Responder es opcional.</p>
@@ -200,7 +202,7 @@ export function SurveyPrompt({
                 <button type="button" onClick={closeDialog} className="mt-5 w-full rounded-xl px-4 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-50">Ahora no</button>
               </>
             )}
-          </section>
+          </dialog>
         </div>
       )}
     </>
@@ -212,29 +214,38 @@ function QuestionInput({
   value,
   onChange,
 }: {
-  question: SurveyQuestion;
-  value: string;
-  onChange: (value: string) => void;
+  readonly question: SurveyQuestion;
+  readonly value: string;
+  readonly onChange: (value: string) => void;
 }) {
+  let answerField;
+  if (question.type === "calificacion") {
+    answerField = (
+      <span className="mt-2 flex gap-1">
+        {[1, 2, 3, 4, 5].map((rating) => (
+          <button type="button" key={rating} aria-pressed={value === String(rating)} onClick={() => onChange(String(rating))} className={`rounded-lg px-2 py-1 text-lg ${value === String(rating) ? "bg-primary text-white" : "bg-orange-50 text-primary"}`}>
+            {rating}
+          </button>
+        ))}
+      </span>
+    );
+  } else if (question.type === "opciones") {
+    answerField = (
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-white p-2.5 text-sm">
+        <option value="">Selecciona una opción</option>
+        {question.options.map((option) => <option key={option} value={option}>{option}</option>)}
+      </select>
+    );
+  } else {
+    answerField = (
+      <textarea value={value} onChange={(event) => onChange(event.target.value)} maxLength={2000} className="mt-1 min-h-20 w-full rounded-xl border border-gray-200 bg-white p-2.5 text-sm" placeholder="Escribe tu respuesta" />
+    );
+  }
+
   return (
     <label className="block text-sm font-medium text-gray-800">
       {question.prompt}{question.required && <span className="text-red-600"> *</span>}
-      {question.type === "calificacion" ? (
-        <span className="mt-2 flex gap-1">
-          {[1, 2, 3, 4, 5].map((rating) => (
-            <button type="button" key={rating} aria-pressed={value === String(rating)} onClick={() => onChange(String(rating))} className={`rounded-lg px-2 py-1 text-lg ${value === String(rating) ? "bg-primary text-white" : "bg-orange-50 text-primary"}`}>
-              {rating}
-            </button>
-          ))}
-        </span>
-      ) : question.type === "opciones" ? (
-        <select value={value} onChange={(event) => onChange(event.target.value)} className="mt-1 block w-full rounded-xl border border-gray-200 bg-white p-2.5 text-sm">
-          <option value="">Selecciona una opción</option>
-          {question.options.map((option) => <option key={option} value={option}>{option}</option>)}
-        </select>
-      ) : (
-        <textarea value={value} onChange={(event) => onChange(event.target.value)} maxLength={2000} className="mt-1 min-h-20 w-full rounded-xl border border-gray-200 bg-white p-2.5 text-sm" placeholder="Escribe tu respuesta" />
-      )}
+      {answerField}
     </label>
   );
 }

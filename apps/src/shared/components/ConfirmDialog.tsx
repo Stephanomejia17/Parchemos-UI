@@ -3,13 +3,13 @@
 import { useEffect, useRef, type ReactNode } from "react";
 
 type ConfirmDialogProps = {
-  title: string;
-  description: ReactNode;
-  confirmLabel: string;
-  cancelLabel?: string;
-  busy?: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
+  readonly title: string;
+  readonly description: ReactNode;
+  readonly confirmLabel: string;
+  readonly cancelLabel?: string | null;
+  readonly busy?: boolean;
+  readonly onConfirm: () => void;
+  readonly onCancel: () => void;
 };
 
 export function ConfirmDialog({
@@ -33,13 +33,16 @@ export function ConfirmDialog({
   }, [busy, onCancel]);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !busy) onCancel();
-      }}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <button
+        type="button"
+        aria-label={cancelLabel ?? "Cerrar"}
+        onClick={() => {
+          if (!busy) onCancel();
+        }}
+        disabled={busy}
+        className="absolute inset-0 bg-black/40 disabled:cursor-default"
+      />
       <div
         ref={dialogRef}
         tabIndex={-1}
@@ -47,7 +50,7 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
         aria-describedby="confirm-dialog-description"
-        className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl outline-none"
+        className="relative z-10 w-full max-w-md rounded-3xl bg-white p-6 shadow-xl outline-none"
       >
         <h2 id="confirm-dialog-title" className="text-lg font-bold text-gray-900">
           {title}
@@ -56,14 +59,16 @@ export function ConfirmDialog({
           {description}
         </div>
         <div className="mt-6 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={busy}
-            className="min-h-11 rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 disabled:opacity-50"
-          >
-            {cancelLabel}
-          </button>
+          {cancelLabel !== null && (
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={busy}
+              className="min-h-11 rounded-xl bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 disabled:opacity-50"
+            >
+              {cancelLabel}
+            </button>
+          )}
           <button
             type="button"
             onClick={onConfirm}

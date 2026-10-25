@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, X } from "lucide-react";
 import { useAuth } from "@/shared/auth";
-import { sharedTableOrderService } from "@/shared/services";
+import { tableSessionService } from "@/shared/services";
 import { TableAssociation, type PublicTable } from "./TableAssociation";
 
 type Props = {
@@ -52,7 +52,7 @@ export function TableLinkDialog({
     setLinking(true);
     setError("");
     try {
-      await sharedTableOrderService.join(table.tableId);
+      await tableSessionService.join(table.tableId);
       window.localStorage.setItem("parchemos:mesa", table.tableId);
       window.localStorage.setItem("parchemos:location", table.locationId);
       window.localStorage.setItem("parchemos:activeLocation", table.locationId);
@@ -141,7 +141,6 @@ export function TableLinkDialog({
             {isComensal && (
               <TableAssociation
                 locationId={locationId}
-                manualOnly
                 onAssociated={(table) => void linkTable(table)}
               />
             )}
