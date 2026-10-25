@@ -454,12 +454,14 @@ function Manager() {
     }
     setBusy(true);
     setError(null);
+    let locationCreated = false;
     try {
       const created = await restaurantService.createLocation(restaurantId, {
         name: data.name,
         address: data.address,
         description: data.description || undefined,
       });
+      locationCreated = true;
       const savedSchedules = await restaurantService.updateSchedules(created.id, data.schedules);
       if (!savedSchedules.length) {
         throw new Error("No se pudieron guardar los horarios de la sede.");
@@ -474,7 +476,12 @@ function Manager() {
       setRestaurantId(null);
       await load();
     } catch (e) {
-      setError(errorMessage(e, "No pudimos completar la creación de la sede."));
+      const message = errorMessage(e, "No pudimos completar la creación de la sede.");
+      setError(
+        locationCreated
+          ? `${message} La sede ya fue creada, pero falló un paso posterior. Verifica su estado antes de volver a enviar el formulario.`
+          : message,
+      );
     } finally {
       setBusy(false);
     }
@@ -497,7 +504,9 @@ function Manager() {
             Añadir restaurante
           </PrimaryButton>
         </header>
-        {error && <Alert text={error} close={() => setError(null)} />}
+        {error && !restaurantId && !location && (
+          <Alert text={error} close={() => setError(null)} />
+        )}
         <div className="grid gap-4 md:grid-cols-2">
           {restaurants.map((restaurant) => (
             <SurfaceCard key={restaurant.id} className="bg-white">
@@ -583,10 +592,23 @@ function Manager() {
           </Modal>
         )}
         {restaurantId && (
-          <LocationWizard busy={busy} close={() => setRestaurantId(null)} submit={finishLocation} />
+          <LocationWizard
+            busy={busy}
+            error={error}
+            clearError={() => setError(null)}
+            close={() => setRestaurantId(null)}
+            submit={finishLocation}
+          />
         )}
         {location && (
-          <Profile location={location} busy={busy} close={() => setLocation(null)} run={run} />
+          <Profile
+            location={location}
+            busy={busy}
+            error={error}
+            clearError={() => setError(null)}
+            close={() => setLocation(null)}
+            run={run}
+          />
         )}
       </div>
     </main>
@@ -595,10 +617,14 @@ function Manager() {
 
 function LocationWizard({
   busy,
+  error,
+  clearError,
   close,
   submit,
 }: {
   busy: boolean;
+  error: string | null;
+  clearError: () => void;
   close: () => void;
   submit: (data: LocationWizardData) => Promise<void>;
 }) {
@@ -662,6 +688,7 @@ function LocationWizard({
   };
   return (
     <Modal title="Añadir sede" close={close} wide>
+      {error && <Alert text={error} close={clearError} />}
       <FormStepper steps={LOCATION_STEPS} current={step} className="mb-7" />
       {step === 0 && (
         <section>
@@ -933,11 +960,15 @@ function WizardNavigation({
 function Profile({
   location,
   busy,
+  error,
+  clearError,
   close,
   run,
 }: {
   location: Location;
   busy: boolean;
+  error: string | null;
+  clearError: () => void;
   close: () => void;
   run: (action: () => Promise<void>, fallback: string) => Promise<boolean>;
 }) {
@@ -1038,6 +1069,7 @@ function Profile({
 
   return (
     <Modal title={location.name} close={close} wide>
+      {error && <Alert text={error} close={clearError} />}
       <FormStepper steps={LOCATION_STEPS} current={step} className="mb-7" />
       {step === 0 && (
         <section>
