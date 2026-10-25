@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Building2, Loader2, MapPin, Plus, Send, Store, Trash2, X } from "lucide-react";
 import { ApiError, RequireAuth } from "@/shared/auth";
@@ -22,6 +22,11 @@ import type {
   Restaurant,
   Schedule,
 } from "@/shared/types/restaurant";
+import {
+  loadColombiaDivipola,
+  type ColombianDepartment,
+  type ColombianMunicipality,
+} from "@/shared/constants/colombia-divipola";
 
 const DAYS = [
   { label: "Lunes", value: 1 },
@@ -44,6 +49,322 @@ const statusStyle: Record<Status, string> = {
 };
 const errorMessage = (error: unknown, fallback: string) =>
   error instanceof ApiError ? error.message : fallback;
+
+type StructuredAddressProps = {
+  value: string;
+  onChange: (address: string) => void;
+  error?: string | null;
+};
+
+function StructuredAddress({ value, onChange, error }: StructuredAddressProps) {
+  const [departments, setDepartments] = useState<ColombianDepartment[]>([]);
+  const [municipalities, setMunicipalities] = useState<ColombianMunicipality[]>([]);
+  const [departmentCode, setDepartmentCode] = useState("");
+  const [municipalityCode, setMunicipalityCode] = useState("");
+  const [roadType, setRoadType] = useState("Carrera");
+  const [mainNumber, setMainNumber] = useState("");
+  const [letter, setLetter] = useState("");
+  const [secondNumber, setSecondNumber] = useState("");
+  const [finalNumber, setFinalNumber] = useState("");
+  const [complement, setComplement] = useState("");
+  const [neighborhood, setNeighborhood] = useState("");
+  const [rural, setRural] = useState(false);
+  const [ruralAddress, setRuralAddress] = useState("");
+  const initialized = useRef(false);
+  const onChangeRef = useRef(onChange);
+  const [addressReady, setAddressReady] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const [legacyAddress, setLegacyAddress] = useState("");
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    let active = true;
+
+    loadColombiaDivipola()
+      .then((catalog) => {
+        if (!active) return;
+        setDepartments(catalog.departments);
+        setMunicipalities(catalog.municipalities);
+      })
+      .catch(() => {
+        if (active) setDepartments([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (
+      initialized.current ||
+      departments.length === 0 ||
+      municipalities.length === 0
+    ) {
+      return;
+    }
+
+    initialized.current = true;
+    setLegacyAddress(value);
+
+    if (!value.trim()) {
+      setAddressReady(true);
+      return;
+    }
+
+    const normalize = (text: string) =>
+      text
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim()
+        .toLowerCase();
+
+    const parts = value
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    if (normalize(parts[parts.length - 1] ?? "") === "colombia") {
+      parts.pop();
+    }
+
+    const departmentName = parts.pop();
+    const department = departments.find(
+      (item) => normalize(item.name) === normalize(departmentName ?? ""),
+    );
+
+    if (!department) {
+      setAddressReady(true);
+      return;
+    }
+
+    const municipalityName = parts.pop();
+    const municipality = municipalities.find(
+      (item) =>
+        item.departmentCode === department.code &&
+        normalize(item.municipality) === normalize(municipalityName ?? ""),
+    );
+
+    if (!municipality || parts.length === 0) {
+      setAddressReady(true);
+      return;
+    }
+
+    const road = parts[0];
+    const match = road.match(
+      /^(.+?)\s+(\d+)([A-Za-z]?)\s*#\s*(\d+)\s*-\s*(\d+)$/,
+    );
+
+    // Si no reconoce la nomenclatura, conserva la dirección original.
+    if (!match) {
+      setAddressReady(true);
+      return;
+    }
+
+    setDepartmentCode(department.code);
+    setMunicipalityCode(municipality.municipalityCode);
+    setRoadType(match[1].trim());
+    setMainNumber(match[2]);
+    setLetter(match[3].toUpperCase());
+    setSecondNumber(match[4]);
+    setFinalNumber(match[5]);
+    setRural(false);
+
+    const extraParts = parts.slice(1);
+    const neighborhoodPart = extraParts.find((part) =>
+      /^barrio\s+/i.test(part),
+    );
+
+    setNeighborhood(
+      neighborhoodPart?.replace(/^barrio\s+/i, "") ?? "",
+    );
+
+    setComplement(
+      extraParts
+        .filter((part) => !/^barrio\s+/i.test(part))
+        .join(", "),
+    );
+    setAddressReady(true);
+  }, [value, departments, municipalities]);
+
+  const availableMunicipalities = municipalities.filter(
+    (item) => item.departmentCode === departmentCode,
+  );
+
+  const address = rural
+    ? [
+        ruralAddress.trim(),
+        neighborhood.trim() ? `Barrio ${neighborhood.trim()}` : "",
+        availableMunicipalities.find((item) => item.municipalityCode === municipalityCode)?.municipality,
+        departments.find((item) => item.code === departmentCode)?.name,
+        "Colombia",
+      ].filter(Boolean).join(", ")
+    : [
+        `${roadType} ${mainNumber.trim()}${letter.trim().toUpperCase()} # ${secondNumber.trim()} - ${finalNumber.trim()}`,
+        complement.trim(),
+        neighborhood.trim() ? `Barrio ${neighborhood.trim()}` : "",
+        availableMunicipalities.find((item) => item.municipalityCode === municipalityCode)?.municipality,
+        departments.find((item) => item.code === departmentCode)?.name,
+        "Colombia",
+      ].filter(Boolean).join(", ");
+
+  const addressIsValid = rural
+    ? ruralAddress.trim().length > 0 &&
+      Boolean(departmentCode && municipalityCode)
+    : Boolean(
+        departmentCode &&
+        municipalityCode &&
+        mainNumber.trim() &&
+        secondNumber.trim() &&
+        finalNumber.trim()
+      );
+
+  useEffect(() => {
+    if (!addressReady || !hasInteracted) return;
+
+    const nextAddress = addressIsValid ? address : "";
+    if (nextAddress !== value) {
+      onChangeRef.current(nextAddress);
+    }
+  }, [address, addressIsValid, addressReady, hasInteracted, value]);
+
+  return (
+    <div className="space-y-4"
+    onChangeCapture={() => {
+      if (addressReady) setHasInteracted(true);
+    }}>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="block text-sm font-medium">
+          Departamento *
+          <select
+            className="mt-1 w-full rounded-xl border border-gray-300 p-3"
+            value={departmentCode}
+            onChange={(event) => {
+              setDepartmentCode(event.target.value);
+              setMunicipalityCode("");
+            }}
+          >
+            <option value="">Selecciona un departamento</option>
+            {departments.map((item) => (
+              <option key={item.code} value={item.code}>{item.name}</option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block text-sm font-medium">
+          Municipio *
+          <select
+            className="mt-1 w-full rounded-xl border border-gray-300 p-3"
+            value={municipalityCode}
+            onChange={(event) => setMunicipalityCode(event.target.value)}
+            disabled={!departmentCode}
+          >
+            <option value="">Selecciona un municipio</option>
+            {availableMunicipalities.map((item) => (
+              <option key={item.municipalityCode} value={item.municipalityCode}>
+                {item.municipality}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={rural}
+          onChange={(event) => setRural(event.target.checked)}
+        />
+        Dirección rural o especial
+      </label>
+
+      {rural ? (
+        <label className="block text-sm font-medium">
+          Vereda, finca o descripción de la ubicación *
+          <input
+            className="mt-1 w-full rounded-xl border border-gray-300 p-3"
+            value={ruralAddress}
+            onChange={(event) => setRuralAddress(event.target.value)}
+            maxLength={180}
+          />
+        </label>
+      ) : (
+        <>
+          <label className="block text-sm font-medium">
+            Tipo de vía *
+            <select
+              className="mt-1 w-full rounded-xl border border-gray-300 p-3"
+              value={roadType}
+              onChange={(event) => setRoadType(event.target.value)}
+            >
+              {["Calle", "Carrera", "Avenida", "Avenida Calle", "Avenida Carrera", "Circular", "Diagonal", "Transversal"].map((item) => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+          </label>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <label className="block text-sm font-medium">
+              Número principal *
+              <input className="mt-1 w-full rounded-xl border border-gray-300 p-3" value={mainNumber} onChange={(event) => setMainNumber(event.target.value.replace(/\D/g, ""))} maxLength={5} />
+            </label>
+            <label className="block text-sm font-medium">
+              Letra (opcional)
+              <input className="mt-1 w-full rounded-xl border border-gray-300 p-3 uppercase" value={letter} onChange={(event) => setLetter(event.target.value.replace(/[^a-z]/gi, "").slice(0, 1).toUpperCase())} maxLength={1} />
+            </label>
+            <label className="block text-sm font-medium">
+              Número después de #
+              <input className="mt-1 w-full rounded-xl border border-gray-300 p-3" value={secondNumber} onChange={(event) => setSecondNumber(event.target.value.replace(/\D/g, ""))} maxLength={5} />
+            </label>
+          </div>
+
+          <label className="block text-sm font-medium">
+            Número final *
+            <input className="mt-1 w-full rounded-xl border border-gray-300 p-3" value={finalNumber} onChange={(event) => setFinalNumber(event.target.value.replace(/\D/g, ""))} maxLength={5} />
+          </label>
+        </>
+      )}
+
+      <label className="block text-sm font-medium">
+        Complemento (opcional)
+        <input className="mt-1 w-full rounded-xl border border-gray-300 p-3" value={complement} onChange={(event) => setComplement(event.target.value)} maxLength={100} placeholder="Ej. local 201, piso 2" />
+      </label>
+
+      <label className="block text-sm font-medium">
+        Barrio (opcional)
+        <input className="mt-1 w-full rounded-xl border border-gray-300 p-3" value={neighborhood} onChange={(event) => setNeighborhood(event.target.value)} maxLength={100} />
+      </label>
+
+      {legacyAddress && (!hasInteracted || !addressIsValid) && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <p className="text-xs font-semibold text-amber-800">
+            Dirección guardada actualmente
+          </p>
+          <p className="mt-1 text-sm text-amber-900">{legacyAddress}</p>
+          <p className="mt-1 text-xs text-amber-800">
+            Si los campos no se completaron automáticamente, verifica la dirección
+            y completa los datos antes de guardarla.
+          </p>
+        </div>
+      )}
+
+      <div className="rounded-xl bg-gray-50 p-3">
+        <p className="text-xs font-semibold text-gray-500">Dirección que se enviará</p>
+        <p className="mt-1 text-sm text-gray-800">{address || "Completa los campos para construir la dirección."}</p>
+      </div>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      {departments.length === 0 && (
+        <p className="text-sm text-amber-700">
+          No fue posible cargar el catálogo de departamentos. Revisa la conexión antes de guardar.
+        </p>
+      )}
+    </div>
+  );
+}
 
 const LOCATION_STEPS: FormStep[] = [
   { id: "info", label: "Información" },
@@ -133,12 +454,14 @@ function Manager() {
     }
     setBusy(true);
     setError(null);
+    let locationCreated = false;
     try {
       const created = await restaurantService.createLocation(restaurantId, {
         name: data.name,
         address: data.address,
         description: data.description || undefined,
       });
+      locationCreated = true;
       const savedSchedules = await restaurantService.updateSchedules(created.id, data.schedules);
       if (!savedSchedules.length) {
         throw new Error("No se pudieron guardar los horarios de la sede.");
@@ -153,7 +476,12 @@ function Manager() {
       setRestaurantId(null);
       await load();
     } catch (e) {
-      setError(errorMessage(e, "No pudimos completar la creación de la sede."));
+      const message = errorMessage(e, "No pudimos completar la creación de la sede.");
+      setError(
+        locationCreated
+          ? `${message} La sede ya fue creada, pero falló un paso posterior. Verifica su estado antes de volver a enviar el formulario.`
+          : message,
+      );
     } finally {
       setBusy(false);
     }
@@ -176,7 +504,9 @@ function Manager() {
             Añadir restaurante
           </PrimaryButton>
         </header>
-        {error && <Alert text={error} close={() => setError(null)} />}
+        {error && !restaurantId && !location && (
+          <Alert text={error} close={() => setError(null)} />
+        )}
         <div className="grid gap-4 md:grid-cols-2">
           {restaurants.map((restaurant) => (
             <SurfaceCard key={restaurant.id} className="bg-white">
@@ -262,10 +592,23 @@ function Manager() {
           </Modal>
         )}
         {restaurantId && (
-          <LocationWizard busy={busy} close={() => setRestaurantId(null)} submit={finishLocation} />
+          <LocationWizard
+            busy={busy}
+            error={error}
+            clearError={() => setError(null)}
+            close={() => setRestaurantId(null)}
+            submit={finishLocation}
+          />
         )}
         {location && (
-          <Profile location={location} busy={busy} close={() => setLocation(null)} run={run} />
+          <Profile
+            location={location}
+            busy={busy}
+            error={error}
+            clearError={() => setError(null)}
+            close={() => setLocation(null)}
+            run={run}
+          />
         )}
       </div>
     </main>
@@ -274,10 +617,14 @@ function Manager() {
 
 function LocationWizard({
   busy,
+  error,
+  clearError,
   close,
   submit,
 }: {
   busy: boolean;
+  error: string | null;
+  clearError: () => void;
   close: () => void;
   submit: (data: LocationWizardData) => Promise<void>;
 }) {
@@ -341,6 +688,7 @@ function LocationWizard({
   };
   return (
     <Modal title="Añadir sede" close={close} wide>
+      {error && <Alert text={error} close={clearError} />}
       <FormStepper steps={LOCATION_STEPS} current={step} className="mb-7" />
       {step === 0 && (
         <section>
@@ -355,15 +703,10 @@ function LocationWizard({
             error={infoErrors.name}
             onChange={(name) => update({ name })}
           />
-          <Field
-            label="Dirección"
-            name="address"
-            min={5}
-            max={250}
-            required
+          <StructuredAddress
             value={data.address}
-            error={infoErrors.address}
             onChange={(address) => update({ address })}
+            error={infoErrors.address}
           />
           <Area
             label="Descripción (opcional)"
@@ -617,11 +960,15 @@ function WizardNavigation({
 function Profile({
   location,
   busy,
+  error,
+  clearError,
   close,
   run,
 }: {
   location: Location;
   busy: boolean;
+  error: string | null;
+  clearError: () => void;
   close: () => void;
   run: (action: () => Promise<void>, fallback: string) => Promise<boolean>;
 }) {
@@ -722,6 +1069,7 @@ function Profile({
 
   return (
     <Modal title={location.name} close={close} wide>
+      {error && <Alert text={error} close={clearError} />}
       <FormStepper steps={LOCATION_STEPS} current={step} className="mb-7" />
       {step === 0 && (
         <section>
@@ -735,15 +1083,10 @@ function Profile({
             error={infoErrors.name}
             onChange={(name) => update({ name })}
           />
-          <Field
-            label="Dirección"
-            name="address"
-            min={5}
-            max={250}
-            required
+          <StructuredAddress
             value={draft.address}
-            error={infoErrors.address}
             onChange={(address) => update({ address })}
+            error={infoErrors.address}
           />
           <Area
             label="Descripción (opcional)"
