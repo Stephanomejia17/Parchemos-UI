@@ -11,6 +11,7 @@ import {
 import { useRouter } from "next/navigation";
 import { Camera, ImagePlus, Images, Loader2, MapPin, Search, Video, X } from "lucide-react";
 import { FormAlert, PrimaryButton } from "@/shared/components";
+import { useAuth } from "@/shared/auth";
 import { ApiError } from "@/shared/auth/types";
 import { postService, restaurantService } from "@/shared/services";
 import type { LocationSearchResult } from "@/shared/services/restaurant/restaurant.service";
@@ -32,6 +33,9 @@ const MIN_QUERY_LENGTH = 2;
 const SEARCH_DEBOUNCE_MS = 300;
 
 export function PublishPost({ feedHref }: { feedHref: string }) {
+  const { user } = useAuth();
+  // Un restaurante siempre publica a nombre de una de sus sedes; un comensal puede asociar una o ninguna.
+  const isOwner = user?.role === "restaurante";
   const router = useRouter();
   const [media, setMedia] = useState<SelectedMedia[]>([]);
   const [fileErrors, setFileErrors] = useState<string[]>([]);
@@ -44,6 +48,8 @@ export function PublishPost({ feedHref }: { feedHref: string }) {
   const abortRef = useRef<AbortController | null>(null);
   const locationInputRef = useRef<HTMLInputElement>(null);
   const mediaRef = useRef<SelectedMedia[]>([]);
+  const [ownLocations, setOwnLocations] = useState<LocationSearchResult[] | null>(null);
+  const [ownLocationsError, setOwnLocationsError] = useState<string | null>(null);
 
   const uploading = progress !== null;
 
@@ -122,8 +128,38 @@ export function PublishPost({ feedHref }: { feedHref: string }) {
     }
   };
 
+  // El dueño elige entre sus sedes activas; con una sola queda elegida de entrada.
+  useEffect(() => {
+    if (!isOwner) return;
+    let cancelled = false;
+    restaurantService
+      .listMyRestaurants()
+      .then((restaurants) => {
+        if (cancelled) return;
+        const options = restaurants.flatMap((restaurant) =>
+          restaurant.locations
+            .filter((item) => item.status === "activa")
+            .map((item) => ({
+              id: item.id,
+              name: item.name,
+              address: item.address,
+              brandName: restaurant.businessName,
+            })),
+        );
+        setOwnLocations(options);
+        if (options.length === 1) setLocation(options[0]);
+      })
+      .catch(() => {
+        if (!cancelled) setOwnLocationsError("No pudimos cargar tus sedes. Inténtalo de nuevo.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOwner]);
+
   const onPublish = () => {
     if (!media.length || uploading) return;
+    if (isOwner && !location) return;
     if (!location) {
       setShowAssociateModal(true);
       return;
@@ -248,12 +284,22 @@ export function PublishPost({ feedHref }: { feedHref: string }) {
         />
       </div>
 
-      <LocationPicker
-        selected={location}
-        onSelect={setLocation}
-        disabled={uploading}
-        inputRef={locationInputRef}
-      />
+      {isOwner ? (
+        <OwnerLocationSelect
+          options={ownLocations}
+          error={ownLocationsError}
+          selected={location}
+          onSelect={setLocation}
+          disabled={uploading}
+        />
+      ) : (
+        <LocationPicker
+          selected={location}
+          onSelect={setLocation}
+          disabled={uploading}
+          inputRef={locationInputRef}
+        />
+      )}
 
       {uploading && (
         <div role="status" aria-label="Progreso de subida" className="flex flex-col gap-2">
@@ -292,7 +338,11 @@ export function PublishPost({ feedHref }: { feedHref: string }) {
         </FormAlert>
       )}
 
-      <PrimaryButton size="lg" disabled={!media.length || uploading} onClick={onPublish}>
+      <PrimaryButton
+        size="lg"
+        disabled={!media.length || uploading || (isOwner && !location)}
+        onClick={onPublish}
+      >
         {uploading ? "Publicando…" : "Publicar"}
       </PrimaryButton>
 
@@ -378,6 +428,79 @@ function CaptureButton({
   );
 }
 
+/**
+ * Selector de sede para el dueño de un restaurante: la publicación queda ligada
+ * a la sede elegida y, por ella, a su marca. Obligatorio.
+ */
+function OwnerLocationSelect({
+  options,
+  error,
+  selected,
+  onSelect,
+  disabled,
+}: {
+  options: LocationSearchResult[] | null;
+  error: string | null;
+  selected: LocationSearchResult | null;
+  onSelect: (location: LocationSearchResult) => void;
+  disabled: boolean;
+}) {
+  if (error) return <FormAlert type="error">{error}</FormAlert>;
+  if (!options) {
+    return (
+      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" /> Cargando tus sedes…
+      </p>
+    );
+  }
+  if (options.length === 0) {
+    return (
+      <FormAlert type="warning">
+        Necesitas al menos una sede activa para publicar. Cuando una de tus sedes sea aprobada
+        podrás compartir contenido a su nombre.
+      </FormAlert>
+    );
+  }
+
+  return (
+    <fieldset className="flex flex-col gap-2" disabled={disabled}>
+      <legend className="mb-1.5 text-xs font-semibold text-gray-600">
+        ¿A qué sede pertenece esta publicación?
+      </legend>
+      {options.map((option) => {
+        const active = selected?.id === option.id;
+        return (
+          <label
+            key={option.id}
+            className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition-colors ${
+              active
+                ? "border-primary bg-orange-50"
+                : "border-gray-200 bg-white hover:border-orange-300"
+            }`}
+          >
+            <input
+              type="radio"
+              name="post-location"
+              checked={active}
+              onChange={() => onSelect(option)}
+              className="sr-only"
+            />
+            <MapPin className={`h-4 w-4 shrink-0 ${active ? "text-primary" : "text-gray-400"}`} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold text-gray-900">
+                {option.brandName}
+              </span>
+              <span className="block truncate text-xs text-muted-foreground">
+                {option.name} · {option.address}
+              </span>
+            </span>
+          </label>
+        );
+      })}
+    </fieldset>
+  );
+}
+
 function LocationPicker({
   selected,
   onSelect,
@@ -426,8 +549,10 @@ function LocationPicker({
         <div className="flex items-center gap-3 rounded-2xl border border-primary bg-orange-50 px-4 py-3">
           <MapPin className="h-4 w-4 shrink-0 text-primary" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-gray-900">{selected.name}</p>
-            <p className="truncate text-xs text-muted-foreground">{selected.address}</p>
+            <p className="truncate text-sm font-semibold text-gray-900">{selected.brandName}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {selected.name} · {selected.address}
+            </p>
           </div>
           <button
             type="button"
@@ -496,8 +621,10 @@ function LocationPicker({
                 }}
                 className="flex w-full flex-col px-4 py-2.5 text-left hover:bg-orange-50"
               >
-                <span className="text-sm font-medium text-gray-900">{result.name}</span>
-                <span className="text-xs text-muted-foreground">{result.address}</span>
+                <span className="text-sm font-medium text-gray-900">{result.brandName}</span>
+                <span className="text-xs text-muted-foreground">
+                  {result.name} · {result.address}
+                </span>
               </button>
             </li>
           ))}

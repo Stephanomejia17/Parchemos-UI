@@ -6,17 +6,12 @@ import { MapPin, Play, Volume2, VolumeX } from "lucide-react";
 import { InitialsAvatar } from "@/shared/components";
 import type { Post, PostMedia } from "@/shared/services";
 import { postService } from "@/shared/services/posts/post.service";
+import { postIdentity } from "../post-identity";
+import { usePostEngagement } from "../use-post-engagement";
+import { CommentsSheet } from "./CommentsSheet";
+import { PostActions } from "./PostActions";
 import { MediaError } from "./PostVideo";
 import { ReportPostButton } from "./ReportPostButton";
-
-function initialsOf(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-}
 
 /**
  * Una publicación a pantalla completa, al estilo de un feed vertical (móvil).
@@ -27,6 +22,9 @@ export function PostReel({ post, trackView = false }: { post: Post; trackView?: 
   const reelRef = useRef<HTMLElement>(null);
   const [onScreen, setOnScreen] = useState(false);
   const tracked = useRef(false);
+  const identity = postIdentity(post);
+  const engagement = usePostEngagement(post);
+  const [showComments, setShowComments] = useState(false);
 
   useEffect(() => {
     const node = reelRef.current;
@@ -65,7 +63,12 @@ export function PostReel({ post, trackView = false }: { post: Post; trackView?: 
         </span>
       )}
 
-      <div className="absolute bottom-24 right-4 z-10">
+      <div className="absolute bottom-24 right-3 z-10 flex flex-col items-center gap-5">
+        <PostActions
+          engagement={engagement}
+          onOpenComments={() => setShowComments(true)}
+          variant="rail"
+        />
         <ReportPostButton postId={post.id} variant="overlay" />
       </div>
 
@@ -79,23 +82,38 @@ export function PostReel({ post, trackView = false }: { post: Post; trackView?: 
               className="h-9 w-9 rounded-full border border-white/60 object-cover"
             />
           ) : (
-            <InitialsAvatar initials={initialsOf(post.author.fullName)} size="sm" />
+            <InitialsAvatar initials={identity.initials} size="sm" />
           )}
-          <p className="truncate text-sm font-bold drop-shadow">{post.author.fullName}</p>
+          <p className="flex min-w-0 items-center gap-1.5 text-sm font-bold drop-shadow">
+            <span className="truncate">{identity.title}</span>
+            {identity.badge && (
+              <span className="shrink-0 rounded-full bg-white/25 px-1.5 py-0.5 text-[10px] font-bold backdrop-blur">
+                {identity.badge}
+              </span>
+            )}
+          </p>
         </div>
         {post.caption && (
           <p className="mt-2 line-clamp-3 text-sm leading-snug drop-shadow">{post.caption}</p>
         )}
-        {post.location && (
+        {identity.place && (
           <Link
-            href={`/restaurant?locationId=${encodeURIComponent(post.location.id)}`}
+            href={identity.place.href}
             className="pointer-events-auto mt-2 inline-flex max-w-full items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 text-xs font-semibold backdrop-blur"
           >
             <MapPin className="h-3 w-3 shrink-0" />
-            <span className="truncate">{post.location.name}</span>
+            <span className="truncate">{identity.place.label}</span>
           </Link>
         )}
       </div>
+
+      {showComments && (
+        <CommentsSheet
+          post={post}
+          onClose={() => setShowComments(false)}
+          onCountChange={engagement.changeCommentCount}
+        />
+      )}
     </article>
   );
 }

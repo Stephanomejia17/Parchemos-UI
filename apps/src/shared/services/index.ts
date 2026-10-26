@@ -9,7 +9,15 @@ export {
 export { favoriteService } from "./favorites/favorite.service";
 export type { FeaturedList, FeaturedLocation } from "./favorites/favorite.service";
 export { postService } from "./posts/post.service";
-export type { CreatePostInput, FeedPage, Post, PostMedia } from "./posts/post.service";
+export type {
+  CommentsPage,
+  CreatePostInput,
+  FeedPage,
+  Post,
+  PostComment,
+  PostLocation,
+  PostMedia,
+} from "./posts/post.service";
 export { recommendationService } from "./recommendations/recommendation.service";
 export type {
   RecommendationList,

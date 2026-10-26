@@ -7,36 +7,22 @@ import { InitialsAvatar } from "@/shared/components";
 import { RemoteImage } from "@/shared/components/media/RemoteImage";
 import type { Post } from "@/shared/services";
 import { postService } from "@/shared/services/posts/post.service";
+import { postIdentity } from "../post-identity";
+import { relativeDate } from "../relative-date";
+import { usePostEngagement } from "../use-post-engagement";
+import { CommentsSheet } from "./CommentsSheet";
+import { PostActions } from "./PostActions";
 import { MediaError, PostVideo } from "./PostVideo";
 import { ReportPostButton } from "./ReportPostButton";
-
-function initialsOf(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("");
-}
-
-function relativeDate(iso: string) {
-  const seconds = Math.round((new Date(iso).getTime() - Date.now()) / 1000);
-  const formatter = new Intl.RelativeTimeFormat("es", { numeric: "auto" });
-  for (const [unit, size] of [
-    ["day", 86400],
-    ["hour", 3600],
-    ["minute", 60],
-  ] as [Intl.RelativeTimeFormatUnit, number][]) {
-    if (Math.abs(seconds) >= size) return formatter.format(Math.round(seconds / size), unit);
-  }
-  return "justo ahora";
-}
 
 export function PostCard({ post, trackView = false }: { post: Post; trackView?: boolean }) {
   const cardRef = useRef<HTMLElement>(null);
   const [index, setIndex] = useState(0);
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
   const media = post.media[index];
+  const identity = postIdentity(post);
+  const engagement = usePostEngagement(post);
+  const [showComments, setShowComments] = useState(false);
 
   useEffect(() => {
     if (!trackView || !cardRef.current || typeof IntersectionObserver === "undefined") return;
@@ -53,27 +39,37 @@ export function PostCard({ post, trackView = false }: { post: Post; trackView?: 
   }, [post.id, trackView]);
 
   return (
-    <article ref={cardRef} className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm">
+    <article
+      ref={cardRef}
+      className="overflow-hidden rounded-2xl border border-border bg-white shadow-sm"
+    >
       <header className="flex items-center gap-3 p-4">
         {post.author.photoUrl ? (
           <RemoteImage
             src={post.author.photoUrl}
-            alt={post.author.fullName}
+            alt={identity.title}
             className="h-10 w-10 shrink-0 rounded-full"
             sizes="40px"
           />
         ) : (
-          <InitialsAvatar initials={initialsOf(post.author.fullName)} size="md" />
+          <InitialsAvatar initials={identity.initials} size="md" />
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-gray-900">{post.author.fullName}</p>
-          {post.location && (
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
+            <span className="truncate">{identity.title}</span>
+            {identity.badge && (
+              <span className="shrink-0 rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                {identity.badge}
+              </span>
+            )}
+          </p>
+          {identity.place && (
             <Link
-              href={`/restaurant?locationId=${encodeURIComponent(post.location.id)}`}
+              href={identity.place.href}
               className="flex items-center gap-1 truncate text-xs font-medium text-primary hover:underline"
             >
               <MapPin className="h-3 w-3 shrink-0" />
-              {post.location.name}
+              {identity.place.label}
             </Link>
           )}
         </div>
@@ -133,10 +129,20 @@ export function PostCard({ post, trackView = false }: { post: Post; trackView?: 
         </div>
       )}
 
-      {post.caption && <p className="p-4 text-sm text-gray-800">{post.caption}</p>}
+      <div className="px-3 pt-2">
+        <PostActions engagement={engagement} onOpenComments={() => setShowComments(true)} />
+      </div>
+      {post.caption && <p className="px-4 pb-3 pt-1 text-sm text-gray-800">{post.caption}</p>}
       <div className="border-t border-gray-100 px-3 py-3">
         <ReportPostButton postId={post.id} />
       </div>
+      {showComments && (
+        <CommentsSheet
+          post={post}
+          onClose={() => setShowComments(false)}
+          onCountChange={engagement.changeCommentCount}
+        />
+      )}
     </article>
   );
 }

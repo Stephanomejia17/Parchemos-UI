@@ -133,7 +133,11 @@ export function Profile({ backHref }: { backHref?: string } = {}) {
           </header>
         )}
         {canPost && tab === "posts" && (
-          <MyPosts publishHref={publishHref} onTotalChange={setPostsTotal} />
+          <MyPosts
+            publishHref={publishHref}
+            onTotalChange={setPostsTotal}
+            filterByLocation={user.role === "restaurante"}
+          />
         )}
         {showEdit && (
           <>

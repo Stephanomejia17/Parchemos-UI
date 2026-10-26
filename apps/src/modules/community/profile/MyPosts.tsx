@@ -5,22 +5,105 @@ import Link from "next/link";
 import { Camera, Images, Loader2, Play, Trash2, X } from "lucide-react";
 import { ApiError } from "@/shared/auth";
 import { FormAlert, PrimaryButton } from "@/shared/components";
-import { postService, type Post } from "@/shared/services";
+import { postService, restaurantService, type Post } from "@/shared/services";
 import { PostCard } from "../feed/PostCard";
 import { usePagedPosts } from "../use-paged-posts";
 
 const PAGE_SIZE = 18;
 
-/** Cuadrícula con las publicaciones del usuario, como el perfil de una red social. */
+interface LocationFilter {
+  id: string;
+  label: string;
+}
+
+/**
+ * Mis publicaciones. Si el dueño de un restaurante tiene varias sedes, puede
+ * ver el contenido de todas o de una sola (siempre con su marca).
+ */
 export function MyPosts({
   publishHref,
   onTotalChange,
+  filterByLocation = false,
 }: {
   publishHref: string;
   onTotalChange?: (total: number) => void;
+  /** Muestra el filtro por sede (cuenta de restaurante). */
+  filterByLocation?: boolean;
+}) {
+  const [locations, setLocations] = useState<LocationFilter[]>([]);
+  const [locationId, setLocationId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!filterByLocation) return;
+    let cancelled = false;
+    restaurantService
+      .listMyRestaurants()
+      .then((restaurants) => {
+        if (cancelled) return;
+        setLocations(
+          restaurants.flatMap((restaurant) =>
+            restaurant.locations.map((location) => ({
+              id: location.id,
+              label: `${restaurant.businessName} · ${location.name}`,
+            })),
+          ),
+        );
+      })
+      .catch(() => {
+        /* sin filtro el perfil sigue mostrando todo */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [filterByLocation]);
+
+  return (
+    <div>
+      {locations.length > 1 && (
+        <div
+          role="group"
+          aria-label="Filtrar por sede"
+          className="mb-3 flex gap-2 overflow-x-auto pb-1 scrollbar-hide"
+        >
+          {[{ id: null, label: "Todas las sedes" }, ...locations].map((option) => (
+            <button
+              key={option.id ?? "all"}
+              type="button"
+              aria-pressed={locationId === option.id}
+              onClick={() => setLocationId(option.id)}
+              className={`shrink-0 rounded-2xl px-3.5 py-2 text-xs font-semibold transition-colors ${
+                locationId === option.id
+                  ? "bg-primary text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {/* `key`: al cambiar de sede la lista se reinicia desde la primera página. */}
+      <MyPostsGrid
+        key={locationId ?? "all"}
+        publishHref={publishHref}
+        onTotalChange={onTotalChange}
+        locationId={locationId}
+      />
+    </div>
+  );
+}
+
+function MyPostsGrid({
+  publishHref,
+  onTotalChange,
+  locationId,
+}: {
+  publishHref: string;
+  onTotalChange?: (total: number) => void;
+  locationId: string | null;
 }) {
   const { posts, total, hasMore, loading, error, sentinelRef, loadMore, removeLocally, isEmpty } =
-    usePagedPosts((cursor) => postService.listMine({ cursor, limit: PAGE_SIZE }), {
+    usePagedPosts((cursor) => postService.listMine({ cursor, limit: PAGE_SIZE, locationId }), {
       rootMargin: "300px",
     });
   const [selected, setSelected] = useState<Post | null>(null);
