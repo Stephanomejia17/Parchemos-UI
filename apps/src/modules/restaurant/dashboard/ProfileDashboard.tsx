@@ -38,10 +38,6 @@ export function ProfileDashboard() {
 
   const totals = data?.totales;
   return <div className="flex h-full flex-col overflow-y-auto bg-background">
-    <div className="sticky top-0 z-10 border-b border-border bg-white px-4 py-4 md:px-6">
-      <h1 className="text-lg font-bold text-gray-900">Dashboard del restaurante</h1>
-      <p className="mt-0.5 text-xs text-muted-foreground">Ventas y comisiones de tus restaurantes en el período</p>
-    </div>
     <div className="flex flex-col gap-4 p-4 md:gap-5 md:p-6">
       <Card className="flex flex-wrap items-end gap-3 p-4">
         <label className="flex flex-col gap-1 text-xs text-gray-500">Desde<input type="date" aria-label="Desde" value={desde} max={hasta} onChange={(event) => setDesde(event.target.value)} className="box-border h-10 w-44 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-800" /></label>
