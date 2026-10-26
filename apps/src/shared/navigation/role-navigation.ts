@@ -1,14 +1,10 @@
 import {
-  BadgeCheck,
   BarChart3,
-  Brain,
   CalendarCheck,
   Compass,
   CreditCard,
-  Headphones,
   Home,
   LayoutDashboard,
-  Megaphone,
   Clapperboard,
   Plus,
   Settings,
@@ -46,10 +42,9 @@ const RESTAURANT_NAVIGATION: NavigationItem[] = [
   { id: "profile", href: "/restaurant-profile", icon: User, label: "Mi perfil" },
 ];
 
-// TODO: los `badge` de abajo son valores fijos de demostración. Cuando el
-// admin consuma la API real, deben calcularse a partir de los conteos
-// devueltos por el backend (pendientes de moderación, tickets de soporte,
-// verificaciones abiertas) en lugar de quedar quemados aquí.
+// TODO: el `badge` de abajo es un valor fijo de demostración. Cuando el
+// admin consuma la API real, debe calcularse a partir del conteo de
+// pendientes de moderación devuelto por el backend en lugar de quedar quemado aquí.
 const ADMIN_NAVIGATION: NavigationItem[] = [
   { id: "dashboard", href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "users", href: "/users", label: "Usuarios", icon: Users },
@@ -57,18 +52,8 @@ const ADMIN_NAVIGATION: NavigationItem[] = [
   { id: "moderation", href: "/moderation", label: "Moderación", icon: Shield, badge: "8" },
   { id: "analytics", href: "/analytics", label: "Analítica", icon: BarChart3 },
   { id: "finances", href: "/finances", label: "Finanzas", icon: CreditCard },
-  { id: "support", href: "/support", label: "Soporte", icon: Headphones, badge: "24" },
-  {
-    id: "verification",
-    href: "/verification",
-    label: "Verificación",
-    icon: BadgeCheck,
-    badge: "3",
-  },
-  { id: "campaigns", href: "/campaigns", label: "Campañas", icon: Megaphone },
   { id: "settings", href: "/settings", label: "Configuración", icon: Settings },
   { id: "profile", href: "/account-profile", label: "Mi perfil", icon: User },
-  { id: "ai", href: "/ai", label: "Centro de IA", icon: Brain },
 ];
 
 /** `personal_restaurante` (workroom) aún no tiene features; se completa cuando existan. */
