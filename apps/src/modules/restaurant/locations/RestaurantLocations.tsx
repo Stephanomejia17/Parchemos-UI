@@ -27,6 +27,18 @@ import {
   type ColombianDepartment,
   type ColombianMunicipality,
 } from "@/shared/constants/colombia-divipola";
+import {
+  EMPTY_ROAD_ADDRESS,
+  QUADRANTS,
+  ROAD_TYPES,
+  formatRoad,
+  isRoadComplete,
+  onlyDigits,
+  onlyLetters,
+  parseRoad,
+  type Quadrant,
+  type RoadAddress,
+} from "./address-nomenclature";
 
 const DAYS = [
   { label: "Lunes", value: 1 },
@@ -50,31 +62,58 @@ const statusStyle: Record<Status, string> = {
 const errorMessage = (error: unknown, fallback: string) =>
   error instanceof ApiError ? error.message : fallback;
 
+/**
+ * Por ahora solo se aceptan sedes en Medellín: es la única ciudad donde la API
+ * verifica la dirección con la nomenclatura oficial (catastro de la Alcaldía).
+ */
+const MEDELLIN_DEPARTMENT_CODE = "05";
+const MEDELLIN_MUNICIPALITY_CODE = "05001";
+
+const inputClass = "mt-1 w-full rounded-xl border border-gray-300 p-3";
+
 type StructuredAddressProps = {
   value: string;
   onChange: (address: string) => void;
   error?: string | null;
 };
 
+function AddressPart({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
+  return (
+    <fieldset className="rounded-xl border border-gray-200 p-3">
+      <legend className="px-1 text-sm font-semibold text-gray-900">{title}</legend>
+      <p className="mb-2 text-xs text-gray-500">{hint}</p>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{children}</div>
+    </fieldset>
+  );
+}
+
+function QuadrantSelect({ value, onChange }: { value: Quadrant; onChange: (value: Quadrant) => void }) {
+  return (
+    <label className="block text-sm font-medium">
+      Cuadrante
+      <select className={inputClass} value={value} onChange={(event) => onChange(event.target.value as Quadrant)}>
+        {QUADRANTS.map((item) => (
+          <option key={item} value={item}>{item || "Ninguno"}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function StructuredAddress({ value, onChange, error }: StructuredAddressProps) {
   const [departments, setDepartments] = useState<ColombianDepartment[]>([]);
   const [municipalities, setMunicipalities] = useState<ColombianMunicipality[]>([]);
-  const [departmentCode, setDepartmentCode] = useState("");
-  const [municipalityCode, setMunicipalityCode] = useState("");
-  const [roadType, setRoadType] = useState("Carrera");
-  const [mainNumber, setMainNumber] = useState("");
-  const [letter, setLetter] = useState("");
-  const [secondNumber, setSecondNumber] = useState("");
-  const [finalNumber, setFinalNumber] = useState("");
+  const [catalogError, setCatalogError] = useState(false);
+  const [road, setRoad] = useState<RoadAddress>(EMPTY_ROAD_ADDRESS);
   const [complement, setComplement] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
-  const [rural, setRural] = useState(false);
-  const [ruralAddress, setRuralAddress] = useState("");
   const initialized = useRef(false);
   const onChangeRef = useRef(onChange);
   const [addressReady, setAddressReady] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [legacyAddress, setLegacyAddress] = useState("");
+
+  const updateRoad = (changes: Partial<RoadAddress>) => setRoad((current) => ({ ...current, ...changes }));
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -86,11 +125,13 @@ function StructuredAddress({ value, onChange, error }: StructuredAddressProps) {
     loadColombiaDivipola()
       .then((catalog) => {
         if (!active) return;
-        setDepartments(catalog.departments);
-        setMunicipalities(catalog.municipalities);
+        setDepartments(catalog.departments.filter((item) => item.code === MEDELLIN_DEPARTMENT_CODE));
+        setMunicipalities(
+          catalog.municipalities.filter((item) => item.municipalityCode === MEDELLIN_MUNICIPALITY_CODE),
+        );
       })
       .catch(() => {
-        if (active) setDepartments([]);
+        if (active) setCatalogError(true);
       });
 
     return () => {
@@ -98,129 +139,52 @@ function StructuredAddress({ value, onChange, error }: StructuredAddressProps) {
     };
   }, []);
 
+  const department = departments[0];
+  const municipality = municipalities[0];
+
+  // Precarga los campos con la dirección guardada (si sigue la nomenclatura).
   useEffect(() => {
+    if (initialized.current || !department || !municipality) return;
+
+    initialized.current = true;
+    setLegacyAddress(value);
+    setAddressReady(true);
+    if (!value.trim()) return;
+
+    const normalize = (text: string) =>
+      text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+    const parts = value.split(",").map((part) => part.trim()).filter(Boolean);
+    if (normalize(parts.at(-1) ?? "") === "colombia") parts.pop();
+
+    // Las direcciones de otras ciudades no se precargan: hay que escribir una de Medellín.
+    const [departmentName, municipalityName] = [parts.pop(), parts.pop()];
     if (
-      initialized.current ||
-      departments.length === 0 ||
-      municipalities.length === 0
+      normalize(departmentName ?? "") !== normalize(department.name) ||
+      normalize(municipalityName ?? "") !== normalize(municipality.municipality)
     ) {
       return;
     }
 
-    initialized.current = true;
-    setLegacyAddress(value);
+    const parsed = parseRoad(parts[0] ?? "");
+    if (!parsed) return;
 
-    if (!value.trim()) {
-      setAddressReady(true);
-      return;
-    }
-
-    const normalize = (text: string) =>
-      text
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .trim()
-        .toLowerCase();
-
-    const parts = value
-      .split(",")
-      .map((part) => part.trim())
-      .filter(Boolean);
-
-    if (normalize(parts[parts.length - 1] ?? "") === "colombia") {
-      parts.pop();
-    }
-
-    const departmentName = parts.pop();
-    const department = departments.find(
-      (item) => normalize(item.name) === normalize(departmentName ?? ""),
-    );
-
-    if (!department) {
-      setAddressReady(true);
-      return;
-    }
-
-    const municipalityName = parts.pop();
-    const municipality = municipalities.find(
-      (item) =>
-        item.departmentCode === department.code &&
-        normalize(item.municipality) === normalize(municipalityName ?? ""),
-    );
-
-    if (!municipality || parts.length === 0) {
-      setAddressReady(true);
-      return;
-    }
-
-    const road = parts[0];
-    const match = road.match(
-      /^(.+?)\s+(\d+)([A-Za-z]?)\s*#\s*(\d+)\s*-\s*(\d+)$/,
-    );
-
-    // Si no reconoce la nomenclatura, conserva la dirección original.
-    if (!match) {
-      setAddressReady(true);
-      return;
-    }
-
-    setDepartmentCode(department.code);
-    setMunicipalityCode(municipality.municipalityCode);
-    setRoadType(match[1].trim());
-    setMainNumber(match[2]);
-    setLetter(match[3].toUpperCase());
-    setSecondNumber(match[4]);
-    setFinalNumber(match[5]);
-    setRural(false);
-
+    setRoad(parsed);
     const extraParts = parts.slice(1);
-    const neighborhoodPart = extraParts.find((part) =>
-      /^barrio\s+/i.test(part),
-    );
+    const neighborhoodPart = extraParts.find((part) => /^barrio\s+/i.test(part));
+    setNeighborhood(neighborhoodPart?.replace(/^barrio\s+/i, "") ?? "");
+    setComplement(extraParts.filter((part) => !/^barrio\s+/i.test(part)).join(", "));
+  }, [value, department, municipality]);
 
-    setNeighborhood(
-      neighborhoodPart?.replace(/^barrio\s+/i, "") ?? "",
-    );
+  const address = [
+    formatRoad(road),
+    complement.trim(),
+    neighborhood.trim() ? `Barrio ${neighborhood.trim()}` : "",
+    municipality?.municipality,
+    department?.name,
+    "Colombia",
+  ].filter(Boolean).join(", ");
 
-    setComplement(
-      extraParts
-        .filter((part) => !/^barrio\s+/i.test(part))
-        .join(", "),
-    );
-    setAddressReady(true);
-  }, [value, departments, municipalities]);
-
-  const availableMunicipalities = municipalities.filter(
-    (item) => item.departmentCode === departmentCode,
-  );
-
-  const address = rural
-    ? [
-        ruralAddress.trim(),
-        neighborhood.trim() ? `Barrio ${neighborhood.trim()}` : "",
-        availableMunicipalities.find((item) => item.municipalityCode === municipalityCode)?.municipality,
-        departments.find((item) => item.code === departmentCode)?.name,
-        "Colombia",
-      ].filter(Boolean).join(", ")
-    : [
-        `${roadType} ${mainNumber.trim()}${letter.trim().toUpperCase()} # ${secondNumber.trim()} - ${finalNumber.trim()}`,
-        complement.trim(),
-        neighborhood.trim() ? `Barrio ${neighborhood.trim()}` : "",
-        availableMunicipalities.find((item) => item.municipalityCode === municipalityCode)?.municipality,
-        departments.find((item) => item.code === departmentCode)?.name,
-        "Colombia",
-      ].filter(Boolean).join(", ");
-
-  const addressIsValid = rural
-    ? ruralAddress.trim().length > 0 &&
-      Boolean(departmentCode && municipalityCode)
-    : Boolean(
-        departmentCode &&
-        municipalityCode &&
-        mainNumber.trim() &&
-        secondNumber.trim() &&
-        finalNumber.trim()
-      );
+  const addressIsValid = Boolean(department && municipality && isRoadComplete(road));
 
   useEffect(() => {
     if (!addressReady || !hasInteracted) return;
@@ -232,134 +196,97 @@ function StructuredAddress({ value, onChange, error }: StructuredAddressProps) {
   }, [address, addressIsValid, addressReady, hasInteracted, value]);
 
   return (
-    <div className="space-y-4"
-    onChangeCapture={() => {
-      if (addressReady) setHasInteracted(true);
-    }}>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <label className="block text-sm font-medium">
-          Departamento *
-          <select
-            className="mt-1 w-full rounded-xl border border-gray-300 p-3"
-            value={departmentCode}
-            onChange={(event) => {
-              setDepartmentCode(event.target.value);
-              setMunicipalityCode("");
-            }}
-          >
-            <option value="">Selecciona un departamento</option>
-            {departments.map((item) => (
-              <option key={item.code} value={item.code}>{item.name}</option>
+    <div
+      className="space-y-4"
+      onChangeCapture={() => {
+        if (addressReady) setHasInteracted(true);
+      }}
+    >
+      <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800">
+        <p className="font-semibold">
+          Ciudad: {municipality ? `${municipality.municipality}, ${department?.name}` : "Medellín, Antioquia"}
+        </p>
+        <p className="mt-1">
+          Por ahora solo aceptamos sedes en Medellín con dirección urbana. Verificamos cada dirección con
+          la nomenclatura oficial de la Alcaldía para ubicarla con precisión en el mapa.
+        </p>
+      </div>
+
+      <AddressPart title="Vía principal" hint="La vía donde queda la sede. Ej: Calle 51 Sur, Carrera 10C">
+        <label className="col-span-2 block text-sm font-medium sm:col-span-1">
+          Tipo de vía *
+          <select className={inputClass} value={road.roadType} onChange={(event) => updateRoad({ roadType: event.target.value })}>
+            {ROAD_TYPES.map((item) => (
+              <option key={item}>{item}</option>
             ))}
           </select>
         </label>
-
         <label className="block text-sm font-medium">
-          Municipio *
-          <select
-            className="mt-1 w-full rounded-xl border border-gray-300 p-3"
-            value={municipalityCode}
-            onChange={(event) => setMunicipalityCode(event.target.value)}
-            disabled={!departmentCode}
-          >
-            <option value="">Selecciona un municipio</option>
-            {availableMunicipalities.map((item) => (
-              <option key={item.municipalityCode} value={item.municipalityCode}>
-                {item.municipality}
-              </option>
-            ))}
-          </select>
+          Número *
+          <input className={inputClass} inputMode="numeric" value={road.mainNumber} onChange={(event) => updateRoad({ mainNumber: onlyDigits(event.target.value) })} placeholder="51" />
+        </label>
+        <label className="block text-sm font-medium">
+          Letras
+          <input className={`${inputClass} uppercase`} value={road.mainLetters} onChange={(event) => updateRoad({ mainLetters: onlyLetters(event.target.value, 2) })} placeholder="Ej: C, AA" />
+        </label>
+        <QuadrantSelect value={road.mainQuadrant} onChange={(mainQuadrant) => updateRoad({ mainQuadrant })} />
+      </AddressPart>
+
+      <AddressPart title="# Cruce" hint="El número de la vía que cruza, después del #. Ej: # 62E, # 18AA Sur">
+        <label className="block text-sm font-medium">
+          Número *
+          <input className={inputClass} inputMode="numeric" value={road.crossNumber} onChange={(event) => updateRoad({ crossNumber: onlyDigits(event.target.value) })} placeholder="62" />
+        </label>
+        <label className="block text-sm font-medium">
+          Letras
+          <input className={`${inputClass} uppercase`} value={road.crossLetters} onChange={(event) => updateRoad({ crossLetters: onlyLetters(event.target.value, 2) })} placeholder="Ej: E, AA" />
+        </label>
+        <QuadrantSelect value={road.crossQuadrant} onChange={(crossQuadrant) => updateRoad({ crossQuadrant })} />
+      </AddressPart>
+
+      <AddressPart title="- Placa" hint="El número después del guion: distancia en metros desde la esquina. Ej: - 16">
+        <label className="block text-sm font-medium">
+          Número *
+          <input className={inputClass} inputMode="numeric" value={road.plateNumber} onChange={(event) => updateRoad({ plateNumber: onlyDigits(event.target.value) })} placeholder="16" />
+        </label>
+        <label className="block text-sm font-medium">
+          Letra
+          <input className={`${inputClass} uppercase`} value={road.plateLetter} onChange={(event) => updateRoad({ plateLetter: onlyLetters(event.target.value, 1) })} placeholder="Ej: A" />
+        </label>
+      </AddressPart>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="block text-sm font-medium">
+          Complemento (opcional)
+          <input className={inputClass} value={complement} onChange={(event) => setComplement(event.target.value.replace(/,/g, " "))} maxLength={100} placeholder="Ej: Local 201, Interior 3" />
+        </label>
+        <label className="block text-sm font-medium">
+          Barrio (opcional)
+          <input className={inputClass} value={neighborhood} onChange={(event) => setNeighborhood(event.target.value.replace(/,/g, " "))} maxLength={100} placeholder="Ej: Laureles" />
         </label>
       </div>
 
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={rural}
-          onChange={(event) => setRural(event.target.checked)}
-        />
-        Dirección rural o especial
-      </label>
-
-      {rural ? (
-        <label className="block text-sm font-medium">
-          Vereda, finca o descripción de la ubicación *
-          <input
-            className="mt-1 w-full rounded-xl border border-gray-300 p-3"
-            value={ruralAddress}
-            onChange={(event) => setRuralAddress(event.target.value)}
-            maxLength={180}
-          />
-        </label>
-      ) : (
-        <>
-          <label className="block text-sm font-medium">
-            Tipo de vía *
-            <select
-              className="mt-1 w-full rounded-xl border border-gray-300 p-3"
-              value={roadType}
-              onChange={(event) => setRoadType(event.target.value)}
-            >
-              {["Calle", "Carrera", "Avenida", "Avenida Calle", "Avenida Carrera", "Circular", "Diagonal", "Transversal"].map((item) => (
-                <option key={item}>{item}</option>
-              ))}
-            </select>
-          </label>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <label className="block text-sm font-medium">
-              Número principal *
-              <input className="mt-1 w-full rounded-xl border border-gray-300 p-3" value={mainNumber} onChange={(event) => setMainNumber(event.target.value.replace(/\D/g, ""))} maxLength={5} />
-            </label>
-            <label className="block text-sm font-medium">
-              Letra (opcional)
-              <input className="mt-1 w-full rounded-xl border border-gray-300 p-3 uppercase" value={letter} onChange={(event) => setLetter(event.target.value.replace(/[^a-z]/gi, "").slice(0, 1).toUpperCase())} maxLength={1} />
-            </label>
-            <label className="block text-sm font-medium">
-              Número después de #
-              <input className="mt-1 w-full rounded-xl border border-gray-300 p-3" value={secondNumber} onChange={(event) => setSecondNumber(event.target.value.replace(/\D/g, ""))} maxLength={5} />
-            </label>
-          </div>
-
-          <label className="block text-sm font-medium">
-            Número final *
-            <input className="mt-1 w-full rounded-xl border border-gray-300 p-3" value={finalNumber} onChange={(event) => setFinalNumber(event.target.value.replace(/\D/g, ""))} maxLength={5} />
-          </label>
-        </>
-      )}
-
-      <label className="block text-sm font-medium">
-        Complemento (opcional)
-        <input className="mt-1 w-full rounded-xl border border-gray-300 p-3" value={complement} onChange={(event) => setComplement(event.target.value)} maxLength={100} placeholder="Ej. local 201, piso 2" />
-      </label>
-
-      <label className="block text-sm font-medium">
-        Barrio (opcional)
-        <input className="mt-1 w-full rounded-xl border border-gray-300 p-3" value={neighborhood} onChange={(event) => setNeighborhood(event.target.value)} maxLength={100} />
-      </label>
-
       {legacyAddress && (!hasInteracted || !addressIsValid) && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
-          <p className="text-xs font-semibold text-amber-800">
-            Dirección guardada actualmente
-          </p>
+          <p className="text-xs font-semibold text-amber-800">Dirección guardada actualmente</p>
           <p className="mt-1 text-sm text-amber-900">{legacyAddress}</p>
           <p className="mt-1 text-xs text-amber-800">
-            Si los campos no se completaron automáticamente, verifica la dirección
-            y completa los datos antes de guardarla.
+            Si los campos no se completaron automáticamente, escribe la dirección de nuevo con los campos de arriba.
           </p>
         </div>
       )}
 
       <div className="rounded-xl bg-gray-50 p-3">
         <p className="text-xs font-semibold text-gray-500">Dirección que se enviará</p>
-        <p className="mt-1 text-sm text-gray-800">{address || "Completa los campos para construir la dirección."}</p>
+        <p className="mt-1 text-sm text-gray-800">
+          {addressIsValid ? address : "Completa la vía principal, el cruce y la placa para construir la dirección."}
+        </p>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-      {departments.length === 0 && (
+      {catalogError && (
         <p className="text-sm text-amber-700">
-          No fue posible cargar el catálogo de departamentos. Revisa la conexión antes de guardar.
+          No fue posible cargar el catálogo de ciudades. Revisa la conexión antes de guardar.
         </p>
       )}
     </div>
