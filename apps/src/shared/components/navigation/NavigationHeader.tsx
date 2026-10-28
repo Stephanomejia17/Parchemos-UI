@@ -6,6 +6,7 @@ import { ShoppingCart } from "lucide-react";
 import { ChevronLeft } from "lucide-react";
 import { useOrder } from "@/shared/context/order-context";
 import { BrandLogo } from "@/shared/components/BrandLogo";
+import { NotificationBell } from "@/shared/components/notifications/NotificationBell";
 
 export function NavigationHeader({
   breadcrumbs,
@@ -46,7 +47,10 @@ export function NavigationHeader({
             </span>
           ))}
         </nav>
-        {showCart ? <div className="ml-auto"><CustomerCartButton /></div> : null}
+        <div className="ml-auto flex items-center gap-2">
+          <NotificationBell />
+          {showCart ? <CustomerCartButton /> : null}
+        </div>
       </header>
     </>
   );

@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
+import { NotificationBell } from "./notifications/NotificationBell";
 
 export interface DesktopBreadcrumb {
   label: string;
@@ -65,14 +66,7 @@ export function DesktopHeader({
         })}
       </nav>
       <div className="ml-auto flex items-center gap-2">
-        <button
-          type="button"
-          aria-label="Notificaciones"
-          className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gray-100 text-gray-600 transition-colors hover:bg-gray-200"
-        >
-          <Bell className="h-4 w-4" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full border-2 border-white bg-primary" />
-        </button>
+        <NotificationBell />
         {cart}
         <Link href={avatarHref} aria-label="Ir al perfil">
           {avatar}
