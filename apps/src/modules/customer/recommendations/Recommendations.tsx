@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Sparkles } from "lucide-react";
 import { PrimaryButton } from "@/shared/components";
 import { recommendationService, type RecommendationList } from "@/shared/services";
-import { RestaurantLocationCard } from "../home/components/RestaurantLocationCard";
+import { CompactLocationCard } from "../home/components/CompactLocationCard";
 import { toCardData } from "../home/to-card-data";
 
 /** Sección "Recomendado para ti" (PU-03): personalizada o, sin datos, las mejor calificadas. */
@@ -88,14 +88,12 @@ export function Recommendations() {
       )}
 
       {data && data.items.length > 0 && (
-        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
           {data.items.map((location) => (
-            <div key={location.id} className="w-72 shrink-0">
-              {location.motivo && (
-                <p className="mb-1.5 text-xs font-semibold text-primary">{location.motivo}</p>
-              )}
-              <RestaurantLocationCard
+            <div key={location.id} className="w-60 shrink-0">
+              <CompactLocationCard
                 card={toCardData(location)}
+                highlight={location.motivo}
                 onDetails={(locationId) =>
                   router.push(`/restaurant?locationId=${encodeURIComponent(locationId)}`)
                 }

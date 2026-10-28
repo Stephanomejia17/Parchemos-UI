@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Heart, Loader2, Star } from "lucide-react";
 import { PrimaryButton } from "@/shared/components";
 import { favoriteService, type FeaturedList } from "@/shared/services";
-import { RestaurantLocationCard } from "./components/RestaurantLocationCard";
+import { CompactLocationCard } from "./components/CompactLocationCard";
 import { toCardData } from "./to-card-data";
 
 const FEATURED_LIMIT = 10;
@@ -98,10 +98,10 @@ export function FeaturedLocations() {
       )}
 
       {data && data.items.length > 0 && (
-        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
           {data.items.map((location) => (
-            <div key={location.id} className="w-72 shrink-0">
-              <RestaurantLocationCard
+            <div key={location.id} className="w-60 shrink-0">
+              <CompactLocationCard
                 card={{ ...toCardData(location), featured: location.destacado }}
                 onDetails={(locationId) =>
                   router.push(`/restaurant?locationId=${encodeURIComponent(locationId)}`)
