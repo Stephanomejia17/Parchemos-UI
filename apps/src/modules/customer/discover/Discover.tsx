@@ -22,6 +22,11 @@ function getActualLocationImage(url: string | null) {
   return url && !url.includes("placehold.co") ? url : null;
 }
 
+/** Las tarjetas muestran la marca como título; la sede va debajo. */
+function brandName(location: Location) {
+  return location.restaurant?.businessName ?? location.name;
+}
+
 function hasValidCoordinates(
   location: Location,
 ): location is Location & { latitude: number; longitude: number } {
@@ -55,6 +60,10 @@ export function Discover() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const mappableLocations = useMemo(
     () => locations.filter(hasValidCoordinates),
+    [locations],
+  );
+  const unmappedLocations = useMemo(
+    () => locations.filter((location) => !hasValidCoordinates(location)),
     [locations],
   );
 
@@ -133,7 +142,7 @@ export function Discover() {
                         src={
                           getActualLocationImage(r.coverUrl) ?? getActualLocationImage(r.logoUrl)!
                         }
-                        alt={r.name}
+                        alt={`${brandName(r)} · ${r.name}`}
                         className="h-full w-full"
                         sizes="(min-width: 768px) 80px, 224px"
                       />
@@ -144,9 +153,12 @@ export function Discover() {
                   </div>
                   <div className="p-3 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="font-semibold text-gray-900 text-sm truncate flex-1">
-                        {r.name}
-                      </p>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-gray-900 text-sm truncate">{brandName(r)}</p>
+                        {r.restaurant && (
+                          <p className="text-xs text-gray-600 truncate">{r.name}</p>
+                        )}
+                      </div>
                       <span className="text-xs font-bold px-1.5 py-0.5 rounded-lg hidden md:block bg-green-100 text-green-700">
                         Sede activa
                       </span>
@@ -181,6 +193,16 @@ export function Discover() {
           onSelect={setSelectedRestaurant}
           onOpenLocation={goRestaurant}
         />
+        {unmappedLocations.length > 0 && (
+          <div
+            className="absolute left-4 right-4 top-4 z-[1000] rounded-2xl border border-amber-200 bg-amber-50/95 px-3 py-2 text-xs text-amber-900 shadow-sm md:right-auto md:max-w-sm"
+            title={unmappedLocations.map((location) => location.name).join(", ")}
+          >
+            {unmappedLocations.length === 1
+              ? `${brandName(unmappedLocations[0])} (${unmappedLocations[0].name}) no aparece en el mapa porque su dirección aún no tiene ubicación verificada.`
+              : `${unmappedLocations.length} sedes no aparecen en el mapa porque su dirección aún no tiene ubicación verificada.`}
+          </div>
+        )}
         <div className="absolute bottom-4 right-4">
           <button className="w-10 h-10 bg-white rounded-2xl shadow-lg flex items-center justify-center">
             <Navigation className="w-5 h-5 text-primary" />
@@ -196,15 +218,18 @@ export function Discover() {
                     getActualLocationImage(selectedRestaurant.coverUrl) ??
                     getActualLocationImage(selectedRestaurant.logoUrl)!
                   }
-                  alt={selectedRestaurant.name}
+                  alt={`${brandName(selectedRestaurant)} · ${selectedRestaurant.name}`}
                   className="w-16 h-16 rounded-xl flex-shrink-0"
                   sizes="64px"
                 />
               )}
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-gray-900 text-sm truncate">
-                  {selectedRestaurant.name}
+                  {brandName(selectedRestaurant)}
                 </p>
+                {selectedRestaurant.restaurant && (
+                  <p className="text-xs text-gray-600 truncate">{selectedRestaurant.name}</p>
+                )}
                 <p className="mt-1 text-xs text-muted-foreground">
                   {selectedRestaurant.address}
                 </p>
