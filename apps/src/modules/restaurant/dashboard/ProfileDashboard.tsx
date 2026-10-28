@@ -6,7 +6,7 @@ import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
 } from "recharts";
-import { SurfaceCard as Card } from "@/shared/components";
+import { AiInsightsPanel, SurfaceCard as Card } from "@/shared/components";
 import { statisticsService, type RestaurantStatistics as Statistics } from "@/shared/services/statistics/statistics.service";
 
 const today = new Date();
@@ -46,6 +46,7 @@ export function ProfileDashboard() {
       </Card>
       {invalid && <p role="alert" className="text-sm text-red-600">La fecha final debe ser igual o posterior a la inicial.</p>}
       {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}<button onClick={() => setRetry((value) => value + 1)} className="ml-2 underline">Reintentar</button></div>}
+      <AiInsightsPanel scope="restaurante" desde={desde} hasta={hasta} disabled={invalid} />
       {data && !data.sinDatos && totals && <>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Metric icon={DollarSign} label="Ingresos brutos" value={money(totals.ingresosBrutos)}/>

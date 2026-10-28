@@ -3,6 +3,7 @@ export { PrimaryButton } from "./PrimaryButton";
 export { StarRating } from "./StarRating";
 export { StatusBadge } from "./StatusBadge";
 export { SurfaceCard } from "./SurfaceCard";
+export { AiInsightsPanel } from "./AiInsightsPanel";
 export { InitialsAvatar } from "./InitialsAvatar";
 export { IconButton } from "./IconButton";
 export { Header } from "./Header";

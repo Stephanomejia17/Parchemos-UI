@@ -6,7 +6,7 @@ import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
 } from "recharts";
-import { SurfaceCard as Card } from "@/shared/components";
+import { AiInsightsPanel, SurfaceCard as Card } from "@/shared/components";
 import { StatCard } from "@/modules/admin/ui/StatCard";
 import { SectionHeader } from "@/modules/admin/ui/SectionHeader";
 import { statisticsService, type AffiliateStatistics, type TrendsStatistics } from "@/shared/services/statistics/statistics.service";
@@ -66,6 +66,7 @@ export function Dashboard() {
     </div>
     {invalid && <p role="alert" className="text-sm text-red-600">La fecha final debe ser igual o posterior a la inicial.</p>}
     {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}<button onClick={() => setRetry((value) => value + 1)} className="ml-2 underline">Reintentar</button></div>}
+    <AiInsightsPanel scope="administrador" desde={desde} hasta={hasta} disabled={invalid} />
     {!error && trends && affiliates && <>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Promedio de usuarios activos por día" value={resumen.activosPromedio.toLocaleString("es-CO")} icon={Activity} accent />
