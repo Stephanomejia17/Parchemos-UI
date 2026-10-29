@@ -49,10 +49,6 @@ export function Orders() {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-background">
-      <div className="sticky top-0 z-10 border-b border-border bg-white px-4 py-4 md:px-6">
-        <h2 className="font-heading text-xl font-bold text-gray-900">Pedidos</h2>
-      </div>
-
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4 md:p-6">
         {loading && (
           <output className="text-sm text-muted-foreground">

@@ -138,11 +138,7 @@ export function Home() {
         <SearchInput value={searchTerm} onChange={setSearchTerm} />
       </div>
 
-      <div className="hidden items-center justify-between px-6 pb-4 pt-6 md:flex">
-        <div>
-          <h2 className="font-heading text-2xl font-bold text-gray-900">Inicio</h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">Bogot\u00E1, Colombia - Descubriendo cerca de ti</p>
-        </div>
+      <div className="hidden items-center justify-end px-6 pb-4 pt-6 md:flex">
         <SearchInput value={searchTerm} onChange={setSearchTerm} />
       </div>
 
